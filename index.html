@@ -7,39 +7,29 @@
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #0a0a0f;
-  --surface: #13131a;
-  --surface2: #1c1c26;
-  --surface3: #242432;
-  --border: #2a2a3a;
-  --accent: #f5a623;
-  --accent2: #e8441a;
-  --accent3: #3ecfcf;
-  --accent4: #a259ff;
-  --text: #f0eeea;
-  --text2: #7e7c8e;
-  --text3: #b0adc0;
-  --success: #22c55e;
-  --danger: #ef4444;
-  --r: 16px;
-  --bottom: 74px;
+  --bg:#0a0a0f;--surface:#13131a;--surface2:#1c1c26;--surface3:#242432;
+  --border:#2a2a3a;--accent:#f5a623;--accent2:#e8441a;--accent3:#3ecfcf;
+  --accent4:#a259ff;--text:#f0eeea;--text2:#7e7c8e;--text3:#b0adc0;
+  --success:#22c55e;--danger:#ef4444;--r:16px;--bottom:74px;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{scroll-behavior:smooth}
-body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden;padding-bottom:calc(var(--bottom) + 20px)}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden;padding-bottom:calc(var(--bottom)+20px)}
 
-/* ── PAGES ── */
+/* PAGES */
 .page{display:none;animation:fadeUp .25s ease}
 .page.active{display:block}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 
-/* ── HEADER ── */
+/* TOPBAR */
 .topbar{position:sticky;top:0;z-index:40;padding:16px 18px 0;background:linear-gradient(180deg,var(--bg) 70%,transparent)}
 .topbar-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .page-title{font-size:20px;font-weight:900;letter-spacing:-.3px}
 .date-chip{font-size:11px;color:var(--text2);background:var(--surface2);padding:4px 10px;border-radius:20px;border:1px solid var(--border)}
+.back-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:6px 12px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px}
+.back-btn:active{opacity:.7}
 
-/* ── TOTAL HERO ── */
+/* HERO */
 .hero{margin:0 18px 0;background:linear-gradient(135deg,#1a1228 0%,#0e1a2e 60%,#0a1520 100%);border:1px solid rgba(245,166,35,.18);border-radius:20px;padding:22px 22px 18px;position:relative;overflow:hidden}
 .hero::before{content:'';position:absolute;top:-50px;right:-50px;width:200px;height:200px;background:radial-gradient(circle,rgba(245,166,35,.12) 0%,transparent 70%);pointer-events:none}
 .hero-label{font-size:11px;color:var(--text2);letter-spacing:1.5px;margin-bottom:4px}
@@ -49,7 +39,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .hstat{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);background:rgba(255,255,255,.05);padding:5px 10px;border-radius:20px}
 .hstat b{color:var(--text)}
 
-/* ── NAV ── */
+/* NAV */
 .nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(10,10,15,.94);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-around;padding:6px 8px;height:var(--bottom)}
 @supports(padding-bottom:env(safe-area-inset-bottom)){.nav{height:calc(var(--bottom) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom)}body{padding-bottom:calc(var(--bottom) + env(safe-area-inset-bottom) + 20px)}}
 .nav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;font-family:'Tajawal',sans-serif;font-size:10px;color:var(--text2);padding:6px 14px;border-radius:12px;transition:all .2s;min-width:60px}
@@ -59,14 +49,14 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .nav-btn.mic-nav.rec{background:#ff2d55;animation:navPulse .8s infinite}
 @keyframes navPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,45,85,.5)}50%{box-shadow:0 0 0 8px rgba(255,45,85,0)}}
 
-/* ── SECTION HEADER ── */
+/* SECTION HEADER */
 .sec-hd{display:flex;align-items:center;justify-content:space-between;padding:18px 18px 8px}
 .sec-hd h2{font-size:13px;font-weight:700;color:var(--text2);letter-spacing:1.5px}
 .sec-hd .badge{font-size:11px;color:var(--text2);background:var(--surface2);padding:3px 8px;border-radius:8px;border:1px solid var(--border)}
 
-/* ── EXPENSE LIST ── */
+/* EXPENSE LIST */
 .exp-list{padding:0 18px;display:flex;flex-direction:column;gap:8px}
-.exp-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;display:flex;align-items:center;gap:12px;animation:slideIn .3s cubic-bezier(.34,1.56,.64,1);position:relative;overflow:hidden;transition:transform .15s}
+.exp-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;display:flex;align-items:center;gap:12px;position:relative;overflow:hidden;transition:transform .15s;cursor:pointer}
 .exp-card:active{transform:scale(.98)}
 .exp-card::before{content:'';position:absolute;right:0;top:0;bottom:0;width:3px;border-radius:0 var(--r) var(--r) 0}
 .exp-card[data-c="0"]::before{background:#f5a623}
@@ -91,8 +81,9 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .ec-amount small{font-size:11px;font-weight:400;color:var(--text2)}
 .del-btn{background:rgba(239,68,68,.1);border:none;color:var(--danger);width:26px;height:26px;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:background .2s}
 .del-btn:active{background:rgba(239,68,68,.3)}
+.arrow-icon{color:var(--text2);font-size:14px;flex-shrink:0;margin-right:2px}
 
-/* ── LOGS ── */
+/* LOGS */
 .log-list{padding:0 18px;display:flex;flex-direction:column;gap:6px}
 .log-item{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px}
 .log-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0}
@@ -101,15 +92,15 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .log-time{font-size:11px;color:var(--text2);margin-top:2px}
 .log-amt{font-size:14px;font-weight:800;color:var(--accent);white-space:nowrap;flex-shrink:0}
 
-/* ── EMPTY ── */
+/* EMPTY */
 .empty{text-align:center;padding:48px 20px;color:var(--text2)}
 .empty .ei{font-size:48px;opacity:.3;margin-bottom:12px}
 .empty p{font-size:14px}
 
-/* ── OVERLAY / SHEET ── */
+/* OVERLAY / SHEET */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:200;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .25s}
 .overlay.open{opacity:1;pointer-events:all}
-.sheet{width:100%;background:var(--surface);border-radius:24px 24px 0 0;border-top:1px solid var(--border);padding:0 20px 36px;transform:translateY(100%);transition:transform .32s cubic-bezier(.34,1.1,.64,1)}
+.sheet{width:100%;background:var(--surface);border-radius:24px 24px 0 0;border-top:1px solid var(--border);padding:0 20px 36px;transform:translateY(100%);transition:transform .32s cubic-bezier(.34,1.1,.64,1);max-height:90dvh;overflow-y:auto}
 .overlay.open .sheet{transform:translateY(0)}
 .sh-handle{width:40px;height:4px;background:var(--border);border-radius:4px;margin:14px auto 18px}
 .sh-title{font-size:18px;font-weight:800;margin-bottom:18px}
@@ -124,10 +115,12 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .btn-danger-soft:active{background:rgba(255,45,85,.25)}
 .btn-teal{width:100%;background:var(--accent2);border:none;border-radius:14px;padding:15px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;color:#fff;cursor:pointer;transition:all .2s}
 .btn-teal:active{background:#c03a14}
+.btn-ghost{background:var(--surface2);border:1px solid var(--border);color:var(--text3);border-radius:12px;padding:10px 16px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-ghost:active{opacity:.7}
 
-/* ── VOICE SHEET ── */
+/* VOICE SHEET */
 .v-ring{width:96px;height:96px;border-radius:50%;background:rgba(232,68,26,.1);border:2px solid rgba(232,68,26,.3);display:flex;align-items:center;justify-content:center;margin:10px auto 14px;font-size:38px;transition:all .3s}
-.v-ring.active{background:rgba(255,45,85,.15);border-color:#ff2d55;animation:ringP 1s infinite;box-shadow:0 0 0 0 rgba(255,45,85,.4)}
+.v-ring.active{background:rgba(255,45,85,.15);border-color:#ff2d55;animation:ringP 1s infinite}
 @keyframes ringP{0%{box-shadow:0 0 0 0 rgba(255,45,85,.4)}70%{box-shadow:0 0 0 18px rgba(255,45,85,0)}100%{box-shadow:0 0 0 0 rgba(255,45,85,0)}}
 .v-msg{font-size:14px;color:var(--text2);min-height:20px;text-align:center;transition:color .2s}
 .v-msg.heard{color:var(--accent);font-weight:700}
@@ -137,60 +130,84 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .v-hint strong{color:var(--accent3)}
 .v-transcript{font-size:13px;color:var(--text3);min-height:18px;text-align:center;margin-bottom:8px;font-style:italic}
 
-/* ── STATS PAGE ── */
+/* STATS */
 .stats-section{padding:0 18px;margin-bottom:18px}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px}
 .stat-card+.stat-card{margin-top:10px}
 .stat-card-title{font-size:12px;font-weight:700;color:var(--text2);letter-spacing:1.2px;margin-bottom:14px;display:flex;align-items:center;gap:6px}
 .stat-card-title span{font-size:16px}
-
-/* bar chart */
 .bar-chart{display:flex;flex-direction:column;gap:10px}
 .bar-row{display:flex;align-items:center;gap:10px}
 .bar-label{font-size:12px;color:var(--text3);width:70px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
 .bar-track{flex:1;height:8px;background:var(--surface2);border-radius:4px;overflow:hidden}
 .bar-fill{height:100%;border-radius:4px;transition:width .6s ease;min-width:4px}
 .bar-val{font-size:11px;color:var(--text2);width:50px;text-align:left;flex-shrink:0}
-
-/* week chart */
 .week-chart{display:flex;gap:8px;align-items:flex-end;height:80px;margin-bottom:8px}
 .wday{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
 .wday-bar-wrap{flex:1;width:100%;display:flex;align-items:flex-end}
 .wday-bar{width:100%;border-radius:6px 6px 0 0;transition:height .5s ease;min-height:3px}
 .wday-lbl{font-size:10px;color:var(--text2)}
 .wday-amt{font-size:9px;color:var(--accent);font-weight:700}
-
-/* tip cards */
 .tip-card{background:linear-gradient(135deg,rgba(162,89,255,.1),rgba(62,207,207,.05));border:1px solid rgba(162,89,255,.2);border-radius:var(--r);padding:14px;margin-bottom:10px;display:flex;gap:10px}
 .tip-icon{font-size:24px;flex-shrink:0}
-.tip-body{}
 .tip-title{font-size:13px;font-weight:700;margin-bottom:4px}
 .tip-text{font-size:12px;color:var(--text2);line-height:1.7}
-
-/* period tabs */
 .tabs{display:flex;gap:6px;padding:12px 18px 0;overflow-x:auto;-ms-overflow-style:none;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
 .tab{padding:7px 14px;border-radius:20px;font-family:'Tajawal',sans-serif;font-size:12px;font-weight:700;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;white-space:nowrap;transition:all .2s}
 .tab.active{background:var(--accent);border-color:var(--accent);color:#000}
-
-/* summary row */
 .sum-row{display:flex;gap:8px;padding:0 18px;margin-bottom:14px;flex-wrap:wrap}
 .sum-box{flex:1;min-width:80px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center}
 .sum-box .sv{font-size:18px;font-weight:900;color:var(--accent)}
 .sum-box .sk{font-size:10px;color:var(--text2);margin-top:3px}
 
-/* toast */
+/* ── FIXED CATEGORIES PAGE ── */
+.fixed-hero{margin:0 18px 0;background:linear-gradient(135deg,#0f1a2e 0%,#1a0f2e 100%);border:1px solid rgba(62,207,207,.18);border-radius:20px;padding:20px 22px 16px;position:relative;overflow:hidden}
+.fixed-hero::before{content:'';position:absolute;top:-40px;left:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(62,207,207,.1) 0%,transparent 70%);pointer-events:none}
+.fixed-hero-label{font-size:11px;color:var(--text2);letter-spacing:1.5px;margin-bottom:4px}
+.fixed-hero-amount{font-size:34px;font-weight:900;color:var(--accent3);line-height:1;letter-spacing:-1px}
+.fixed-hero-amount sup{font-size:14px;font-weight:600;color:var(--text2);vertical-align:super;margin-left:4px}
+.fixed-hero-sub{font-size:12px;color:var(--text2);margin-top:8px}
+
+.fixed-list{padding:0 18px;display:flex;flex-direction:column;gap:8px}
+.fixed-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:12px;transition:transform .15s}
+.fixed-card:active{transform:scale(.98)}
+.fixed-card.paid{border-color:rgba(34,197,94,.25);background:rgba(34,197,94,.04)}
+.fc-icon{width:40px;height:40px;border-radius:11px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.fc-body{flex:1;min-width:0}
+.fc-name{font-size:14px;font-weight:700}
+.fc-budget{font-size:11px;color:var(--text2);margin-top:2px}
+.fc-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
+.fc-paid-amt{font-size:15px;font-weight:800;color:var(--accent3)}
+.fc-paid-amt.zero{color:var(--text2)}
+.fc-paid-amt small{font-size:10px;font-weight:400;color:var(--text2)}
+.fc-add-btn{background:var(--accent3);border:none;color:#000;border-radius:8px;padding:5px 10px;font-family:'Tajawal',sans-serif;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .2s}
+.fc-add-btn:active{opacity:.7}
+.fc-del-btn{background:rgba(239,68,68,.1);border:none;color:var(--danger);width:22px;height:22px;border-radius:6px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center}
+.paid-badge{background:rgba(34,197,94,.15);color:var(--success);font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;border:1px solid rgba(34,197,94,.2)}
+
+/* CATEGORY DETAIL PAGE */
+.cat-detail-hero{margin:0 18px 0;border-radius:20px;padding:22px;position:relative;overflow:hidden}
+.cat-detail-total{font-size:36px;font-weight:900;line-height:1;letter-spacing:-1px}
+.cat-detail-total sup{font-size:14px;font-weight:600;color:rgba(255,255,255,.6);vertical-align:super;margin-left:4px}
+.cat-detail-name{font-size:13px;opacity:.7;margin-bottom:6px}
+.cat-detail-count{font-size:12px;opacity:.6;margin-top:8px}
+
+/* TOAST */
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:11px 18px;border-radius:12px;font-size:14px;font-weight:600;z-index:999;transition:transform .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,.5);max-width:90vw}
 .toast.show{transform:translateX(-50%) translateY(0)}
 .toast.ok{border-color:var(--success);color:var(--success)}
 .toast.bad{border-color:var(--danger);color:var(--danger)}
 
 .divider{height:1px;background:var(--border);margin:14px 18px}
+.chip-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chip{padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-family:'Tajawal',sans-serif;font-size:12px;cursor:pointer;transition:all .2s}
+.chip:active,.chip.sel{background:var(--accent);border-color:var(--accent);color:#000;font-weight:700}
 </style>
 </head>
 <body>
 
-<!-- ══ PAGE: HOME ══ -->
+<!-- ══════════ PAGE: HOME ══════════ -->
 <div id="pg-home" class="page active">
   <div class="topbar">
     <div class="topbar-row">
@@ -207,7 +224,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       </div>
     </div>
   </div>
-  <div class="sec-hd"><h2>الفئات</h2><span class="badge" id="sortLabel">الأعلى أولاً</span></div>
+
+  <div class="sec-hd"><h2>الفئات</h2><span class="badge">اضغط للتفاصيل</span></div>
   <div class="exp-list" id="expList">
     <div class="empty" id="emptyExp"><div class="ei">💸</div><p>لا توجد مصروفات<br>أضف أول مصروف!</p></div>
   </div>
@@ -219,7 +237,49 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
-<!-- ══ PAGE: STATS ══ -->
+<!-- ══════════ PAGE: CATEGORY DETAIL ══════════ -->
+<div id="pg-catdetail" class="page">
+  <div class="topbar">
+    <div class="topbar-row">
+      <button class="back-btn" onclick="goPage('home')">← رجوع</button>
+      <div class="date-chip" id="catDetailDate"></div>
+    </div>
+    <div class="cat-detail-hero" id="catDetailHero">
+      <div class="cat-detail-name" id="catDetailName"></div>
+      <div class="cat-detail-total" id="catDetailTotal"></div>
+      <div class="cat-detail-count" id="catDetailCount"></div>
+    </div>
+  </div>
+  <div class="sec-hd"><h2>جميع الإدخالات</h2><span class="badge" id="catDetailBadge">0</span></div>
+  <div class="log-list" id="catDetailLogs">
+    <div class="empty" style="padding:20px"><p style="font-size:13px">لا توجد إدخالات</p></div>
+  </div>
+</div>
+
+<!-- ══════════ PAGE: FIXED CATS ══════════ -->
+<div id="pg-fixed" class="page">
+  <div class="topbar">
+    <div class="topbar-row">
+      <div class="page-title">المصروفات الثابتة 📌</div>
+      <div class="date-chip" id="fixedDateLabel"></div>
+    </div>
+    <div class="fixed-hero">
+      <div class="fixed-hero-label">إجمالي الثابتة هذا الشهر</div>
+      <div class="fixed-hero-amount"><sup>ر.س</sup><span id="fixedTotal">0.00</span></div>
+      <div class="fixed-hero-sub" id="fixedSubLabel">0 من 0 تم دفعها</div>
+    </div>
+  </div>
+
+  <div class="sec-hd">
+    <h2>الفئات الثابتة</h2>
+    <button class="btn-ghost" style="padding:5px 10px;font-size:11px" onclick="openAddFixed()">+ إضافة فئة</button>
+  </div>
+  <div class="fixed-list" id="fixedList">
+    <div class="empty" id="emptyFixed"><div class="ei">📌</div><p>لا توجد فئات ثابتة<br>أضف أولى فئاتك الثابتة!</p></div>
+  </div>
+</div>
+
+<!-- ══════════ PAGE: STATS ══════════ -->
 <div id="pg-stats" class="page">
   <div class="topbar">
     <div class="topbar-row"><div class="page-title">التقارير 📊</div><div class="date-chip" id="statDateLabel"></div></div>
@@ -229,14 +289,12 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <button class="tab" onclick="setStatPeriod('month',this)">هذا الشهر</button>
     <button class="tab" onclick="setStatPeriod('all',this)">الكل</button>
   </div>
-
   <div class="sum-row" style="margin-top:14px">
     <div class="sum-box"><div class="sv" id="st-total">0</div><div class="sk">إجمالي (ر.س)</div></div>
     <div class="sum-box"><div class="sv" id="st-avg">0</div><div class="sk">متوسط / يوم</div></div>
     <div class="sum-box"><div class="sv" id="st-entries">0</div><div class="sk">إدخال</div></div>
     <div class="sum-box"><div class="sv" id="st-topcat">—</div><div class="sk">الأكثر صرفاً</div></div>
   </div>
-
   <div class="stats-section">
     <div class="stat-card">
       <div class="stat-card-title"><span>📅</span> الصرف اليومي (هذا الأسبوع)</div>
@@ -247,29 +305,26 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       </div>
     </div>
   </div>
-
   <div class="stats-section">
     <div class="stat-card">
       <div class="stat-card-title"><span>🏷️</span> التوزيع حسب الفئة</div>
       <div class="bar-chart" id="catChart"></div>
     </div>
   </div>
-
   <div class="stats-section">
     <div class="stat-card">
       <div class="stat-card-title"><span>🕐</span> أوقات الصرف</div>
       <div class="bar-chart" id="timeChart"></div>
     </div>
   </div>
-
   <div class="stats-section" id="tipsSection">
     <div class="stat-card-title" style="padding:0 0 10px"><span>💡</span> نصائح لضبط مصروفاتك</div>
     <div id="tipsList"></div>
   </div>
 </div>
 
-<!-- ══ BOTTOM NAV ══ -->
-<nav class="nav">
+<!-- ══════════ BOTTOM NAV ══════════ -->
+<nav class="nav" id="mainNav">
   <button class="nav-btn active" id="nav-home" onclick="goPage('home')">
     <span class="nicon">🏠</span>الرئيسية
   </button>
@@ -279,12 +334,15 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   <button class="nav-btn" onclick="openAdd()">
     <span class="nicon">＋</span>إضافة
   </button>
+  <button class="nav-btn" id="nav-fixed" onclick="goPage('fixed')">
+    <span class="nicon">📌</span>ثابتة
+  </button>
   <button class="nav-btn" id="nav-stats" onclick="goPage('stats')">
     <span class="nicon">📊</span>تقارير
   </button>
 </nav>
 
-<!-- ══ OVERLAY: ADD ══ -->
+<!-- ══════════ OVERLAY: ADD MANUAL ══════════ -->
 <div class="overlay" id="addOverlay" onclick="bgClose(event,'addOverlay')">
   <div class="sheet">
     <div class="sh-handle"></div>
@@ -299,7 +357,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
-<!-- ══ OVERLAY: VOICE ══ -->
+<!-- ══════════ OVERLAY: VOICE ══════════ -->
 <div class="overlay" id="voiceOverlay" onclick="bgClose(event,'voiceOverlay')">
   <div class="sheet" style="text-align:center">
     <div class="sh-handle"></div>
@@ -317,45 +375,69 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
-<!-- TOAST -->
+<!-- ══════════ OVERLAY: ADD FIXED CATEGORY ══════════ -->
+<div class="overlay" id="addFixedOverlay" onclick="bgClose(event,'addFixedOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title">📌 إضافة فئة ثابتة</div>
+    <div class="inp-wrap"><div class="inp-lbl">اسم الفئة</div>
+      <input id="fxInpName" class="inp" type="text" placeholder="مثال: إيجار، كهرباء، انترنت">
+    </div>
+    <div style="margin-bottom:12px">
+      <div class="inp-lbl" style="margin-bottom:6px">اختر سريعاً</div>
+      <div class="chip-row" id="fixedChips">
+        <span class="chip" onclick="pickChip(this,'إيجار')">🏠 إيجار</span>
+        <span class="chip" onclick="pickChip(this,'كهرباء')">💡 كهرباء</span>
+        <span class="chip" onclick="pickChip(this,'ماء')">💧 ماء</span>
+        <span class="chip" onclick="pickChip(this,'انترنت')">📡 انترنت</span>
+        <span class="chip" onclick="pickChip(this,'جوال')">📱 جوال</span>
+        <span class="chip" onclick="pickChip(this,'أقساط')">💳 أقساط</span>
+        <span class="chip" onclick="pickChip(this,'اشتراكات')">🔄 اشتراكات</span>
+        <span class="chip" onclick="pickChip(this,'مدرسة')">🎒 مدرسة</span>
+        <span class="chip" onclick="pickChip(this,'تأمين')">🛡️ تأمين</span>
+      </div>
+    </div>
+    <div class="inp-wrap"><div class="inp-lbl">المبلغ المعتاد (ريال) — اختياري</div>
+      <input id="fxInpBudget" class="inp" type="number" inputmode="decimal" placeholder="0.00">
+    </div>
+    <button class="btn-primary" onclick="doAddFixed()">إضافة الفئة الثابتة</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: PAY FIXED ══════════ -->
+<div class="overlay" id="payFixedOverlay" onclick="bgClose(event,'payFixedOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title" id="payFixedTitle">تسجيل دفعة</div>
+    <div class="inp-wrap"><div class="inp-lbl">المبلغ المدفوع (ريال)</div>
+      <input id="payFixedAmt" class="inp" type="number" inputmode="decimal" placeholder="0.00">
+    </div>
+    <button class="btn-primary" onclick="doPayFixed()">✅ تسجيل الدفعة</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 // ══════════════════════════════════════════
-//  STATE
+//  DB
 // ══════════════════════════════════════════
 let DB = loadDB();
-
 function loadDB(){
-  try{ return JSON.parse(localStorage.getItem('msf_v2')) || {cats:{},logs:[]}; }
-  catch(e){ return {cats:{},logs:[]}; }
+  try{ return JSON.parse(localStorage.getItem('msf_v3'))||{cats:{},logs:[],fixedCats:[],fixedLogs:[]}; }
+  catch(e){ return {cats:{},logs:[],fixedCats:[],fixedLogs:[]}; }
 }
-function saveDB(){ localStorage.setItem('msf_v2', JSON.stringify(DB)); }
+function saveDB(){ localStorage.setItem('msf_v3',JSON.stringify(DB)); }
+// migrate old data
+if(!DB.fixedCats) DB.fixedCats=[];
+if(!DB.fixedLogs) DB.fixedLogs=[];
 
 // ══════════════════════════════════════════
-//  ICONS
+//  ICONS & COLORS
 // ══════════════════════════════════════════
-const ICON_MAP = {
-  'قهوة':'☕','كافيه':'☕','كافي':'☕','اسبريسو':'☕',
-  'بنزين':'⛽','وقود':'⛽','غاز':'⛽',
-  'سوبرماركت':'🛒','بقالة':'🛒','تسوق':'🛍️',
-  'مطعم':'🍔','اكل':'🍔','طعام':'🍔','فطور':'🥐','عشاء':'🌮','غداء':'🥗',
-  'دواء':'💊','صيدلية':'💊','طبيب':'🏥','مستشفى':'🏥',
-  'إيجار':'🏠','ايجار':'🏠','كهرباء':'💡','ماء':'💧','انترنت':'📡',
-  'هاتف':'📱','جوال':'📱','شحن':'🔋',
-  'مواصلات':'🚌','تاكسي':'🚕','أوبر':'🚕','كريم':'🚕',
-  'حلاق':'💇','صالون':'💇','ملابس':'👗','أحذية':'👟',
-  'كتب':'📚','قرطاسية':'✏️','تعليم':'🎓',
-  'رياضة':'🏋️','جيم':'🏋️','سينما':'🎬','ترفيه':'🎮',
-  'هدايا':'🎁','سفر':'✈️','فندق':'🏨',
-  'مشاوير':'🚗','صيانة':'🔧'
-};
+const ICON_MAP={'قهوة':'☕','كافيه':'☕','كافي':'☕','اسبريسو':'☕','بنزين':'⛽','وقود':'⛽','غاز':'⛽','سوبرماركت':'🛒','بقالة':'🛒','تسوق':'🛍️','مطعم':'🍔','اكل':'🍔','طعام':'🍔','فطور':'🥐','عشاء':'🌮','غداء':'🥗','دواء':'💊','صيدلية':'💊','طبيب':'🏥','مستشفى':'🏥','إيجار':'🏠','ايجار':'🏠','كهرباء':'💡','ماء':'💧','انترنت':'📡','هاتف':'📱','جوال':'📱','شحن':'🔋','مواصلات':'🚌','تاكسي':'🚕','أوبر':'🚕','كريم':'🚕','حلاق':'💇','صالون':'💇','ملابس':'👗','أحذية':'👟','كتب':'📚','قرطاسية':'✏️','تعليم':'🎓','رياضة':'🏋️','جيم':'🏋️','سينما':'🎬','ترفيه':'🎮','هدايا':'🎁','سفر':'✈️','فندق':'🏨','مشاوير':'🚗','صيانة':'🔧','أقساط':'💳','اشتراكات':'🔄','مدرسة':'🎒','تأمين':'🛡️'};
 const ICONS_DEF=['🛒','⛽','☕','🍔','💊','🏠','🎮','👗','📱','🚌','💇','🎓','🍕','🛵','💡','🛍️'];
-function getIcon(name){
-  for(let k in ICON_MAP) if(name.includes(k)) return ICON_MAP[k];
-  return ICONS_DEF[name.charCodeAt(0)%ICONS_DEF.length];
-}
-
+function getIcon(name){ for(let k in ICON_MAP) if(name.includes(k)) return ICON_MAP[k]; return ICONS_DEF[name.charCodeAt(0)%ICONS_DEF.length]; }
 const COLORS=['#f5a623','#e8441a','#3ecfcf','#a259ff','#22c55e','#ec4899','#f59e0b','#6366f1'];
 function catColor(idx){ return COLORS[idx%COLORS.length]; }
 
@@ -363,84 +445,215 @@ function catColor(idx){ return COLORS[idx%COLORS.length]; }
 //  RENDER HOME
 // ══════════════════════════════════════════
 function renderHome(){
-  const cats = DB.cats;
-  const logs = DB.logs;
-  const total = Object.values(cats).reduce((s,c)=>s+c.amount,0);
-  const today = new Date().toDateString();
-  const todayEntries = logs.filter(l=>new Date(l.ts).toDateString()===today).length;
+  const cats=DB.cats, logs=DB.logs;
+  const total=Object.values(cats).reduce((s,c)=>s+c.amount,0);
+  const today=new Date().toDateString();
+  const todayN=logs.filter(l=>new Date(l.ts).toDateString()===today).length;
+  document.getElementById('totalAmt').textContent=total.toFixed(2);
+  document.getElementById('catCnt').textContent=Object.keys(cats).length;
+  document.getElementById('entryCnt').textContent=logs.length;
+  document.getElementById('todayCnt').textContent=todayN;
 
-  document.getElementById('totalAmt').textContent = total.toFixed(2);
-  document.getElementById('catCnt').textContent = Object.keys(cats).length;
-  document.getElementById('entryCnt').textContent = logs.length;
-  document.getElementById('todayCnt').textContent = todayEntries;
-
-  // cats
-  const list = document.getElementById('expList');
+  // cats list
+  const list=document.getElementById('expList');
   [...list.querySelectorAll('.exp-card')].forEach(e=>e.remove());
-  const empty = document.getElementById('emptyExp');
-
-  const sorted = Object.entries(cats).sort((a,b)=>b[1].amount-a[1].amount);
-  if(!sorted.length){ empty.style.display='block'; }
-  else {
-    empty.style.display='none';
-    sorted.forEach(([name,data],i)=>{
-      const pct = total>0?((data.amount/total)*100).toFixed(1):0;
-      const card = document.createElement('div');
-      card.className='exp-card'; card.dataset.c=i%8;
-      card.innerHTML=`
-        <div class="ec-icon">${getIcon(name)}</div>
-        <div class="ec-body">
-          <div class="ec-name">${name}</div>
-          <div class="ec-meta">
-            <span class="ec-count">${data.count} إدخال</span>
-            <span class="ec-pct">${pct}%</span>
-          </div>
-          <div class="ec-bar"><div class="ec-fill" style="width:${pct}%;background:${catColor(i)}"></div></div>
+  const sorted=Object.entries(cats).sort((a,b)=>b[1].amount-a[1].amount);
+  document.getElementById('emptyExp').style.display=sorted.length?'none':'block';
+  sorted.forEach(([name,data],i)=>{
+    const pct=total>0?((data.amount/total)*100).toFixed(1):0;
+    const card=document.createElement('div');
+    card.className='exp-card'; card.dataset.c=i%8;
+    card.setAttribute('onclick',`openCatDetail('${name.replace(/'/g,"\\'")}')`)
+    card.innerHTML=`
+      <div class="ec-icon">${getIcon(name)}</div>
+      <div class="ec-body">
+        <div class="ec-name">${name}</div>
+        <div class="ec-meta"><span class="ec-count">${data.count} إدخال</span><span class="ec-pct">${pct}%</span></div>
+        <div class="ec-bar"><div class="ec-fill" style="width:${pct}%;background:${catColor(i)}"></div></div>
+      </div>
+      <div class="ec-right">
+        <div class="ec-amount">${data.amount.toFixed(2)}<small> ر.س</small></div>
+        <div style="display:flex;gap:5px">
+          <button class="del-btn" onclick="event.stopPropagation();delCat('${name.replace(/'/g,"\\'")}')">🗑</button>
+          <span class="arrow-icon">›</span>
         </div>
-        <div class="ec-right">
-          <div class="ec-amount">${data.amount.toFixed(2)}<small> ر.س</small></div>
-          <button class="del-btn" onclick="delCat('${name.replace(/'/g,"\\'")}')">🗑</button>
-        </div>`;
-      list.appendChild(card);
-    });
-  }
+      </div>`;
+    list.appendChild(card);
+  });
 
   // logs
-  const logList = document.getElementById('logList');
+  const logList=document.getElementById('logList');
   [...logList.querySelectorAll('.log-item')].forEach(e=>e.remove());
-  const emptyLog = document.getElementById('emptyLog');
-  const recentLogs = [...logs].reverse().slice(0,15);
-  document.getElementById('logBadge').textContent = logs.length;
-
-  if(!recentLogs.length){ emptyLog.style.display='block'; }
-  else {
-    emptyLog.style.display='none';
-    recentLogs.forEach(log=>{
-      const d=new Date(log.ts);
-      const timeStr=d.toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
-      const dateStr=d.toLocaleDateString('ar-SA',{weekday:'short',month:'short',day:'numeric'});
-      const li=document.createElement('div');
-      li.className='log-item';
-      li.innerHTML=`
-        <div class="log-dot" style="background:${catColor(Object.keys(cats).indexOf(log.name))}"></div>
-        <div class="log-body">
-          <div class="log-name">${getIcon(log.name)} ${log.name}</div>
-          <div class="log-time">${dateStr} — ${timeStr} ${log.src==='voice'?'🎙️':''}</div>
-        </div>
-        <div class="log-amt">${log.amount.toFixed(2)} ر.س</div>`;
-      logList.appendChild(li);
-    });
-  }
+  const recentLogs=[...logs].reverse().slice(0,15);
+  document.getElementById('logBadge').textContent=logs.length;
+  document.getElementById('emptyLog').style.display=recentLogs.length?'none':'block';
+  recentLogs.forEach(log=>{
+    const d=new Date(log.ts);
+    const timeStr=d.toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
+    const dateStr=d.toLocaleDateString('ar-SA',{weekday:'short',month:'short',day:'numeric'});
+    const li=document.createElement('div'); li.className='log-item';
+    li.innerHTML=`
+      <div class="log-dot" style="background:${catColor(Object.keys(cats).indexOf(log.name))}"></div>
+      <div class="log-body">
+        <div class="log-name">${getIcon(log.name)} ${log.name}</div>
+        <div class="log-time">${dateStr} — ${timeStr} ${log.src==='voice'?'🎙️':''}</div>
+      </div>
+      <div class="log-amt">${log.amount.toFixed(2)} ر.س</div>`;
+    logList.appendChild(li);
+  });
 }
 
 // ══════════════════════════════════════════
-//  ADD / DELETE
+//  CATEGORY DETAIL PAGE
 // ══════════════════════════════════════════
-function addEntry(name, amount, src='manual'){
+function openCatDetail(name){
+  const logs=DB.logs.filter(l=>l.name===name).reverse();
+  const data=DB.cats[name];
+  if(!data) return;
+
+  const colorIdx=Object.keys(DB.cats).sort((a,b)=>DB.cats[b].amount-DB.cats[a].amount).indexOf(name);
+  const color=catColor(colorIdx);
+
+  // hero
+  const hero=document.getElementById('catDetailHero');
+  hero.style.background=`linear-gradient(135deg,${color}22,${color}11)`;
+  hero.style.border=`1px solid ${color}33`;
+  document.getElementById('catDetailName').innerHTML=`${getIcon(name)} ${name}`;
+  document.getElementById('catDetailTotal').innerHTML=`<sup>ر.س</sup>${data.amount.toFixed(2)}`;
+  document.getElementById('catDetailTotal').style.color=color;
+  document.getElementById('catDetailCount').textContent=`${data.count} إدخال — ${logs.length} سجل`;
+  document.getElementById('catDetailBadge').textContent=logs.length;
+  document.getElementById('catDetailDate').textContent=document.getElementById('dateLabel').textContent;
+
+  // logs
+  const container=document.getElementById('catDetailLogs');
+  container.innerHTML='';
+  if(!logs.length){
+    container.innerHTML='<div class="empty" style="padding:20px"><p style="font-size:13px">لا توجد إدخالات</p></div>';
+  } else {
+    logs.forEach(log=>{
+      const d=new Date(log.ts);
+      const timeStr=d.toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
+      const dateStr=d.toLocaleDateString('ar-SA',{weekday:'long',month:'long',day:'numeric'});
+      const li=document.createElement('div'); li.className='log-item';
+      li.innerHTML=`
+        <div class="log-dot" style="background:${color}"></div>
+        <div class="log-body">
+          <div class="log-name" style="font-size:13px">${dateStr}</div>
+          <div class="log-time">${timeStr} ${log.src==='voice'?'🎙️ صوتي':'✏️ يدوي'}</div>
+        </div>
+        <div class="log-amt" style="color:${color}">${log.amount.toFixed(2)} ر.س</div>`;
+      container.appendChild(li);
+    });
+  }
+
+  goPage('catdetail');
+}
+
+// ══════════════════════════════════════════
+//  FIXED CATEGORIES
+// ══════════════════════════════════════════
+let currentPayFixedId=null;
+
+function renderFixed(){
+  const now=new Date();
+  const monthKey=`${now.getFullYear()}-${now.getMonth()}`;
+
+  // total paid this month
+  const monthLogs=DB.fixedLogs.filter(l=>l.monthKey===monthKey);
+  const totalPaid=monthLogs.reduce((s,l)=>s+l.amount,0);
+  const paidCats=new Set(monthLogs.map(l=>l.catId)).size;
+  document.getElementById('fixedTotal').textContent=totalPaid.toFixed(2);
+  document.getElementById('fixedSubLabel').textContent=`${paidCats} من ${DB.fixedCats.length} تم دفعها هذا الشهر`;
+
+  const list=document.getElementById('fixedList');
+  [...list.querySelectorAll('.fixed-card')].forEach(e=>e.remove());
+  document.getElementById('emptyFixed').style.display=DB.fixedCats.length?'none':'block';
+
+  DB.fixedCats.forEach((cat,i)=>{
+    const catLogs=monthLogs.filter(l=>l.catId===cat.id);
+    const paidAmt=catLogs.reduce((s,l)=>s+l.amount,0);
+    const paid=paidAmt>0;
+
+    const card=document.createElement('div');
+    card.className='fixed-card'+(paid?' paid':'');
+    card.innerHTML=`
+      <div class="fc-icon">${getIcon(cat.name)}</div>
+      <div class="fc-body">
+        <div class="fc-name">${cat.name}</div>
+        <div class="fc-budget">${cat.budget?`المعتاد: ${cat.budget} ر.س`:'بدون مبلغ محدد'}</div>
+      </div>
+      <div class="fc-right">
+        <div class="fc-paid-amt ${paid?'':'zero'}">${paid?paidAmt.toFixed(2):'—'}<small>${paid?' ر.س':''}</small></div>
+        ${paid?`<span class="paid-badge">✓ مدفوع</span>`:`<button class="fc-add-btn" onclick="openPayFixed('${cat.id}','${cat.name.replace(/'/g,"\\'")}',${cat.budget||0})">+ تسجيل</button>`}
+        <button class="fc-del-btn" onclick="delFixed('${cat.id}')">🗑</button>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+function openAddFixed(){
+  document.getElementById('fxInpName').value='';
+  document.getElementById('fxInpBudget').value='';
+  document.querySelectorAll('#fixedChips .chip').forEach(c=>c.classList.remove('sel'));
+  document.getElementById('addFixedOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('fxInpName').focus(),350);
+}
+
+function pickChip(el,name){
+  document.querySelectorAll('#fixedChips .chip').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('fxInpName').value=name;
+}
+
+function doAddFixed(){
+  const name=document.getElementById('fxInpName').value.trim();
+  const budget=parseFloat(document.getElementById('fxInpBudget').value)||0;
+  if(!name){toast('أدخل اسم الفئة','bad');return;}
+  if(DB.fixedCats.find(c=>c.name===name)){toast('هذه الفئة موجودة مسبقاً','bad');return;}
+  DB.fixedCats.push({id:'fc_'+Date.now(),name,budget});
+  saveDB(); renderFixed();
+  closeSheet('addFixedOverlay');
+  toast(`✅ أُضيفت "${name}" للثابتة`,'ok');
+}
+
+function openPayFixed(id,name,budget){
+  currentPayFixedId=id;
+  document.getElementById('payFixedTitle').textContent=`${getIcon(name)} ${name} — تسجيل دفعة`;
+  document.getElementById('payFixedAmt').value=budget||'';
+  document.getElementById('payFixedOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('payFixedAmt').focus(),350);
+}
+
+function doPayFixed(){
+  const amt=parseFloat(document.getElementById('payFixedAmt').value);
+  if(!amt||amt<=0){toast('أدخل مبلغاً صحيحاً','bad');return;}
+  const cat=DB.fixedCats.find(c=>c.id===currentPayFixedId);
+  if(!cat) return;
+  const now=new Date();
+  const monthKey=`${now.getFullYear()}-${now.getMonth()}`;
+  DB.fixedLogs.push({catId:currentPayFixedId,catName:cat.name,amount:amt,ts:Date.now(),monthKey});
+  // also add to main expense log
+  addEntry(cat.name,amt,'fixed');
+  closeSheet('payFixedOverlay');
+  renderFixed();
+  toast(`✅ ${cat.name} — ${amt} ر.س`,'ok');
+}
+
+function delFixed(id){
+  DB.fixedCats=DB.fixedCats.filter(c=>c.id!==id);
+  saveDB(); renderFixed();
+  toast('تم الحذف','bad');
+}
+
+// ══════════════════════════════════════════
+//  ADD / DELETE MAIN
+// ══════════════════════════════════════════
+function addEntry(name,amount,src='manual'){
   name=name.trim();
   if(!name||!amount||amount<=0) return false;
-  if(DB.cats[name]){ DB.cats[name].amount+=amount; DB.cats[name].count++; }
-  else { DB.cats[name]={amount,count:1}; }
+  if(DB.cats[name]){DB.cats[name].amount+=amount;DB.cats[name].count++;}
+  else{DB.cats[name]={amount,count:1};}
   DB.logs.push({name,amount,ts:Date.now(),src});
   saveDB(); renderHome();
   return true;
@@ -470,177 +683,98 @@ function doAddManual(){
 //  STATS
 // ══════════════════════════════════════════
 let statPeriod='week';
-
-function setStatPeriod(p, btn){
+function setStatPeriod(p,btn){
   statPeriod=p;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
   renderStats();
 }
-
 function getFilteredLogs(){
   const now=new Date();
   return DB.logs.filter(l=>{
     const d=new Date(l.ts);
-    if(statPeriod==='week'){
-      const start=new Date(now); start.setDate(now.getDate()-now.getDay());
-      start.setHours(0,0,0,0);
-      return d>=start;
-    }
+    if(statPeriod==='week'){const s=new Date(now);s.setDate(now.getDate()-now.getDay());s.setHours(0,0,0,0);return d>=s;}
     if(statPeriod==='month') return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
     return true;
   });
 }
-
 function renderStats(){
   const logs=getFilteredLogs();
   const total=logs.reduce((s,l)=>s+l.amount,0);
   const dates=[...new Set(logs.map(l=>new Date(l.ts).toDateString()))];
   const avgDay=dates.length?total/dates.length:0;
-
-  // summary
   document.getElementById('st-total').textContent=total.toFixed(0);
   document.getElementById('st-avg').textContent=avgDay.toFixed(0);
   document.getElementById('st-entries').textContent=logs.length;
-
-  // top cat
   const catTotals={};
-  logs.forEach(l=>{ catTotals[l.name]=(catTotals[l.name]||0)+l.amount; });
+  logs.forEach(l=>{catTotals[l.name]=(catTotals[l.name]||0)+l.amount;});
   const topCat=Object.entries(catTotals).sort((a,b)=>b[1]-a[1])[0];
   document.getElementById('st-topcat').textContent=topCat?getIcon(topCat[0]):'—';
-
-  // week chart
+  // week
   const dayNames=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
   const now=new Date();
   const weekData=[];
   for(let i=6;i>=0;i--){
-    const d=new Date(now); d.setDate(now.getDate()-i);
+    const d=new Date(now);d.setDate(now.getDate()-i);
     const ds=d.toDateString();
-    const dayTotal=DB.logs.filter(l=>new Date(l.ts).toDateString()===ds).reduce((s,l)=>s+l.amount,0);
-    weekData.push({label:dayNames[d.getDay()].slice(0,3), val:dayTotal, isToday:i===0});
+    const dv=DB.logs.filter(l=>new Date(l.ts).toDateString()===ds).reduce((s,l)=>s+l.amount,0);
+    weekData.push({label:dayNames[d.getDay()].slice(0,3),val:dv,isToday:i===0});
   }
   const maxW=Math.max(...weekData.map(d=>d.val),1);
-  const wc=document.getElementById('weekChart');
-  wc.innerHTML='';
-  weekData.forEach((d,i)=>{
+  const wc=document.getElementById('weekChart');wc.innerHTML='';
+  weekData.forEach(d=>{
     const pct=Math.round((d.val/maxW)*100);
-    const bar=document.createElement('div');
-    bar.className='wday';
-    bar.innerHTML=`
-      <div class="wday-bar-wrap">
-        <div class="wday-bar" style="height:${pct}%;background:${d.isToday?'var(--accent)':'var(--surface3)'};width:100%"></div>
-      </div>
-      <div class="wday-lbl" style="color:${d.isToday?'var(--accent)':'var(--text2)'}">${d.label}</div>
-      ${d.val>0?`<div class="wday-amt">${d.val.toFixed(0)}</div>`:''}`;
+    const bar=document.createElement('div');bar.className='wday';
+    bar.innerHTML=`<div class="wday-bar-wrap"><div class="wday-bar" style="height:${pct}%;background:${d.isToday?'var(--accent)':'var(--surface3)'};width:100%"></div></div><div class="wday-lbl" style="color:${d.isToday?'var(--accent)':'var(--text2)'}">${d.label}</div>${d.val>0?`<div class="wday-amt">${d.val.toFixed(0)}</div>`:''}`;
     wc.appendChild(bar);
   });
-  const nonZero=weekData.filter(d=>d.val>0);
-  if(nonZero.length){
-    const min=nonZero.reduce((a,b)=>a.val<b.val?a:b);
-    const max=nonZero.reduce((a,b)=>a.val>b.val?a:b);
-    document.getElementById('minDay').textContent=`${min.label} ${min.val.toFixed(0)} ر.س`;
-    document.getElementById('maxDay').textContent=`${max.label} ${max.val.toFixed(0)} ر.س`;
-  } else {
-    document.getElementById('minDay').textContent='—';
-    document.getElementById('maxDay').textContent='—';
-  }
-
+  const nz=weekData.filter(d=>d.val>0);
+  if(nz.length){
+    const mn=nz.reduce((a,b)=>a.val<b.val?a:b);
+    const mx=nz.reduce((a,b)=>a.val>b.val?a:b);
+    document.getElementById('minDay').textContent=`${mn.label} ${mn.val.toFixed(0)} ر.س`;
+    document.getElementById('maxDay').textContent=`${mx.label} ${mx.val.toFixed(0)} ر.س`;
+  }else{document.getElementById('minDay').textContent='—';document.getElementById('maxDay').textContent='—';}
   // cat chart
-  const cc=document.getElementById('catChart');
-  cc.innerHTML='';
+  const cc=document.getElementById('catChart');cc.innerHTML='';
   const catArr=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).slice(0,8);
   const maxC=catArr[0]?catArr[0][1]:1;
   catArr.forEach(([name,val],i)=>{
     const pct=Math.round((val/maxC)*100);
-    const row=document.createElement('div');
-    row.className='bar-row';
-    row.innerHTML=`
-      <div class="bar-label">${getIcon(name)} ${name}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${catColor(i)}"></div></div>
-      <div class="bar-val">${val.toFixed(0)} ر.س</div>`;
+    const row=document.createElement('div');row.className='bar-row';
+    row.innerHTML=`<div class="bar-label">${getIcon(name)} ${name}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${catColor(i)}"></div></div><div class="bar-val">${val.toFixed(0)} ر.س</div>`;
     cc.appendChild(row);
   });
   if(!catArr.length) cc.innerHTML='<div style="color:var(--text2);font-size:13px;text-align:center;padding:10px">لا توجد بيانات</div>';
-
-  // time chart
-  const tc=document.getElementById('timeChart');
-  tc.innerHTML='';
-  const periods={
-    '🌅 الصباح (6-12)':0,
-    '☀️ الظهر (12-17)':0,
-    '🌆 المساء (17-21)':0,
-    '🌙 الليل (21-6)':0
-  };
+  // time
+  const tc=document.getElementById('timeChart');tc.innerHTML='';
+  const periods={'🌅 الصباح':0,'☀️ الظهر':0,'🌆 المساء':0,'🌙 الليل':0};
   logs.forEach(l=>{
     const h=new Date(l.ts).getHours();
-    if(h>=6&&h<12) periods['🌅 الصباح (6-12)']+=l.amount;
-    else if(h>=12&&h<17) periods['☀️ الظهر (12-17)']+=l.amount;
-    else if(h>=17&&h<21) periods['🌆 المساء (17-21)']+=l.amount;
-    else periods['🌙 الليل (21-6)']+=l.amount;
+    if(h>=6&&h<12)periods['🌅 الصباح']+=l.amount;
+    else if(h>=12&&h<17)periods['☀️ الظهر']+=l.amount;
+    else if(h>=17&&h<21)periods['🌆 المساء']+=l.amount;
+    else periods['🌙 الليل']+=l.amount;
   });
   const maxT=Math.max(...Object.values(periods),1);
   Object.entries(periods).forEach(([label,val])=>{
     const pct=Math.round((val/maxT)*100);
-    const row=document.createElement('div');
-    row.className='bar-row';
-    row.innerHTML=`
-      <div class="bar-label" style="width:90px;font-size:11px">${label.split(' ')[0]} ${label.split(' ')[1]}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--accent3)"></div></div>
-      <div class="bar-val">${val.toFixed(0)} ر.س</div>`;
+    const row=document.createElement('div');row.className='bar-row';
+    row.innerHTML=`<div class="bar-label" style="width:80px;font-size:11px">${label}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--accent3)"></div></div><div class="bar-val">${val.toFixed(0)} ر.س</div>`;
     tc.appendChild(row);
   });
-
-  // tips
-  renderTips(logs, catTotals, total, avgDay);
+  renderTips(logs,catTotals,total,avgDay);
 }
-
-function renderTips(logs, catTotals, total, avgDay){
+function renderTips(logs,catTotals,total,avgDay){
   const tips=[];
   const sorted=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
-
-  if(sorted.length>0){
-    const top=sorted[0];
-    const pct=total>0?((top[1]/total)*100).toFixed(0):0;
-    if(pct>40){
-      tips.push({icon:'⚠️',title:`${top[0]} تستهلك ${pct}% من مصروفاتك`,text:`حاول تقليل مصروفات "${top[0]}" بوضع حد شهري لها. مثلاً ضع سقف ${(top[1]*0.7).toFixed(0)} ريال الشهر القادم.`});
-    }
-  }
-
-  if(avgDay>200){
-    tips.push({icon:'📉',title:'متوسط يومك مرتفع',text:`أنت تصرف ${avgDay.toFixed(0)} ريال يومياً. حاول تقليصه إلى ${(avgDay*0.8).toFixed(0)} ريال بتقليل المشتريات غير الضرورية.`});
-  }
-
-  if(logs.length>=5){
-    const periods={s:0,n:0,a:0,l:0};
-    logs.forEach(l=>{
-      const h=new Date(l.ts).getHours();
-      if(h>=6&&h<12)periods.s+=l.amount;
-      else if(h>=12&&h<17)periods.n+=l.amount;
-      else if(h>=17&&h<21)periods.a+=l.amount;
-      else periods.l+=l.amount;
-    });
-    const maxP=Math.max(periods.s,periods.n,periods.a,periods.l);
-    if(periods.l===maxP&&maxP>0) tips.push({icon:'🌙',title:'أنت تصرف أكثر في الليل',text:'مشتريات الليل غالباً عاطفية وغير مخططة. جرب قاعدة: انتظر 24 ساعة قبل أي شراء غير ضروري بعد العشاء.'});
-    if(periods.a===maxP&&maxP>0) tips.push({icon:'🌆',title:'ذروة الصرف في المساء',text:'وقت المساء عادة يكون فيه أكثر شراء. خطط قائمة مشترياتك مسبقاً لتتجنب الشراء العشوائي.'});
-  }
-
-  if(sorted.length>=3){
-    tips.push({icon:'💡',title:'فكرة: قاعدة 50-30-20',text:'قسّم دخلك: 50% للاحتياجات الأساسية (إيجار، طعام، مواصلات)، 30% للرغبات، 20% للادخار. جرب تصنيف مصروفاتك الحالية.'});
-  }
-
-  if(!tips.length){
-    tips.push({icon:'🌟',title:'رائع! مصروفاتك منضبطة',text:'استمر في تسجيل مصروفاتك يومياً. الوعي المالي هو أول خطوة نحو الادخار الذكي.'});
-    tips.push({icon:'🎯',title:'ضع هدفاً للادخار',text:'حدد نسبة من راتبك للادخار كل شهر. حتى لو 10% — هذه العادة ستغير حياتك المالية.'});
-  }
-
-  const tl=document.getElementById('tipsList');
-  tl.innerHTML='';
-  tips.forEach(t=>{
-    const d=document.createElement('div');
-    d.className='tip-card';
-    d.innerHTML=`<div class="tip-icon">${t.icon}</div><div class="tip-body"><div class="tip-title">${t.title}</div><div class="tip-text">${t.text}</div></div>`;
-    tl.appendChild(d);
-  });
+  if(sorted.length>0){const top=sorted[0];const pct=total>0?((top[1]/total)*100).toFixed(0):0;if(pct>40)tips.push({icon:'⚠️',title:`${top[0]} تستهلك ${pct}% من مصروفاتك`,text:`حاول تقليل مصروفات "${top[0]}" بوضع حد شهري لها.`});}
+  if(avgDay>200) tips.push({icon:'📉',title:'متوسط يومك مرتفع',text:`أنت تصرف ${avgDay.toFixed(0)} ريال يومياً. حاول تقليصه إلى ${(avgDay*0.8).toFixed(0)} ريال.`});
+  if(logs.length>=5){const p={s:0,n:0,a:0,l:0};logs.forEach(l=>{const h=new Date(l.ts).getHours();if(h>=6&&h<12)p.s+=l.amount;else if(h>=12&&h<17)p.n+=l.amount;else if(h>=17&&h<21)p.a+=l.amount;else p.l+=l.amount;});const mx=Math.max(p.s,p.n,p.a,p.l);if(p.l===mx&&mx>0)tips.push({icon:'🌙',title:'أنت تصرف أكثر في الليل',text:'انتظر 24 ساعة قبل أي شراء غير ضروري بعد العشاء.'});if(p.a===mx&&mx>0)tips.push({icon:'🌆',title:'ذروة الصرف في المساء',text:'خطط قائمة مشترياتك مسبقاً لتتجنب الشراء العشوائي.'});}
+  if(sorted.length>=3) tips.push({icon:'💡',title:'فكرة: قاعدة 50-30-20',text:'50% للاحتياجات، 30% للرغبات، 20% للادخار.'});
+  if(!tips.length){tips.push({icon:'🌟',title:'رائع! مصروفاتك منضبطة',text:'استمر في التسجيل اليومي.'});tips.push({icon:'🎯',title:'ضع هدفاً للادخار',text:'حتى 10% من الراتب شهرياً ستغير حياتك المالية.'});}
+  const tl=document.getElementById('tipsList');tl.innerHTML='';
+  tips.forEach(t=>{const d=document.createElement('div');d.className='tip-card';d.innerHTML=`<div class="tip-icon">${t.icon}</div><div class="tip-body"><div class="tip-title">${t.title}</div><div class="tip-text">${t.text}</div></div>`;tl.appendChild(d);});
 }
 
 // ══════════════════════════════════════════
@@ -650,190 +784,90 @@ function goPage(p){
   document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById(`pg-${p}`).classList.add('active');
-  document.getElementById(`nav-${p}`).classList.add('active');
+  const navEl=document.getElementById(`nav-${p}`);
+  if(navEl) navEl.classList.add('active');
   if(p==='stats') renderStats();
+  if(p==='fixed') renderFixed();
+  // hide nav for sub-pages
+  document.getElementById('mainNav').style.display=(p==='catdetail')?'none':'flex';
+  window.scrollTo(0,0);
 }
 
 // ══════════════════════════════════════════
 //  SHEETS
 // ══════════════════════════════════════════
-function openAdd(){
-  document.getElementById('addOverlay').classList.add('open');
-  setTimeout(()=>document.getElementById('inpName').focus(),350);
-}
-function openVoice(){
-  document.getElementById('voiceOverlay').classList.add('open');
-}
-function closeSheet(id){
-  document.getElementById(id).classList.remove('open');
-  if(id==='voiceOverlay') stopVoice();
-}
+function openAdd(){ document.getElementById('addOverlay').classList.add('open'); setTimeout(()=>document.getElementById('inpName').focus(),350); }
+function openVoice(){ document.getElementById('voiceOverlay').classList.add('open'); }
+function closeSheet(id){ document.getElementById(id).classList.remove('open'); if(id==='voiceOverlay') stopVoice(); }
 function bgClose(e,id){ if(e.target===document.getElementById(id)) closeSheet(id); }
 
 // ══════════════════════════════════════════
 //  VOICE
 // ══════════════════════════════════════════
 let recognition=null, isListening=false;
-
 function parseNum(text){
-  const numMap={
-    'صفر':0,'واحد':1,'اثنين':2,'اثنان':2,'ثلاثة':3,'اربعة':4,'أربعة':4,
-    'خمسة':5,'ستة':6,'سبعة':7,'ثمانية':8,'تسعة':9,'عشرة':10,
-    'أحد عشر':11,'احد عشر':11,'اثنا عشر':12,'اثني عشر':12,
-    'ثلاثة عشر':13,'أربعة عشر':14,'خمسة عشر':15,'ستة عشر':16,
-    'سبعة عشر':17,'ثمانية عشر':18,'تسعة عشر':19,
-    'عشرون':20,'عشرين':20,'ثلاثون':30,'ثلاثين':30,
-    'أربعون':40,'أربعين':40,'خمسون':50,'خمسين':50,
-    'ستون':60,'ستين':60,'سبعون':70,'سبعين':70,
-    'ثمانون':80,'ثمانين':80,'تسعون':90,'تسعين':90,
-    'مئة':100,'مائة':100,'مئتان':200,'مئتين':200,'مائتان':200,'مائتين':200,
-    'ثلاثمئة':300,'ثلثمائة':300,'أربعمئة':400,'اربعمائة':400,
-    'خمسمئة':500,'خمسمائة':500,'ستمئة':600,'سبعمئة':700,
-    'ثمانمئة':800,'تسعمئة':900,'ألف':1000,'الف':1000
-  };
+  const numMap={'صفر':0,'واحد':1,'اثنين':2,'اثنان':2,'ثلاثة':3,'اربعة':4,'أربعة':4,'خمسة':5,'ستة':6,'سبعة':7,'ثمانية':8,'تسعة':9,'عشرة':10,'أحد عشر':11,'احد عشر':11,'اثنا عشر':12,'اثني عشر':12,'ثلاثة عشر':13,'أربعة عشر':14,'خمسة عشر':15,'ستة عشر':16,'سبعة عشر':17,'ثمانية عشر':18,'تسعة عشر':19,'عشرون':20,'عشرين':20,'ثلاثون':30,'ثلاثين':30,'أربعون':40,'أربعين':40,'خمسون':50,'خمسين':50,'ستون':60,'ستين':60,'سبعون':70,'سبعين':70,'ثمانون':80,'ثمانين':80,'تسعون':90,'تسعين':90,'مئة':100,'مائة':100,'مئتان':200,'مئتين':200,'مائتان':200,'مائتين':200,'ثلاثمئة':300,'ثلثمائة':300,'أربعمئة':400,'اربعمائة':400,'خمسمئة':500,'خمسمائة':500,'ستمئة':600,'سبعمئة':700,'ثمانمئة':800,'تسعمئة':900,'ألف':1000,'الف':1000};
   const numeric=text.match(/\d+(?:\.\d+)?/);
   if(numeric) return parseFloat(numeric[0]);
   let total=0,t=text;
-  for(const [w,v] of Object.entries(numMap).sort((a,b)=>b[0].length-a[0].length)){
-    if(t.includes(w)){total+=v;t=t.replace(w,'');}
-  }
+  for(const [w,v] of Object.entries(numMap).sort((a,b)=>b[0].length-a[0].length)){if(t.includes(w)){total+=v;t=t.replace(w,'');}}
   return total>0?total:null;
 }
-
 function parseVoice(raw){
   raw=raw.trim().replace(/[،,\.]/g,'');
-  // Remove trailing "ريال"
-  let text=raw.replace(/ريال\s*$/, '').replace(/روبية\s*$/,'').trim();
-  // last token = amount
+  let text=raw.replace(/ريال\s*$/,'').replace(/روبية\s*$/,'').trim();
   const parts=text.split(/\s+/);
   if(parts.length<2) return null;
-  let amtStr=parts[parts.length-1];
+  const amtStr=parts[parts.length-1];
   const amount=parseNum(amtStr);
   if(!amount) return null;
-  // try removing last 1 or 2 tokens as amount phrase
-  let name='';
-  // try 2-word amount like "مئة وعشرين"
-  if(!amount && parts.length>=3){
-    amtStr=parts.slice(-2).join(' ');
-    const a2=parseNum(amtStr);
-    if(a2){ name=parts.slice(0,-2).join(' '); return{name,amount:a2}; }
-  }
-  name=parts.slice(0,-1).join(' ').trim();
+  const name=parts.slice(0,-1).join(' ').trim();
   if(!name) return null;
   return{name,amount};
 }
-
 function startVoice(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){ vMsg('المتصفح لا يدعم الصوت — استخدم Chrome','err'); return; }
-
+  if(!SR){vMsg('المتصفح لا يدعم الصوت — استخدم Chrome','err');return;}
   recognition=new SR();
-  recognition.lang='ar-SA';
-  recognition.interimResults=true;
-  recognition.continuous=false;
-  recognition.maxAlternatives=3;
-
-  recognition.onstart=()=>{
-    isListening=true;
-    document.getElementById('vRing').classList.add('active');
-    document.getElementById('nav-mic').classList.add('rec');
-    document.getElementById('micIcon').textContent='🔴';
-    vMsg('🔴 يستمع... تكلم الآن','');
-    document.getElementById('vStartBtn').style.display='none';
-    document.getElementById('vStopBtn').style.display='block';
-  };
-
-  recognition.onresult=(e)=>{
-    const t=Array.from(e.results).map(r=>r[0].transcript).join('');
-    document.getElementById('vTranscript').textContent=`"${t}"`;
-    vMsg('جار التعرف...','heard');
-  };
-
+  recognition.lang='ar-SA';recognition.interimResults=true;recognition.continuous=false;recognition.maxAlternatives=3;
+  recognition.onstart=()=>{isListening=true;document.getElementById('vRing').classList.add('active');document.getElementById('nav-mic').classList.add('rec');document.getElementById('micIcon').textContent='🔴';vMsg('🔴 يستمع... تكلم الآن','');document.getElementById('vStartBtn').style.display='none';document.getElementById('vStopBtn').style.display='block';};
+  recognition.onresult=(e)=>{const t=Array.from(e.results).map(r=>r[0].transcript).join('');document.getElementById('vTranscript').textContent=`"${t}"`;vMsg('جار التعرف...','heard');};
   recognition.onend=()=>{
     if(!isListening) return;
     const tr=document.getElementById('vTranscript').textContent;
     const match=tr.match(/"(.+)"/);
-    if(match){
-      const res=parseVoice(match[1]);
-      if(res){
-        addEntry(res.name,res.amount,'voice');
-        vMsg(`✅ أُضيف: ${res.name} — ${res.amount} ر.س`,'ok');
-        toast(`✅ ${res.name} — ${res.amount} ر.س`,'ok');
-        setTimeout(()=>{ closeSheet('voiceOverlay'); resetVoice(); },1600);
-      } else {
-        vMsg('❌ لم أفهم. جرب: "قهوة 15 ريال"','err');
-        resetListenUI();
-      }
-    } else {
-      vMsg('لم أسمع شيئاً. اضغط بدء وتكلم','');
-      resetListenUI();
-    }
+    if(match){const res=parseVoice(match[1]);if(res){addEntry(res.name,res.amount,'voice');vMsg(`✅ أُضيف: ${res.name} — ${res.amount} ر.س`,'ok');toast(`✅ ${res.name} — ${res.amount} ر.س`,'ok');setTimeout(()=>{closeSheet('voiceOverlay');resetVoice();},1600);}else{vMsg('❌ لم أفهم. جرب: "قهوة 15 ريال"','err');resetListenUI();}}
+    else{vMsg('لم أسمع شيئاً. اضغط بدء وتكلم','');resetListenUI();}
   };
-
-  recognition.onerror=(e)=>{
-    const msgs={'not-allowed':'⚠️ يجب السماح بالمايك في المتصفح','no-speech':'لم يُسمع صوت','network':'خطأ في الشبكة'};
-    vMsg(msgs[e.error]||`خطأ: ${e.error}`,'err');
-    resetListenUI();
-  };
-
+  recognition.onerror=(e)=>{const msgs={'not-allowed':'⚠️ يجب السماح بالمايك في المتصفح','no-speech':'لم يُسمع صوت','network':'خطأ في الشبكة'};vMsg(msgs[e.error]||`خطأ: ${e.error}`,'err');resetListenUI();};
   recognition.start();
 }
-
-function stopVoice(){
-  isListening=false;
-  if(recognition){try{recognition.stop();}catch(e){}recognition=null;}
-  resetListenUI();
-}
-
-function resetListenUI(){
-  isListening=false;
-  document.getElementById('vRing').classList.remove('active');
-  document.getElementById('nav-mic').classList.remove('rec');
-  document.getElementById('micIcon').textContent='🎙️';
-  document.getElementById('vStartBtn').style.display='block';
-  document.getElementById('vStopBtn').style.display='none';
-}
-
-function resetVoice(){
-  resetListenUI();
-  document.getElementById('vTranscript').textContent='';
-  vMsg('اضغط زر البدء وتكلم','');
-}
-
-function vMsg(msg,cls){
-  const el=document.getElementById('vMsg');
-  el.textContent=msg;
-  el.className='v-msg'+(cls?' '+cls:'');
-}
+function stopVoice(){isListening=false;if(recognition){try{recognition.stop();}catch(e){}recognition=null;}resetListenUI();}
+function resetListenUI(){isListening=false;document.getElementById('vRing').classList.remove('active');document.getElementById('nav-mic').classList.remove('rec');document.getElementById('micIcon').textContent='🎙️';document.getElementById('vStartBtn').style.display='block';document.getElementById('vStopBtn').style.display='none';}
+function resetVoice(){resetListenUI();document.getElementById('vTranscript').textContent='';vMsg('اضغط زر البدء وتكلم','');}
+function vMsg(msg,cls){const el=document.getElementById('vMsg');el.textContent=msg;el.className='v-msg'+(cls?' '+cls:'');}
 
 // ══════════════════════════════════════════
 //  TOAST
 // ══════════════════════════════════════════
 let toastT;
-function toast(msg,cls=''){
-  const t=document.getElementById('toast');
-  t.textContent=msg; t.className='toast show'+(cls?' '+cls:'');
-  clearTimeout(toastT);
-  toastT=setTimeout(()=>t.classList.remove('show'),2800);
-}
+function toast(msg,cls=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(cls?' '+cls:'');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2800);}
 
 // ══════════════════════════════════════════
 //  KEYBOARD
 // ══════════════════════════════════════════
-document.addEventListener('keydown',e=>{
-  if(e.key==='Enter'&&document.getElementById('addOverlay').classList.contains('open')) doAddManual();
-});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('addOverlay').classList.contains('open'))doAddManual();});
 
 // ══════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════
 const DAY=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 const MON=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-const now2=new Date();
-const dl=`${DAY[now2.getDay()]} ${now2.getDate()} ${MON[now2.getMonth()]}`;
+const n=new Date();
+const dl=`${DAY[n.getDay()]} ${n.getDate()} ${MON[n.getMonth()]}`;
 document.getElementById('dateLabel').textContent=dl;
 document.getElementById('statDateLabel').textContent=dl;
-
+document.getElementById('fixedDateLabel').textContent=dl;
 renderHome();
 </script>
 </body>
