@@ -322,6 +322,32 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 /* ── VOICE RING (reuse) ── */
 #iVRing{width:80px;height:80px;border-radius:50%;background:rgba(232,68,26,.1);border:2px solid rgba(232,68,26,.3);display:flex;align-items:center;justify-content:center;margin:8px auto 12px;font-size:32px;transition:all .3s}
 #iVRing.active{background:rgba(255,45,85,.15);border-color:#ff2d55;animation:ringP 1s infinite}
+
+/* ── STOCK BADGE ── */
+.stock-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:3px 7px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .2s}
+.stock-btn:active{opacity:.7}
+.stock-full{border-color:rgba(34,197,94,.4);color:var(--success)}
+.stock-half{border-color:rgba(245,158,11,.4);color:#f59e0b}
+.stock-quarter{border-color:rgba(234,88,12,.4);color:#ea580c}
+.stock-out{border-color:rgba(239,68,68,.4);color:var(--danger)}
+.stock-custom{border-color:rgba(99,102,241,.4);color:#6366f1}
+
+/* ── TASKS PAGE ── */
+.tasks-coming{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;color:var(--text2);text-align:center;gap:12px}
+.tasks-coming .t-icon{font-size:56px;opacity:.3}
+.tasks-coming h3{font-size:18px;font-weight:800;color:var(--text3)}
+.tasks-coming p{font-size:13px;line-height:1.8;max-width:260px}
+
+/* ── BUDGET ENTRIES LIST ── */
+.budget-entry-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.budget-entry-row:last-child{border-bottom:none}
+.budget-entry-amt{font-size:16px;font-weight:800;color:var(--success)}
+.budget-entry-note{font-size:12px;color:var(--text2);margin-top:2px}
+.budget-entry-date{font-size:11px;color:var(--text2);text-align:left;flex-shrink:0}
+.budget-total-row{display:flex;justify-content:space-between;padding:12px 0 0;border-top:1px solid var(--border);margin-top:4px}
+
+/* ── MONTH LABEL IN CARD ── */
+.fc-month-label{font-size:10px;color:var(--accent3);font-weight:700;margin-bottom:2px;letter-spacing:.5px}
 </style>
 </head>
 <body>
@@ -357,7 +383,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       </label>
     </div>
   </div>
-  <div class="budget-section">
+  <div class="budget-section" style="cursor:pointer" onclick="openBudgetEntries()">
     <div class="budget-row">
       <div class="budget-left">
         <div class="budget-label">الميزانية</div>
@@ -451,10 +477,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   <div class="items-table-wrap">
     <table class="items-table">
       <thead><tr>
-        <th>#</th><th>اسم الصنف</th><th>الفئة</th><th>الكمية</th><th>سعر الوحدة</th><th></th>
+        <th>#</th><th>اسم الصنف</th><th>الفئة</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th>المخزون</th><th></th>
       </tr></thead>
       <tbody id="commitItemsTbody">
-        <tr><td colspan="6" class="empty-table">لا توجد أصناف — أضف صنفاً</td></tr>
+        <tr><td colspan="8" class="empty-table">لا توجد أصناف — أضف صنفاً</td></tr>
       </tbody>
     </table>
   </div>
@@ -472,6 +498,18 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         <tr><td colspan="4" class="empty-table">لا توجد بيانات</td></tr>
       </tbody>
     </table>
+  </div>
+</div>
+
+<!-- ══════════ PAGE: TASKS ══════════ -->
+<div id="pg-tasks" class="page">
+  <div class="topbar">
+    <div class="topbar-row"><div class="page-title">المهام 📋</div><div class="date-chip" id="tasksDateLabel"></div></div>
+  </div>
+  <div class="tasks-coming">
+    <div class="t-icon">📋</div>
+    <h3>نظام المهام</h3>
+    <p>قريباً — سيتمكن من إضافة المهام اليومية وتتبعها هنا</p>
   </div>
 </div>
 
@@ -526,10 +564,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <span class="nicon">🏠</span>الرئيسية
   </button>
   <button class="nav-btn mic-nav" id="nav-mic" onclick="openVoice()">
-    <span class="nicon" id="micIcon">🎙️</span>صوتي
+    <span class="nicon" id="micIcon">🎙️</span>إضافة مصروف
   </button>
-  <button class="nav-btn" onclick="openAdd()">
-    <span class="nicon">＋</span>إضافة
+  <button class="nav-btn" id="nav-tasks" onclick="goPage('tasks')">
+    <span class="nicon">📋</span>المهام
   </button>
   <button class="nav-btn" id="nav-fixed" onclick="goPage('fixed')">
     <span class="nicon">📌</span>الالتزامات
@@ -569,6 +607,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     </div>
     <button class="btn-teal" id="vStartBtn" onclick="startVoice()">🎤 بدء التسجيل</button>
     <button class="btn-danger-soft" id="vStopBtn" style="display:none" onclick="stopVoice()">⏹ إيقاف</button>
+    <button class="btn-ghost" style="margin-top:10px;width:100%" onclick="closeSheet('voiceOverlay');stopVoice();openAdd()">✏️ إضافة يدوي</button>
   </div>
 </div>
 
@@ -610,6 +649,58 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       <input id="payFixedAmt" class="inp" type="number" inputmode="decimal" placeholder="0.00">
     </div>
     <button class="btn-primary" onclick="doPayFixed()">✅ تسجيل الدفعة</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: EDIT ITEM ══════════ -->
+<div class="overlay" id="editItemOverlay" onclick="bgClose(event,'editItemOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title">✏️ تعديل الصنف</div>
+    <div class="inp-wrap"><div class="inp-lbl">اسم الصنف</div>
+      <input id="editItemName" class="inp" type="text">
+    </div>
+    <div style="display:flex;gap:10px">
+      <div class="inp-wrap" style="flex:1"><div class="inp-lbl">السعر (ريال)</div>
+        <input id="editItemPrice" class="inp" type="number" inputmode="decimal">
+      </div>
+      <div class="inp-wrap" style="width:80px"><div class="inp-lbl">الكمية</div>
+        <input id="editItemQty" class="inp" type="number" inputmode="numeric">
+      </div>
+    </div>
+    <div class="inp-wrap"><div class="inp-lbl">الفئة</div>
+      <select id="editItemCatSel" class="inp"></select>
+    </div>
+    <button class="btn-primary" onclick="doEditItem()">✅ حفظ التعديل</button>
+    <button class="btn-danger-soft" onclick="doDelItemFromEdit()">🗑 حذف الصنف</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: STOCK ══════════ -->
+<div class="overlay" id="stockOverlay" onclick="bgClose(event,'stockOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title" id="stockOverlayTitle">🗃️ المخزون</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">
+      <button class="btn-ghost" style="border-color:rgba(34,197,94,.4);color:var(--success)" onclick="setStock('full')">🟢 كامل</button>
+      <button class="btn-ghost" style="border-color:rgba(245,158,11,.4);color:#f59e0b" onclick="setStock('half')">🟡 النصف</button>
+      <button class="btn-ghost" style="border-color:rgba(234,88,12,.4);color:#ea580c" onclick="setStock('quarter')">🟠 الربع</button>
+      <button class="btn-ghost" style="border-color:rgba(239,68,68,.4);color:var(--danger)" onclick="setStock('out')">🔴 نفذ</button>
+    </div>
+    <div class="inp-wrap"><div class="inp-lbl">أو أدخل كمية محددة (اختياري)</div>
+      <input id="stockCustomInp" class="inp" type="number" inputmode="numeric" placeholder="مثال: 3 قطع">
+    </div>
+    <button class="btn-primary" onclick="setStockCustom()">حفظ</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: BUDGET ENTRIES ══════════ -->
+<div class="overlay" id="budgetEntriesOverlay" onclick="bgClose(event,'budgetEntriesOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title">💰 مصادر الميزانية</div>
+    <div id="budgetEntriesList" style="max-height:50vh;overflow-y:auto"></div>
+    <button class="btn-primary" style="margin-top:12px" onclick="closeSheet('budgetEntriesOverlay');openBudgetAdd()">+ إضافة مبلغ</button>
   </div>
 </div>
 
@@ -714,6 +805,11 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
 <script>
 // ══════════════════════════════════════════
+//  DEFAULT API KEY — ضع مفتاحك هنا
+// ══════════════════════════════════════════
+const DEFAULT_API_KEY = 'ضع-مفتاحك-هنا';
+
+// ══════════════════════════════════════════
 //  DB
 // ══════════════════════════════════════════
 let DB = loadDB();
@@ -750,8 +846,9 @@ function renderHome(){
   const commitsTotal=getCommitsMonthTotal();
   const total=expTotal+commitsTotal;
   const today=new Date().toDateString();
-  const todayAmt=logs.filter(l=>new Date(l.ts).toDateString()===today).reduce((s,l)=>s+l.amount,0);
-  const todayN=logs.filter(l=>new Date(l.ts).toDateString()===today).length;
+  const todayLogs=logs.filter(l=>new Date(l.ts).toDateString()===today&&l.src!=='fixed');
+  const todayAmt=todayLogs.reduce((s,l)=>s+l.amount,0);
+  const todayN=todayLogs.length;
   document.getElementById('totalAmt').textContent=total.toFixed(2);
   document.getElementById('catCnt').textContent=Object.keys(cats).length;
   document.getElementById('entryCnt').textContent=logs.length;
@@ -781,7 +878,7 @@ function renderHome(){
       <div class="ec-right">
         <div class="ec-amount">${data.amount.toFixed(2)}<small> ر.س</small></div>
         <div style="display:flex;gap:5px">
-          <button class="del-btn" onclick="event.stopPropagation();delCat('${name.replace(/'/g,"\\'")}')">🗑</button>
+          <button class="del-btn" onclick="event.stopPropagation();confirmDel('حذف فئة «${name.replace(/'/g,"\\'")}» وكل إدخالاتها؟',()=>delCat('${name.replace(/'/g,"\\'")}'))">🗑</button>
           <span class="arrow-icon">›</span>
         </div>
       </div>`;
@@ -886,16 +983,18 @@ function renderFixed(){
     card.className='fixed-card'+(paid?' paid':'');
     card.style.cursor='pointer';
     card.onclick=(e)=>{if(!e.target.closest('.fc-add-btn,.fc-del-btn'))openCommitDetail(cat.id);};
+    const paidDate=paid?new Date(catLogs[catLogs.length-1].ts).toLocaleDateString('ar-SA',{day:'numeric',month:'short',year:'numeric'}):'';
     card.innerHTML=`
       <div class="fc-icon">${getIcon(cat.name)}</div>
       <div class="fc-body">
+        <div class="fc-month-label">${getMonthLabel(monthKey)}</div>
         <div class="fc-name">${cat.name}</div>
-        <div class="fc-budget">${cat.budget?`المعتاد: ${cat.budget} ر.س`:'بدون مبلغ محدد'}</div>
+        <div class="fc-budget">${paid?`دُفع: ${paidDate}`:cat.budget?`المعتاد: ${cat.budget} ر.س`:'بدون مبلغ محدد'}</div>
       </div>
       <div class="fc-right">
         <div class="fc-paid-amt ${paid?'':'zero'}">${paid?paidAmt.toFixed(2):'—'}<small>${paid?' ر.س':''}</small></div>
         ${paid?`<span class="paid-badge">✓ مدفوع</span>`:`<button class="fc-add-btn" onclick="openPayFixed('${cat.id}','${cat.name.replace(/'/g,"\\'")}',${cat.budget||0})">+ تسجيل</button>`}
-        <button class="fc-del-btn" onclick="delFixed('${cat.id}')">🗑</button>
+        <button class="fc-del-btn" onclick="confirmDel('حذف الالتزام «${cat.name.replace(/'/g,"\\'")}»؟',()=>delFixed('${cat.id}'))">🗑</button>
       </div>`;
     list.appendChild(card);
   });
@@ -919,7 +1018,6 @@ function doAddFixed(){
   const name=document.getElementById('fxInpName').value.trim();
   const budget=parseFloat(document.getElementById('fxInpBudget').value)||0;
   if(!name){toast('أدخل اسم الفئة','bad');return;}
-  if(DB.fixedCats.find(c=>c.name===name)){toast('هذه الفئة موجودة مسبقاً','bad');return;}
   DB.fixedCats.push({id:'fc_'+Date.now(),name,budget});
   saveDB(); renderFixed();
   closeSheet('addFixedOverlay');
@@ -942,9 +1040,7 @@ function doPayFixed(){
   const now=new Date();
   const monthKey=`${now.getFullYear()}-${now.getMonth()}`;
   DB.fixedLogs.push({catId:currentPayFixedId,catName:cat.name,amount:amt,ts:Date.now(),monthKey});
-  // also add to main expense log
-  addEntry(cat.name,amt,'fixed');
-  closeSheet('payFixedOverlay');
+  saveDB();closeSheet('payFixedOverlay');
   renderFixed();
   toast(`✅ ${cat.name} — ${amt} ر.س`,'ok');
 }
@@ -1105,6 +1201,7 @@ function goPage(p){
   if(p==='fixed'){renderFixed();_renderFixedExtras();}
   const subPages=['catdetail','commit-detail'];
   document.getElementById('mainNav').style.display=subPages.includes(p)?'none':'flex';
+  if(p==='tasks'){const tl=document.getElementById('tasksDateLabel');if(tl)tl.textContent=document.getElementById('dateLabel').textContent;}
   window.scrollTo(0,0);
 }
 
@@ -1191,7 +1288,7 @@ const ITEM_CATS=[
 ];
 function itemCatColor(n){const c=ITEM_CATS.find(c=>c.name===n);return c?c.color:'#6366f1';}
 function populateCatSelects(){
-  ['addItemCatSel','iVCatSel'].forEach(id=>{
+  ['addItemCatSel','iVCatSel','editItemCatSel'].forEach(id=>{
     const sel=document.getElementById(id);
     if(!sel) return;
     sel.innerHTML=ITEM_CATS.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
@@ -1339,20 +1436,29 @@ function openCommitDetail(id){
 function renderCommitItems(){
   const id=currentCommitId;
   const mk=getCurrentMonthKey();
-  const items=(DB.commitmentItems[id]||[]).filter(i=>i.monthKey===mk);
+  const all=DB.commitmentItems[id]||[];
+  const items=all.filter(i=>i.monthKey===mk);
   const tbody=document.getElementById('commitItemsTbody');
   tbody.innerHTML='';
-  if(!items.length){tbody.innerHTML='<tr><td colspan="6" class="empty-table">لا توجد أصناف — أضف صنفاً</td></tr>';return;}
+  if(!items.length){tbody.innerHTML='<tr><td colspan="8" class="empty-table">لا توجد أصناف — أضف صنفاً</td></tr>';return;}
   items.forEach((item,idx)=>{
     const color=itemCatColor(item.category);
+    const globalIdx=all.indexOf(item);
+    const rowTotal=(item.price*item.qty).toFixed(2);
+    const sl=stockLabel(item.stock);
+    const sc=stockClass(item.stock);
     const tr=document.createElement('tr');
+    tr.style.cursor='pointer';
+    tr.onclick=(e)=>{if(!e.target.closest('.item-del-btn,.stock-btn'))openEditItem(globalIdx);};
     tr.innerHTML=`
       <td style="color:var(--text2);font-size:11px">${idx+1}</td>
       <td style="font-weight:700;font-size:13px">${item.name}</td>
       <td><span class="cat-badge" style="background:${color}22;color:${color};border:1px solid ${color}44">${item.category}</span></td>
       <td style="text-align:center;color:var(--text3)">${item.qty}</td>
       <td class="item-price-cell">${item.price.toFixed(2)}</td>
-      <td><button class="item-del-btn" onclick="delCommitItem(${idx})">🗑</button></td>`;
+      <td style="font-weight:800;color:var(--accent3);white-space:nowrap;font-size:12px">${rowTotal}</td>
+      <td><button class="stock-btn ${sc}" onclick="openStockPicker(${globalIdx},'${item.name.replace(/'/g,"\\'")}'">${sl}</button></td>
+      <td><button class="item-del-btn" onclick="confirmDel('حذف «${item.name.replace(/'/g,"\\'")}»؟',()=>delCommitItem(${globalIdx}))">🗑</button></td>`;
     tbody.appendChild(tr);
   });
   const total=items.reduce((s,i)=>s+i.price*i.qty,0);
@@ -1388,14 +1494,13 @@ function renderCommitCatReport(){
   });
 }
 
-function delCommitItem(idx){
-  const id=currentCommitId;const mk=getCurrentMonthKey();
+function delCommitItem(globalIdx){
+  const id=currentCommitId;
   const all=DB.commitmentItems[id]||[];
-  const monthItems=all.filter(i=>i.monthKey===mk);
-  if(!monthItems[idx]) return;
-  const globalIdx=all.indexOf(monthItems[idx]);
-  if(globalIdx>-1) all.splice(globalIdx,1);
-  saveDB();renderCommitItems();renderCommitCatReport();
+  if(globalIdx<0||!all[globalIdx]) return;
+  all.splice(globalIdx,1);
+  updateFixedLogIfExists(id);
+  saveDB();renderCommitItems();renderCommitCatReport();renderFixed();_renderFixedExtras();
   toast('تم الحذف','bad');
 }
 
@@ -1403,7 +1508,8 @@ function addCommitItem(item){
   const id=currentCommitId;
   if(!DB.commitmentItems[id]) DB.commitmentItems[id]=[];
   DB.commitmentItems[id].push({...item,monthKey:getCurrentMonthKey(),ts:Date.now()});
-  saveDB();renderCommitItems();renderCommitCatReport();
+  updateFixedLogIfExists(id);
+  saveDB();renderCommitItems();renderCommitCatReport();renderFixed();_renderFixedExtras();
 }
 
 function doRegisterCommit(){
@@ -1415,7 +1521,7 @@ function doRegisterCommit(){
   const total=items.reduce((s,i)=>s+i.price*i.qty,0);
   if(!total){toast('لا توجد أصناف لتسجيلها','bad');return;}
   DB.fixedLogs.push({catId:id,catName:cat.name,amount:total,ts:Date.now(),monthKey:mk});
-  addEntry(cat.name,total,'fixed');
+  saveDB();
   document.getElementById('registerMonthBtn').style.display='none';
   renderFixed();toast(`✅ ${cat.name} — ${total.toFixed(2)} ر.س`,'ok');
 }
@@ -1489,8 +1595,10 @@ function iVMsg(msg,cls){const el=document.getElementById('iVMsg');el.textContent
 // ══════════════════════════════════════════
 //  ADD ITEM: PHOTO
 // ══════════════════════════════════════════
+function getApiKey(){ return DB.apiKey || (DEFAULT_API_KEY.startsWith('ضع')?'':DEFAULT_API_KEY); }
+
 function openAddItemPhoto(){
-  if(!DB.apiKey){document.getElementById('apiKeyInp').value='';document.getElementById('apiKeyOverlay').classList.add('open');return;}
+  if(!getApiKey()){document.getElementById('apiKeyInp').value='';document.getElementById('apiKeyOverlay').classList.add('open');return;}
   document.getElementById('photoInput').click();
 }
 
@@ -1503,7 +1611,7 @@ function saveApiKey(){
 
 async function analyzePhoto(file){
   if(!file) return;
-  if(!DB.apiKey){toast('أدخل مفتاح API أولاً','bad');return;}
+  if(!getApiKey()){toast('أدخل مفتاح API أولاً','bad');return;}
   const overlay=document.getElementById('photoAnalyzeOverlay');
   overlay.classList.add('open');
   document.getElementById('analyzeStatus').textContent='جار تحليل الصورة...';
@@ -1519,7 +1627,7 @@ async function analyzePhoto(file){
       const resp=await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
         headers:{
-          'x-api-key':DB.apiKey,
+          'x-api-key':getApiKey(),
           'anthropic-version':'2023-06-01',
           'content-type':'application/json',
           'anthropic-dangerous-direct-browser-access':'true'
@@ -1700,6 +1808,157 @@ function renderComprehensiveReport(){
         </div>`:''}
       </div>
     </div>`;
+}
+
+// ══════════════════════════════════════════
+//  CONFIRM DELETE
+// ══════════════════════════════════════════
+function confirmDel(msg, fn){
+  if(window.confirm(msg)) fn();
+}
+
+// ══════════════════════════════════════════
+//  EDIT ITEM
+// ══════════════════════════════════════════
+let editingItemGlobalIdx = -1;
+
+function openEditItem(globalIdx){
+  const id = currentCommitId;
+  const item = (DB.commitmentItems[id]||[])[globalIdx];
+  if(!item) return;
+  editingItemGlobalIdx = globalIdx;
+  populateCatSelects();
+  // populate edit selects
+  ['editItemCatSel'].forEach(sid=>{
+    const sel=document.getElementById(sid);
+    if(sel) sel.innerHTML=ITEM_CATS.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+  });
+  document.getElementById('editItemName').value = item.name;
+  document.getElementById('editItemPrice').value = item.price;
+  document.getElementById('editItemQty').value = item.qty;
+  document.getElementById('editItemCatSel').value = item.category||ITEM_CATS[0].name;
+  document.getElementById('editItemOverlay').classList.add('open');
+}
+
+function doEditItem(){
+  const id = currentCommitId;
+  const all = DB.commitmentItems[id]||[];
+  if(editingItemGlobalIdx < 0 || !all[editingItemGlobalIdx]) return;
+  const name = document.getElementById('editItemName').value.trim();
+  const price = parseFloat(document.getElementById('editItemPrice').value);
+  const qty = parseInt(document.getElementById('editItemQty').value)||1;
+  const category = document.getElementById('editItemCatSel').value;
+  if(!name){toast('أدخل اسم الصنف','bad');return;}
+  if(!price||price<=0){toast('أدخل سعراً صحيحاً','bad');return;}
+  all[editingItemGlobalIdx] = {...all[editingItemGlobalIdx], name, price, qty, category};
+  updateFixedLogIfExists(id);
+  saveDB();
+  closeSheet('editItemOverlay');
+  renderCommitItems(); renderCommitCatReport(); renderFixed(); _renderFixedExtras();
+  toast('✅ تم تعديل الصنف','ok');
+}
+
+function doDelItemFromEdit(){
+  const id = currentCommitId;
+  confirmDel('حذف هذا الصنف؟', ()=>{
+    const all = DB.commitmentItems[id]||[];
+    if(editingItemGlobalIdx >= 0) all.splice(editingItemGlobalIdx, 1);
+    updateFixedLogIfExists(id);
+    saveDB();
+    closeSheet('editItemOverlay');
+    renderCommitItems(); renderCommitCatReport(); renderFixed(); _renderFixedExtras();
+    toast('تم الحذف','bad');
+  });
+}
+
+// ══════════════════════════════════════════
+//  STOCK
+// ══════════════════════════════════════════
+let stockItemGlobalIdx = -1;
+
+const STOCK_LABELS = {full:'🟢 كامل', half:'🟡 النصف', quarter:'🟠 الربع', out:'🔴 نفذ'};
+const STOCK_CLASS  = {full:'stock-full', half:'stock-half', quarter:'stock-quarter', out:'stock-out'};
+
+function stockLabel(s){
+  if(s===undefined||s===null) return '—';
+  if(STOCK_LABELS[s]) return STOCK_LABELS[s];
+  return `📦 ${s}`;
+}
+function stockClass(s){
+  if(STOCK_CLASS[s]) return STOCK_CLASS[s];
+  if(s!==undefined&&s!==null&&s!=='') return 'stock-custom';
+  return '';
+}
+
+function openStockPicker(globalIdx, itemName){
+  stockItemGlobalIdx = globalIdx;
+  document.getElementById('stockOverlayTitle').textContent = `🗃️ مخزون: ${itemName}`;
+  document.getElementById('stockCustomInp').value='';
+  document.getElementById('stockOverlay').classList.add('open');
+}
+
+function setStock(val){
+  applyStock(val);
+}
+
+function setStockCustom(){
+  const v = document.getElementById('stockCustomInp').value.trim();
+  if(v) applyStock(v);
+  else applyStock('full');
+}
+
+function applyStock(val){
+  const id = currentCommitId;
+  const all = DB.commitmentItems[id]||[];
+  if(stockItemGlobalIdx >= 0 && all[stockItemGlobalIdx]){
+    all[stockItemGlobalIdx].stock = val;
+    saveDB();
+    renderCommitItems();
+  }
+  closeSheet('stockOverlay');
+  toast('✅ تم تحديث المخزون','ok');
+}
+
+// ══════════════════════════════════════════
+//  UPDATE fixedLog AFTER ITEM CHANGE
+// ══════════════════════════════════════════
+function updateFixedLogIfExists(id){
+  const mk = getCurrentMonthKey();
+  const log = DB.fixedLogs.find(l=>l.catId===id&&l.monthKey===mk);
+  if(!log) return;
+  const items = (DB.commitmentItems[id]||[]).filter(i=>i.monthKey===mk);
+  log.amount = items.reduce((s,i)=>s+i.price*i.qty, 0);
+}
+
+// ══════════════════════════════════════════
+//  BUDGET ENTRIES LIST
+// ══════════════════════════════════════════
+function openBudgetEntries(){
+  const entries = DB.budgetEntries||[];
+  const container = document.getElementById('budgetEntriesList');
+  if(!entries.length){
+    container.innerHTML='<div class="empty" style="padding:20px"><p>لا توجد مبالغ مضافة بعد</p></div>';
+  } else {
+    let html='';
+    [...entries].reverse().forEach(e=>{
+      const d=new Date(e.ts);
+      const dateStr=d.toLocaleDateString('ar-SA',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
+      html+=`<div class="budget-entry-row">
+        <div>
+          <div class="budget-entry-amt">${e.amount.toFixed(2)} ر.س</div>
+          ${e.note?`<div class="budget-entry-note">${e.note}</div>`:''}
+        </div>
+        <div class="budget-entry-date">${dateStr}</div>
+      </div>`;
+    });
+    const total = entries.reduce((s,e)=>s+e.amount,0);
+    html+=`<div class="budget-total-row">
+      <span style="font-size:12px;color:var(--text2);font-weight:700">الإجمالي</span>
+      <span style="font-size:16px;font-weight:900;color:var(--success)">${total.toFixed(2)} ر.س</span>
+    </div>`;
+    container.innerHTML=html;
+  }
+  document.getElementById('budgetEntriesOverlay').classList.add('open');
 }
 
 // ══════════════════════════════════════════
