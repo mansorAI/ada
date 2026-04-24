@@ -361,6 +361,25 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .user-menu-item:hover{background:var(--surface2)}
 .user-menu-item.danger{color:var(--danger)}
 .user-menu-divider{height:1px;background:var(--border)}
+
+/* ── MEMBER MANAGEMENT ── */
+.perm-section{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+.perm-section-title{font-size:13px;font-weight:800;color:var(--text2);letter-spacing:1px;margin-bottom:10px}
+.perm-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.perm-row:last-child{border-bottom:none;padding-bottom:0}
+.perm-row span{font-size:14px;font-weight:600;color:var(--text)}
+.perm-check{width:20px;height:20px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.role-btns{display:flex;gap:8px;margin-top:4px}
+.role-btn{flex:1;background:var(--surface3);border:1px solid var(--border);color:var(--text2);border-radius:10px;padding:10px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s}
+.role-btn.active{background:rgba(245,166,35,.15);border-color:var(--accent);color:var(--accent)}
+.member-search-result{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.member-search-result .ec-body{flex:1;min-width:0}
+.member-add-btn{background:rgba(62,207,207,.15);border:1px solid rgba(62,207,207,.3);color:var(--accent3);border-radius:8px;padding:6px 14px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.member-add-btn:active{background:rgba(62,207,207,.3)}
+.btn-muted{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text3);border-radius:14px;padding:13px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:8px}
+.btn-muted:active{background:var(--surface3)}
+.btn-remove{width:100%;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--danger);border-radius:14px;padding:13px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:8px}
+.btn-remove:active{background:rgba(239,68,68,.25)}
 </style>
 </head>
 <body>
@@ -550,6 +569,68 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       <input id="joinCodeInApp" class="inp" type="text" placeholder="أدخل رمز الدعوة (8 أحرف)" style="direction:ltr;text-align:center;letter-spacing:4px">
     </div>
     <button class="btn-teal" style="width:100%" onclick="doJoinGroupInApp()">🔗 انضمام للمجموعة</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: GROUP DETAIL (أعضاء المجموعة) ══════════ -->
+<div id="groupDetailOverlay" class="overlay" onclick="bgClose(event,'groupDetailOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title" id="groupDetailTitle">أعضاء المجموعة</div>
+    <div id="membersList" style="margin-bottom:16px"></div>
+    <div id="memberAddSection">
+      <div class="sec-hd" style="padding:0 0 8px"><h2>➕ إضافة عضو</h2></div>
+      <div class="inp-wrap">
+        <input id="memberSearchInp" class="inp" type="text" placeholder="ابحث بالاسم أو البريد الإلكتروني..." oninput="searchMembersDebounced()">
+      </div>
+      <div id="memberSearchResults" style="margin-top:6px"></div>
+    </div>
+    <button class="btn-muted" onclick="closeSheet('groupDetailOverlay')">إغلاق</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: MEMBER PERMISSIONS (صلاحيات عضو) ══════════ -->
+<div id="memberPermsOverlay" class="overlay" onclick="bgClose(event,'memberPermsOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title">صلاحيات العضو</div>
+    <div id="memberPermsName" style="text-align:center;background:var(--surface2);border-radius:12px;padding:10px;margin-bottom:16px;font-size:15px;font-weight:700;color:var(--accent)"></div>
+
+    <div class="perm-section">
+      <div class="perm-section-title">💸 المصروفات</div>
+      <label class="perm-row">
+        <span>رؤية المصروفات</span>
+        <input type="checkbox" id="permViewExp" class="perm-check">
+      </label>
+      <label class="perm-row">
+        <span>إضافة وتعديل المصروفات</span>
+        <input type="checkbox" id="permEditExp" class="perm-check">
+      </label>
+    </div>
+
+    <div class="perm-section">
+      <div class="perm-section-title">📋 الالتزامات الشهرية</div>
+      <label class="perm-row">
+        <span>رؤية الالتزامات</span>
+        <input type="checkbox" id="permViewCom" class="perm-check">
+      </label>
+      <label class="perm-row">
+        <span>إضافة وتعديل الالتزامات</span>
+        <input type="checkbox" id="permEditCom" class="perm-check">
+      </label>
+    </div>
+
+    <div class="perm-section">
+      <div class="perm-section-title">👤 دور العضو</div>
+      <div class="role-btns">
+        <button class="role-btn" id="roleBtnViewer" onclick="selectMemberRole('viewer')">👁️ مشاهد فقط</button>
+        <button class="role-btn" id="roleBtnEditor" onclick="selectMemberRole('editor')">✏️ محرر</button>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="saveMemberPerms()">✅ حفظ الصلاحيات</button>
+    <button class="btn-remove" onclick="removeMemberFromGroup()">🗑️ إزالة من المجموعة</button>
+    <button class="btn-muted" onclick="closeSheet('memberPermsOverlay')">إلغاء</button>
   </div>
 </div>
 
@@ -2122,6 +2203,164 @@ function setActiveGroup(id, name){
   document.getElementById('menuGroupName').textContent = '📁 ' + name;
 }
 
+// ══════════════════════════════════════════
+//  MEMBER MANAGEMENT
+// ══════════════════════════════════════════
+let viewingGroupId   = null;
+let viewingGroupName = null;
+let viewingGroupIsOwner = false;
+let editingMemberId  = null;
+let editingMemberRole = 'viewer';
+
+async function openGroupDetail(groupId, groupName, isOwner) {
+  viewingGroupId      = groupId;
+  viewingGroupName    = groupName;
+  viewingGroupIsOwner = isOwner;
+  document.getElementById('groupDetailTitle').textContent = '📁 ' + groupName;
+  document.getElementById('memberSearchInp').value = '';
+  document.getElementById('memberSearchResults').innerHTML = '';
+  document.getElementById('memberAddSection').style.display = isOwner ? '' : 'none';
+  await renderMembersList();
+  document.getElementById('groupDetailOverlay').classList.add('open');
+}
+
+async function renderMembersList() {
+  const { data: members } = await sb
+    .from('group_members')
+    .select('id, user_id, role, can_view_expenses, can_edit_expenses, can_view_commitments, can_edit_commitments, profiles(name, email)')
+    .eq('group_id', viewingGroupId);
+
+  const el = document.getElementById('membersList');
+  if (!members?.length) { el.innerHTML = ''; return; }
+
+  const roleLabel = r => r==='owner'?'👑 مالك':r==='editor'?'✏️ محرر':'👁️ مشاهد';
+  const yn = v => v ? '✅' : '❌';
+
+  el.innerHTML = `<div class="sec-hd" style="padding:0 0 10px"><h2>الأعضاء (${members.length})</h2></div>` +
+    members.map(m => {
+      const name  = m.profiles?.name || m.profiles?.email?.split('@')[0] || '—';
+      const email = m.profiles?.email || '';
+      const isMe  = m.user_id === currentUser.id;
+      const canManage = viewingGroupIsOwner && m.role !== 'owner';
+      const ve = m.can_view_expenses    ?? true;
+      const ee = m.can_edit_expenses    ?? false;
+      const vc = m.can_view_commitments ?? true;
+      const ec = m.can_edit_commitments ?? false;
+      const perms = `مصروفات:${yn(ve)}${yn(ee)} التزامات:${yn(vc)}${yn(ec)}`;
+      return `<div class="exp-card" style="margin-bottom:8px${canManage?';cursor:pointer':''}" ${canManage ? `onclick="openMemberPerms('${m.id}','${name.replace(/'/g,"\\'")}','${m.role}',${ve},${ee},${vc},${ec})"` : ''}>
+        <div class="ec-icon">${m.role==='owner'?'👑':'👤'}</div>
+        <div class="ec-body">
+          <div class="ec-name">${name}${isMe?' (أنت)':''}</div>
+          <div class="ec-meta">
+            <span class="ec-count">${roleLabel(m.role)}</span>
+            ${m.role!=='owner' ? `<span class="ec-count" style="font-size:10px">${perms}</span>` : ''}
+          </div>
+        </div>
+        ${canManage ? '<span class="arrow-icon">›</span>' : ''}
+      </div>`;
+    }).join('');
+}
+
+let _searchTimer = null;
+function searchMembersDebounced() {
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(doSearchMembers, 380);
+}
+
+async function doSearchMembers() {
+  const q  = document.getElementById('memberSearchInp').value.trim();
+  const el = document.getElementById('memberSearchResults');
+  if (q.length < 2) { el.innerHTML = ''; return; }
+
+  el.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text2);font-size:13px">جاري البحث...</div>';
+
+  const { data: users } = await sb
+    .from('profiles')
+    .select('id, name, email')
+    .or(`name.ilike.%${q}%,email.ilike.%${q}%`)
+    .neq('id', currentUser.id)
+    .limit(6);
+
+  if (!users?.length) {
+    el.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text2);font-size:13px">لا توجد نتائج</div>';
+    return;
+  }
+
+  const { data: existing } = await sb
+    .from('group_members').select('user_id').eq('group_id', viewingGroupId);
+  const existingIds = (existing || []).map(e => e.user_id);
+
+  el.innerHTML = users.map(u => {
+    const already  = existingIds.includes(u.id);
+    const dispName = u.name || u.email.split('@')[0];
+    return `<div class="member-search-result">
+      <div class="ec-icon">👤</div>
+      <div class="ec-body">
+        <div class="ec-name" style="font-size:14px">${dispName}</div>
+        <div style="font-size:11px;color:var(--text2)">${u.email}</div>
+      </div>
+      ${already
+        ? '<span style="font-size:12px;color:var(--text2);padding:6px">مضاف ✓</span>'
+        : `<button class="member-add-btn" onclick="addMemberToGroup('${u.id}','${dispName.replace(/'/g,"\\'")}')">إضافة</button>`
+      }
+    </div>`;
+  }).join('');
+}
+
+async function addMemberToGroup(userId, userName) {
+  const { error } = await sb.from('group_members').insert({
+    group_id: viewingGroupId, user_id: userId, role: 'viewer',
+    can_view_expenses: true, can_edit_expenses: false,
+    can_view_commitments: true, can_edit_commitments: false
+  });
+  if (error) return toast('خطأ: ' + error.message, 'err');
+  document.getElementById('memberSearchInp').value = '';
+  document.getElementById('memberSearchResults').innerHTML = '';
+  await renderMembersList();
+  toast(`✅ تمت إضافة ${userName}`, 'ok');
+}
+
+function openMemberPerms(memberId, name, role, ve, ee, vc, ec) {
+  editingMemberId  = memberId;
+  editingMemberRole = role;
+  document.getElementById('memberPermsName').textContent = name;
+  document.getElementById('permViewExp').checked = ve;
+  document.getElementById('permEditExp').checked = ee;
+  document.getElementById('permViewCom').checked = vc;
+  document.getElementById('permEditCom').checked = ec;
+  selectMemberRole(role);
+  document.getElementById('memberPermsOverlay').classList.add('open');
+}
+
+function selectMemberRole(role) {
+  editingMemberRole = role;
+  document.getElementById('roleBtnViewer').classList.toggle('active', role === 'viewer');
+  document.getElementById('roleBtnEditor').classList.toggle('active', role === 'editor');
+}
+
+async function saveMemberPerms() {
+  const { error } = await sb.from('group_members').update({
+    role: editingMemberRole,
+    can_view_expenses:    document.getElementById('permViewExp').checked,
+    can_edit_expenses:    document.getElementById('permEditExp').checked,
+    can_view_commitments: document.getElementById('permViewCom').checked,
+    can_edit_commitments: document.getElementById('permEditCom').checked
+  }).eq('id', editingMemberId);
+  if (error) return toast('خطأ: ' + error.message, 'err');
+  closeSheet('memberPermsOverlay');
+  await renderMembersList();
+  toast('✅ تم حفظ الصلاحيات', 'ok');
+}
+
+async function removeMemberFromGroup() {
+  if (!window.confirm('هل تريد إزالة هذا العضو من المجموعة؟')) return;
+  const { error } = await sb.from('group_members').delete().eq('id', editingMemberId);
+  if (error) return toast('خطأ: ' + error.message, 'err');
+  closeSheet('memberPermsOverlay');
+  await renderMembersList();
+  toast('تم إزالة العضو', 'bad');
+}
+
 async function renderGroupsPage(){
   const { data: memberships } = await sb
     .from('group_members')
@@ -2135,11 +2374,15 @@ async function renderGroupsPage(){
   el.innerHTML = `<div class="sec-hd" style="padding:0 0 10px"><h2>مجموعاتي</h2></div>` +
     memberships.map(m => {
       const g = m.groups;
+      const isOwner = m.role === 'owner';
       const active = g.id === currentGroupId ? 'border-color:var(--accent)' : '';
-      return `<div class="exp-card" style="${active};margin-bottom:8px" onclick="switchToGroup('${g.id}','${g.name}')">
-        <div class="ec-icon">📁</div>
-        <div class="ec-body"><div class="ec-name">${g.name}</div>
-        <div class="ec-meta"><span class="ec-count">${roleLabel(m.role)}</span>${g.id===currentGroupId?'<span class="ec-pct">نشطة</span>':''}</div></div>
+      return `<div class="exp-card" style="${active};margin-bottom:8px">
+        <div class="ec-icon" onclick="switchToGroup('${g.id}','${g.name.replace(/'/g,"\\'")}')">📁</div>
+        <div class="ec-body" style="cursor:pointer" onclick="switchToGroup('${g.id}','${g.name.replace(/'/g,"\\'")}')">
+          <div class="ec-name">${g.name}</div>
+          <div class="ec-meta"><span class="ec-count">${roleLabel(m.role)}</span>${g.id===currentGroupId?'<span class="ec-pct">نشطة</span>':''}</div>
+        </div>
+        <button class="member-add-btn" onclick="openGroupDetail('${g.id}','${g.name.replace(/'/g,"\\'")}',${isOwner})">👥 الأعضاء</button>
       </div>`;
     }).join('');
 }

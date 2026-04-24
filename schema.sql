@@ -340,3 +340,18 @@ create policy "audit_insert" on public.audit_log for insert
 -- update public.profiles
 -- set is_super_admin = true
 -- where email = 'mansor.learning@gmail.com';
+
+-- =============================================
+-- MIGRATION: صلاحيات تفصيلية للأعضاء
+-- شغّل هذا في Supabase SQL Editor إذا سبق وأنشأت الجداول
+-- =============================================
+alter table public.group_members
+  add column if not exists can_view_expenses    boolean default true,
+  add column if not exists can_edit_expenses    boolean default false,
+  add column if not exists can_view_commitments boolean default true,
+  add column if not exists can_edit_commitments boolean default false;
+
+-- السماح لأي مستخدم مسجل بالبحث عن مستخدمين آخرين (للإضافة للمجموعة)
+drop policy if exists "profiles_select" on public.profiles;
+create policy "profiles_select" on public.profiles for select
+  using (auth.uid() is not null);
