@@ -481,7 +481,13 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   <div class="topbar">
     <div class="topbar-row">
       <div class="page-title">الالتزامات 📌</div>
-      <div class="date-chip" id="fixedDateLabel"></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="date-chip" id="fixedDateLabel"></div>
+        <div class="user-chip" onclick="toggleUserMenu(event)">
+          <span>👤</span>
+          <span class="uname" id="fixedTopbarUserName">...</span>
+        </div>
+      </div>
     </div>
     <div class="fixed-hero">
       <div class="fixed-hero-label">إجمالي الثابتة هذا الشهر</div>
@@ -554,7 +560,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   <div class="topbar">
     <div class="topbar-row">
       <div class="page-title">المجموعات 📁</div>
-      <div class="date-chip" id="groupsDateLabel"></div>
+      <div class="user-chip" onclick="toggleUserMenu(event)">
+        <span>👤</span>
+        <span class="uname" id="groupsTopbarUserName">...</span>
+      </div>
     </div>
   </div>
   <div style="padding:0 18px">
@@ -649,7 +658,13 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 <!-- ══════════ PAGE: STATS ══════════ -->
 <div id="pg-stats" class="page">
   <div class="topbar">
-    <div class="topbar-row"><div class="page-title">التقارير 📊</div><div class="date-chip" id="statDateLabel"></div></div>
+    <div class="topbar-row">
+      <div class="page-title">التقارير 📊</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="date-chip" id="statDateLabel"></div>
+        <div class="user-chip" onclick="toggleUserMenu(event)"><span>👤</span><span class="uname" id="statsTopbarUserName">...</span></div>
+      </div>
+    </div>
   </div>
   <div class="tabs">
     <button class="tab active" onclick="setStatPeriod('week',this)">هذا الأسبوع</button>
@@ -953,12 +968,20 @@ const DEFAULT_API_KEY = 'ضع-مفتاحك-هنا';
 //  DB — مفتاح خاص بكل مستخدم
 // ══════════════════════════════════════════
 let DB = {cats:{},logs:[],fixedCats:[],fixedLogs:[]};
-function getDBKey(uid){ return 'msf_v3_' + uid; }
-function loadDB(uid){
-  try{ return JSON.parse(localStorage.getItem(getDBKey(uid)))||{cats:{},logs:[],fixedCats:[],fixedLogs:[]}; }
-  catch(e){ return {cats:{},logs:[],fixedCats:[],fixedLogs:[]}; }
+function getDBKey(uid, gid){ return 'msf_v3_' + uid + '_' + (gid||'default'); }
+function loadDB(uid, gid){
+  const key = getDBKey(uid, gid);
+  try{
+    const saved = JSON.parse(localStorage.getItem(key));
+    if(saved) return saved;
+    // ترحيل: إذا ما في بيانات للمجموعة الشخصية جرّب المفتاح القديم
+    const oldKey = 'msf_v3_' + uid;
+    const old = JSON.parse(localStorage.getItem(oldKey));
+    if(old){ localStorage.setItem(key, JSON.stringify(old)); return old; }
+  }catch(e){}
+  return {cats:{},logs:[],fixedCats:[],fixedLogs:[]};
 }
-function saveDB(){ if(currentUser) localStorage.setItem(getDBKey(currentUser.id),JSON.stringify(DB)); }
+function saveDB(){ if(currentUser&&currentGroupId) localStorage.setItem(getDBKey(currentUser.id,currentGroupId),JSON.stringify(DB)); }
 function migrateDB(){
   if(!DB.fixedCats) DB.fixedCats=[];
   if(!DB.fixedLogs) DB.fixedLogs=[];
@@ -1102,40 +1125,33 @@ function openCatDetail(name){
 // ══════════════════════════════════════════
 let currentPayFixedId=null;
 
-function renderFixed(){
-  const now=new Date();
-  const monthKey=`${now.getFullYear()}-${now.getMonth()}`;
-
-  // total paid this month
-  const monthLogs=DB.fixedLogs.filter(l=>l.monthKey===monthKey);
-  const totalPaid=monthLogs.reduce((s,l)=>s+l.amount,0);
-  const paidCats=new Set(monthLogs.map(l=>l.catId)).size;
+async function renderFixed(){
+  await loadGroupCommitmentsData();
+  const mk=getCurrentMonthKey();
+  const totalPaid=_groupCommits.filter(c=>c.is_paid).reduce((s,c)=>s+(c.paid_amount||0),0);
+  const paidCount=_groupCommits.filter(c=>c.is_paid).length;
   document.getElementById('fixedTotal').textContent=totalPaid.toFixed(2);
-  document.getElementById('fixedSubLabel').textContent=`${paidCats} من ${DB.fixedCats.length} تم دفعها هذا الشهر`;
-
+  document.getElementById('fixedSubLabel').textContent=`${paidCount} من ${_groupCommits.length} تم دفعها هذا الشهر`;
   const list=document.getElementById('fixedList');
   [...list.querySelectorAll('.fixed-card')].forEach(e=>e.remove());
-  document.getElementById('emptyFixed').style.display=DB.fixedCats.length?'none':'block';
-
-  DB.fixedCats.forEach((cat,i)=>{
-    const catLogs=monthLogs.filter(l=>l.catId===cat.id);
-    const paidAmt=catLogs.reduce((s,l)=>s+l.amount,0);
-    const paid=paidAmt>0;
-
+  document.getElementById('emptyFixed').style.display=_groupCommits.length?'none':'block';
+  _groupCommits.forEach(cat=>{
+    const paid=cat.is_paid;
+    const paidAmt=cat.paid_amount||0;
     const card=document.createElement('div');
     card.className='fixed-card'+(paid?' paid':'');
-    const catType = cat.type||'list';
+    const catType=cat.type||'list';
     card.style.cursor='pointer';
     card.onclick=(e)=>{
       if(e.target.closest('.fc-add-btn,.fc-del-btn')) return;
       if(catType==='list') openCommitDetail(cat.id);
-      else openPayFixed(cat.id, cat.name, cat.budget||0);
+      else openPayFixed(cat.id,cat.name,cat.budget||0);
     };
-    const paidDate=paid?new Date(catLogs[catLogs.length-1].ts).toLocaleDateString('ar-SA',{day:'numeric',month:'short',year:'numeric'}):'';
+    const paidDate=paid&&cat.paid_at?new Date(cat.paid_at).toLocaleDateString('ar-SA',{day:'numeric',month:'short',year:'numeric'}):'';
     card.innerHTML=`
       <div class="fc-icon">${getIcon(cat.name)}</div>
       <div class="fc-body">
-        <div class="fc-month-label">${getMonthLabel(monthKey)}</div>
+        <div class="fc-month-label">${getMonthLabel(mk)}</div>
         <div class="fc-name">${cat.name} <span style="font-size:9px;color:var(--text2);font-weight:400;background:var(--surface3);padding:1px 5px;border-radius:4px;vertical-align:middle">${catType==='list'?'📋 قائمة':'📝 عادي'}</span></div>
         <div class="fc-budget">${paid?`دُفع: ${paidDate}`:cat.budget?`المعتاد: ${cat.budget} ر.س`:'بدون مبلغ محدد'}</div>
       </div>
@@ -1169,15 +1185,17 @@ function pickChip(el,name){
   document.getElementById('fxInpName').value=name;
 }
 
-function doAddFixed(){
+async function doAddFixed(){
   const name=document.getElementById('fxInpName').value.trim();
   const budget=parseFloat(document.getElementById('fxInpBudget').value)||0;
   if(!name){toast('أدخل اسم الفئة','bad');return;}
-  const type = document.getElementById('fxInpType').value;
-  DB.fixedCats.push({id:'fc_'+Date.now(),name,budget,type});
-  saveDB(); renderFixed();
+  const type=document.getElementById('fxInpType').value;
+  const mk=getCurrentMonthKey();
+  const {error}=await sb.from('commitments').insert({group_id:currentGroupId,name,budget,type,month_key:mk});
+  if(error){toast('خطأ: '+error.message,'err');return;}
   closeSheet('addFixedOverlay');
   toast(`✅ أُضيفت "${name}" للثابتة`,'ok');
+  await refreshFixed();
 }
 
 function openPayFixed(id,name,budget){
@@ -1188,22 +1206,21 @@ function openPayFixed(id,name,budget){
   setTimeout(()=>document.getElementById('payFixedAmt').focus(),350);
 }
 
-function doPayFixed(){
+async function doPayFixed(){
   const amt=parseFloat(document.getElementById('payFixedAmt').value);
   if(!amt||amt<=0){toast('أدخل مبلغاً صحيحاً','bad');return;}
-  const cat=DB.fixedCats.find(c=>c.id===currentPayFixedId);
-  if(!cat) return;
-  const now=new Date();
-  const monthKey=`${now.getFullYear()}-${now.getMonth()}`;
-  DB.fixedLogs.push({catId:currentPayFixedId,catName:cat.name,amount:amt,ts:Date.now(),monthKey});
-  saveDB();closeSheet('payFixedOverlay');
-  renderFixed();
-  toast(`✅ ${cat.name} — ${amt} ر.س`,'ok');
+  const cat=_groupCommits.find(c=>c.id===currentPayFixedId);
+  const {error}=await sb.from('commitments').update({is_paid:true,paid_amount:amt,paid_at:new Date().toISOString()}).eq('id',currentPayFixedId);
+  if(error){toast('خطأ: '+error.message,'err');return;}
+  closeSheet('payFixedOverlay');
+  toast(`✅ ${cat?.name||''} — ${amt} ر.س`,'ok');
+  refreshFixed();
 }
 
-function delFixed(id){
-  DB.fixedCats=DB.fixedCats.filter(c=>c.id!==id);
-  saveDB(); renderFixed();
+async function delFixed(id){
+  const {error}=await sb.from('commitments').delete().eq('id',id);
+  if(error){toast('خطأ: '+error.message,'err');return;}
+  await refreshFixed();
   toast('تم الحذف','bad');
 }
 
@@ -1354,7 +1371,7 @@ function goPage(p){
   const navEl=document.getElementById(`nav-${p}`);
   if(navEl) navEl.classList.add('active');
   if(p==='stats'){renderStats();renderComprehensiveReport();}
-  if(p==='fixed'){renderFixed();_renderFixedExtras();}
+  if(p==='fixed'){renderFixed().then(()=>_renderFixedExtras());}
   const subPages=['catdetail','commit-detail'];
   document.getElementById('mainNav').style.display=subPages.includes(p)?'none':'flex';
   if(p==='tasks'){const tl=document.getElementById('tasksDateLabel');if(tl)tl.textContent=document.getElementById('dateLabel').textContent;}
@@ -1455,6 +1472,9 @@ function populateCatSelects(){
 //  MONTH UTILITIES
 // ══════════════════════════════════════════
 let currentCommitId=null;
+let _groupCommits=[];
+let _allGroupCommits=[];
+let _commitItemsCache=[];
 
 function getCurrentMonthKey(){
   if(DB.monthAuto||!DB.monthStart){
@@ -1549,8 +1569,40 @@ function doAddBudget(){
 }
 
 function getCommitsMonthTotal(){
+  return _groupCommits.filter(c=>c.is_paid).reduce((s,c)=>s+(c.paid_amount||0),0);
+}
+
+async function loadGroupCommitmentsData(){
+  if(!currentGroupId) return;
   const mk=getCurrentMonthKey();
-  return DB.fixedLogs.filter(l=>l.monthKey===mk).reduce((s,l)=>s+l.amount,0);
+  const {data:curr}=await sb.from('commitments').select('*').eq('group_id',currentGroupId).eq('month_key',mk).order('created_at');
+  _groupCommits=curr||[];
+  if(_groupCommits.length===0){
+    const {data:prev}=await sb.from('commitments').select('*').eq('group_id',currentGroupId).neq('month_key',mk).order('created_at',{ascending:false}).limit(50);
+    if(prev&&prev.length>0){
+      const lastMk=prev[0].month_key;
+      const toInsert=prev.filter(c=>c.month_key===lastMk).map(c=>({group_id:currentGroupId,name:c.name,budget:c.budget,type:c.type,month_key:mk,is_paid:false}));
+      await sb.from('commitments').insert(toInsert);
+      const {data:reloaded}=await sb.from('commitments').select('*').eq('group_id',currentGroupId).eq('month_key',mk).order('created_at');
+      _groupCommits=reloaded||[];
+      if(_groupCommits.length>0) toast('✅ تم ترحيل الالتزامات للشهر الجديد','ok');
+    }
+  }
+  const {data:all}=await sb.from('commitments').select('*').eq('group_id',currentGroupId).order('created_at');
+  _allGroupCommits=all||[];
+}
+
+async function updateCommitPaidAmountIfPaid(){
+  const commit=_groupCommits.find(c=>c.id===currentCommitId);
+  if(!commit?.is_paid) return;
+  const {data:items}=await sb.from('commitment_items').select('price,qty').eq('commitment_id',currentCommitId);
+  const total=(items||[]).reduce((s,i)=>s+i.price*i.qty,0);
+  await sb.from('commitments').update({paid_amount:total}).eq('id',currentCommitId);
+}
+
+async function refreshFixed(){
+  await renderFixed();
+  _renderFixedExtras();
 }
 
 function renderBudget(){
@@ -1570,43 +1622,33 @@ function renderBudget(){
 // ══════════════════════════════════════════
 //  COMMITMENT DETAIL
 // ══════════════════════════════════════════
-function openCommitDetail(id){
+async function openCommitDetail(id){
   currentCommitId=id;
-  const cat=DB.fixedCats.find(c=>c.id===id);
+  const cat=_groupCommits.find(c=>c.id===id);
   if(!cat) return;
   if((cat.type||'list')==='simple'){openPayFixed(id,cat.name,cat.budget||0);return;}
-  const mk=getCurrentMonthKey();
-  const items=(DB.commitmentItems[id]||[]).filter(i=>i.monthKey===mk);
-  const total=items.reduce((s,i)=>s+i.price*i.qty,0);
   document.getElementById('commitDetailLabel').textContent=`${getIcon(cat.name)} ${cat.name}`;
-  document.getElementById('commitDetailTotal').textContent=total.toFixed(2);
-  document.getElementById('commitDetailSub').textContent=`${items.length} صنف`;
-  document.getElementById('commitItemsBadge').textContent=items.length;
   document.getElementById('commitDetailDate').textContent=document.getElementById('dateLabel').textContent;
-  const mk2=getCurrentMonthKey();
-  const isPaid=DB.fixedLogs.some(l=>l.catId===id&&l.monthKey===mk2);
-  document.getElementById('registerMonthBtn').style.display=isPaid?'none':'block';
-  renderCommitItems();renderCommitCatReport();
+  document.getElementById('registerMonthBtn').style.display=cat.is_paid?'none':'block';
+  await renderCommitItems();
+  renderCommitCatReport();
   goPage('commit-detail');
 }
 
-function renderCommitItems(){
-  const id=currentCommitId;
-  const mk=getCurrentMonthKey();
-  const all=DB.commitmentItems[id]||[];
-  const items=all.filter(i=>i.monthKey===mk);
+async function renderCommitItems(){
+  const {data:items}=await sb.from('commitment_items').select('*').eq('commitment_id',currentCommitId).order('created_at');
+  _commitItemsCache=items||[];
   const tbody=document.getElementById('commitItemsTbody');
   tbody.innerHTML='';
-  if(!items.length){tbody.innerHTML='<tr><td colspan="8" class="empty-table">لا توجد أصناف — أضف صنفاً</td></tr>';return;}
-  items.forEach((item,idx)=>{
+  if(!_commitItemsCache.length){tbody.innerHTML='<tr><td colspan="8" class="empty-table">لا توجد أصناف — أضف صنفاً</td></tr>';}
+  _commitItemsCache.forEach((item,idx)=>{
     const color=itemCatColor(item.category);
-    const globalIdx=all.indexOf(item);
     const rowTotal=(item.price*item.qty).toFixed(2);
     const sl=stockLabel(item.stock);
     const sc=stockClass(item.stock);
     const tr=document.createElement('tr');
     tr.style.cursor='pointer';
-    tr.onclick=(e)=>{if(!e.target.closest('.item-del-btn,.stock-btn'))openEditItem(globalIdx);};
+    tr.onclick=(e)=>{if(!e.target.closest('.item-del-btn,.stock-btn'))openEditItem(item.id);};
     tr.innerHTML=`
       <td style="color:var(--text2);font-size:11px">${idx+1}</td>
       <td style="font-weight:700;font-size:13px">${item.name}</td>
@@ -1614,20 +1656,18 @@ function renderCommitItems(){
       <td style="text-align:center;color:var(--text3)">${item.qty}</td>
       <td class="item-price-cell">${item.price.toFixed(2)}</td>
       <td style="font-weight:800;color:var(--accent3);white-space:nowrap;font-size:12px">${rowTotal}</td>
-      <td><button class="stock-btn ${sc}" onclick="openStockPicker(${globalIdx},'${item.name.replace(/'/g,"\\'")}')">  ${sl||'—'}</button></td>
-      <td><button class="item-del-btn" onclick="confirmDel('حذف «${item.name.replace(/'/g,"\\'")}»؟',()=>delCommitItem(${globalIdx}))">🗑</button></td>`;
+      <td><button class="stock-btn ${sc}" onclick="openStockPicker('${item.id}','${item.name.replace(/'/g,"\\'")}')">  ${sl||'—'}</button></td>
+      <td><button class="item-del-btn" onclick="confirmDel('حذف «${item.name.replace(/'/g,"\\'")}»؟',()=>delCommitItem('${item.id}'))">🗑</button></td>`;
     tbody.appendChild(tr);
   });
-  const total=items.reduce((s,i)=>s+i.price*i.qty,0);
+  const total=_commitItemsCache.reduce((s,i)=>s+i.price*i.qty,0);
   document.getElementById('commitDetailTotal').textContent=total.toFixed(2);
-  document.getElementById('commitDetailSub').textContent=`${items.length} صنف`;
-  document.getElementById('commitItemsBadge').textContent=items.length;
+  document.getElementById('commitDetailSub').textContent=`${_commitItemsCache.length} صنف`;
+  document.getElementById('commitItemsBadge').textContent=_commitItemsCache.length;
 }
 
 function renderCommitCatReport(){
-  const id=currentCommitId;
-  const mk=getCurrentMonthKey();
-  const items=(DB.commitmentItems[id]||[]).filter(i=>i.monthKey===mk);
+  const items=_commitItemsCache;
   const tbody=document.getElementById('commitCatRptTbody');
   tbody.innerHTML='';
   if(!items.length){tbody.innerHTML='<tr><td colspan="4" class="empty-table">لا توجد بيانات</td></tr>';return;}
@@ -1651,36 +1691,34 @@ function renderCommitCatReport(){
   });
 }
 
-function delCommitItem(globalIdx){
-  const id=currentCommitId;
-  const all=DB.commitmentItems[id]||[];
-  if(globalIdx<0||!all[globalIdx]) return;
-  all.splice(globalIdx,1);
-  updateFixedLogIfExists(id);
-  saveDB();renderCommitItems();renderCommitCatReport();renderFixed();_renderFixedExtras();
+async function delCommitItem(itemId){
+  const {error}=await sb.from('commitment_items').delete().eq('id',itemId);
+  if(error){toast('خطأ: '+error.message,'err');return;}
+  await updateCommitPaidAmountIfPaid();
+  await renderCommitItems();
+  renderCommitCatReport();
+  refreshFixed();
   toast('تم الحذف','bad');
 }
 
-function addCommitItem(item){
-  const id=currentCommitId;
-  if(!DB.commitmentItems[id]) DB.commitmentItems[id]=[];
-  DB.commitmentItems[id].push({...item,monthKey:getCurrentMonthKey(),ts:Date.now()});
-  updateFixedLogIfExists(id);
-  saveDB();renderCommitItems();renderCommitCatReport();renderFixed();_renderFixedExtras();
+async function addCommitItem(item){
+  const {error}=await sb.from('commitment_items').insert({commitment_id:currentCommitId,...item});
+  if(error){toast('خطأ: '+error.message,'err');return;}
+  await updateCommitPaidAmountIfPaid();
+  await renderCommitItems();
+  renderCommitCatReport();
+  refreshFixed();
 }
 
-function doRegisterCommit(){
-  const id=currentCommitId;
-  const cat=DB.fixedCats.find(c=>c.id===id);
-  if(!cat) return;
-  const mk=getCurrentMonthKey();
-  const items=(DB.commitmentItems[id]||[]).filter(i=>i.monthKey===mk);
-  const total=items.reduce((s,i)=>s+i.price*i.qty,0);
+async function doRegisterCommit(){
+  const total=_commitItemsCache.reduce((s,i)=>s+i.price*i.qty,0);
   if(!total){toast('لا توجد أصناف لتسجيلها','bad');return;}
-  DB.fixedLogs.push({catId:id,catName:cat.name,amount:total,ts:Date.now(),monthKey:mk});
-  saveDB();
+  const {error}=await sb.from('commitments').update({is_paid:true,paid_amount:total,paid_at:new Date().toISOString()}).eq('id',currentCommitId);
+  if(error){toast('خطأ: '+error.message,'err');return;}
   document.getElementById('registerMonthBtn').style.display='none';
-  renderFixed();toast(`✅ ${cat.name} — ${total.toFixed(2)} ر.س`,'ok');
+  const cat=_groupCommits.find(c=>c.id===currentCommitId);
+  refreshFixed();
+  toast(`✅ ${cat?.name||''} — ${total.toFixed(2)} ر.س`,'ok');
 }
 
 // ══════════════════════════════════════════
@@ -1695,15 +1733,16 @@ function openAddItemManual(){
   setTimeout(()=>document.getElementById('addItemName').focus(),350);
 }
 
-function doAddItemManual(){
+async function doAddItemManual(){
   const name=document.getElementById('addItemName').value.trim();
   const price=parseFloat(document.getElementById('addItemPrice').value);
   const qty=parseInt(document.getElementById('addItemQty').value)||1;
   const category=document.getElementById('addItemCatSel').value;
   if(!name){toast('أدخل اسم الصنف','bad');return;}
   if(!price||price<=0){toast('أدخل سعراً صحيحاً','bad');return;}
-  addCommitItem({name,price,qty,category,src:'manual'});
-  closeSheet('addItemManualOverlay');toast(`✅ ${name} — ${price} ر.س`,'ok');
+  await addCommitItem({name,price,qty,category,src:'manual'});
+  closeSheet('addItemManualOverlay');
+  toast(`✅ ${name} — ${price} ر.س`,'ok');
 }
 
 // ══════════════════════════════════════════
@@ -1833,46 +1872,46 @@ function renderAnalyzeResults(items){
   document.getElementById('analyzeResult').innerHTML=html;
 }
 
-function saveAnalyzedItems(){
+async function saveAnalyzedItems(){
   const items=window._analyzedItems||[];
-  items.forEach(item=>addCommitItem({name:item.name,price:parseFloat(item.price||0),qty:parseInt(item.qty||1),category:item.category||'أخرى',src:'photo'}));
+  if(!items.length) return;
+  const toInsert=items.map(item=>({commitment_id:currentCommitId,name:item.name,price:parseFloat(item.price||0),qty:parseInt(item.qty||1),category:item.category||'أخرى',src:'image'}));
+  const {error}=await sb.from('commitment_items').insert(toInsert);
+  if(error){toast('خطأ: '+error.message,'err');return;}
+  await updateCommitPaidAmountIfPaid();
   closeSheet('photoAnalyzeOverlay');
+  await renderCommitItems();
+  renderCommitCatReport();
+  refreshFixed();
   toast(`✅ أُضيف ${items.length} صنف`,'ok');
 }
 
 // ══════════════════════════════════════════
 //  ARCHIVE
 // ══════════════════════════════════════════
-function getArchiveMonths(){
-  const mk=getCurrentMonthKey();
-  return[...new Set(DB.fixedLogs.map(l=>l.monthKey))].filter(k=>k&&k!==mk).sort().reverse();
-}
-
 function renderArchive(){
-  const months=getArchiveMonths();
   const container=document.getElementById('archiveSection');
+  const mk=getCurrentMonthKey();
+  const paidOld=_allGroupCommits.filter(c=>c.is_paid&&c.month_key!==mk);
+  const months=[...new Set(paidOld.map(c=>c.month_key))].filter(Boolean).sort().reverse();
   if(!container||!months.length){if(container)container.innerHTML='';return;}
   let html='<div class="archive-hd">🗂️ الأرشيف الشهري</div>';
-  months.forEach(mk=>{
-    const logs=DB.fixedLogs.filter(l=>l.monthKey===mk);
-    const total=logs.reduce((s,l)=>s+l.amount,0);
-    const label=getMonthLabel(mk);
-    const catMap={};
-    logs.forEach(l=>{const k=l.catName||l.catId;catMap[k]=(catMap[k]||0)+l.amount;});
+  months.forEach(m=>{
+    const monthCommits=paidOld.filter(c=>c.month_key===m);
+    const total=monthCommits.reduce((s,c)=>s+(c.paid_amount||0),0);
     html+=`<div class="archive-card">
       <div class="archive-card-hd" onclick="toggleArchiveCard(this)">
-        <div class="archive-card-title">📅 ${label}</div>
+        <div class="archive-card-title">📅 ${getMonthLabel(m)}</div>
         <div style="display:flex;align-items:center;gap:6px">
           <span class="archive-card-total">${total.toFixed(2)} ر.س</span>
           <span class="archive-chevron">▾</span>
         </div>
       </div>
       <div class="archive-card-body">`;
-    Object.entries(catMap).sort((a,b)=>b[1]-a[1]).forEach(([name,amt])=>{
-      const items=(DB.commitmentItems[DB.fixedCats.find(c=>c.name===name)?.id]||[]).filter(i=>i.monthKey===mk);
+    monthCommits.sort((a,b)=>(b.paid_amount||0)-(a.paid_amount||0)).forEach(c=>{
       html+=`<div class="archive-cat-row">
-        <span class="archive-cat-name">${getIcon(name)} ${name}${items.length?`<div class="archive-items-count">${items.length} صنف</div>`:''}</span>
-        <span class="archive-cat-amt">${amt.toFixed(2)} ر.س</span></div>`;
+        <span class="archive-cat-name">${getIcon(c.name)} ${c.name}</span>
+        <span class="archive-cat-amt">${(c.paid_amount||0).toFixed(2)} ر.س</span></div>`;
     });
     html+='</div></div>';
   });
@@ -1891,17 +1930,17 @@ function toggleArchiveCard(el){
 function renderCommitCompare(){
   const container=document.getElementById('commitCompareSection');
   if(!container) return;
-  const allKeys=[...new Set(DB.fixedLogs.map(l=>l.monthKey))].filter(Boolean).sort().reverse();
+  const paidAll=_allGroupCommits.filter(c=>c.is_paid);
+  const allKeys=[...new Set(paidAll.map(c=>c.month_key))].filter(Boolean).sort().reverse();
   if(allKeys.length<2){container.innerHTML='';return;}
-  const catNames=[...new Set(DB.fixedCats.map(c=>c.name))];
+  const catNames=[...new Set(_allGroupCommits.map(c=>c.name))];
   let html='<div class="sec-hd" style="padding-top:8px"><h2>مقارنة شهرية</h2><span class="badge">بين الالتزامات</span></div><div class="compare-sec">';
   const colors=['var(--accent3)','var(--accent)','var(--accent4)'];
   catNames.forEach(name=>{
-    const cat=DB.fixedCats.find(c=>c.name===name);
-    const allCatLogs=DB.fixedLogs.filter(l=>l.catName===name||(cat&&l.catId===cat.id));
+    const allCatLogs=paidAll.filter(c=>c.name===name);
     if(!allCatLogs.length) return;
     const monthAmts={};
-    allCatLogs.forEach(l=>{monthAmts[l.monthKey]=(monthAmts[l.monthKey]||0)+l.amount;});
+    allCatLogs.forEach(c=>{monthAmts[c.month_key]=(monthAmts[c.month_key]||0)+(c.paid_amount||0);});
     const months=Object.keys(monthAmts).sort().reverse().slice(0,3);
     if(!months.length) return;
     const maxAmt=Math.max(...months.map(m=>monthAmts[m]),1);
@@ -1925,7 +1964,7 @@ function renderCommitCompare(){
   });
   // أعلى صرف
   const bestMonth=allKeys[0];
-  const bestTotal=DB.fixedLogs.filter(l=>l.monthKey===bestMonth).reduce((s,l)=>s+l.amount,0);
+  const bestTotal=paidAll.filter(c=>c.month_key===bestMonth).reduce((s,c)=>s+(c.paid_amount||0),0);
   html+=`<div class="compare-card"><div class="compare-title"><span>🏆</span> أعلى صرف للالتزامات</div>
     <div style="text-align:center;padding:8px 0">
       <div style="font-size:22px;font-weight:900;color:var(--accent)">${bestTotal.toFixed(2)} <small style="font-size:12px;color:var(--text2)">ر.س</small></div>
@@ -1977,53 +2016,50 @@ function confirmDel(msg, fn){
 // ══════════════════════════════════════════
 //  EDIT ITEM
 // ══════════════════════════════════════════
-let editingItemGlobalIdx = -1;
+let editingItemId = null;
 
-function openEditItem(globalIdx){
-  const id = currentCommitId;
-  const item = (DB.commitmentItems[id]||[])[globalIdx];
+function openEditItem(itemId){
+  const item=_commitItemsCache.find(i=>i.id===itemId);
   if(!item) return;
-  editingItemGlobalIdx = globalIdx;
+  editingItemId=itemId;
   populateCatSelects();
-  // populate edit selects
   ['editItemCatSel'].forEach(sid=>{
     const sel=document.getElementById(sid);
     if(sel) sel.innerHTML=ITEM_CATS.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
   });
-  document.getElementById('editItemName').value = item.name;
-  document.getElementById('editItemPrice').value = item.price;
-  document.getElementById('editItemQty').value = item.qty;
-  document.getElementById('editItemCatSel').value = item.category||ITEM_CATS[0].name;
+  document.getElementById('editItemName').value=item.name;
+  document.getElementById('editItemPrice').value=item.price;
+  document.getElementById('editItemQty').value=item.qty;
+  document.getElementById('editItemCatSel').value=item.category||ITEM_CATS[0].name;
   document.getElementById('editItemOverlay').classList.add('open');
 }
 
-function doEditItem(){
-  const id = currentCommitId;
-  const all = DB.commitmentItems[id]||[];
-  if(editingItemGlobalIdx < 0 || !all[editingItemGlobalIdx]) return;
-  const name = document.getElementById('editItemName').value.trim();
-  const price = parseFloat(document.getElementById('editItemPrice').value);
-  const qty = parseInt(document.getElementById('editItemQty').value)||1;
-  const category = document.getElementById('editItemCatSel').value;
+async function doEditItem(){
+  const name=document.getElementById('editItemName').value.trim();
+  const price=parseFloat(document.getElementById('editItemPrice').value);
+  const qty=parseInt(document.getElementById('editItemQty').value)||1;
+  const category=document.getElementById('editItemCatSel').value;
   if(!name){toast('أدخل اسم الصنف','bad');return;}
   if(!price||price<=0){toast('أدخل سعراً صحيحاً','bad');return;}
-  all[editingItemGlobalIdx] = {...all[editingItemGlobalIdx], name, price, qty, category};
-  updateFixedLogIfExists(id);
-  saveDB();
+  const {error}=await sb.from('commitment_items').update({name,price,qty,category}).eq('id',editingItemId);
+  if(error){toast('خطأ: '+error.message,'err');return;}
+  await updateCommitPaidAmountIfPaid();
   closeSheet('editItemOverlay');
-  renderCommitItems(); renderCommitCatReport(); renderFixed(); _renderFixedExtras();
+  await renderCommitItems();
+  renderCommitCatReport();
+  refreshFixed();
   toast('✅ تم تعديل الصنف','ok');
 }
 
 function doDelItemFromEdit(){
-  const id = currentCommitId;
-  confirmDel('حذف هذا الصنف؟', ()=>{
-    const all = DB.commitmentItems[id]||[];
-    if(editingItemGlobalIdx >= 0) all.splice(editingItemGlobalIdx, 1);
-    updateFixedLogIfExists(id);
-    saveDB();
+  confirmDel('حذف هذا الصنف؟', async ()=>{
+    const {error}=await sb.from('commitment_items').delete().eq('id',editingItemId);
+    if(error){toast('خطأ: '+error.message,'err');return;}
+    await updateCommitPaidAmountIfPaid();
     closeSheet('editItemOverlay');
-    renderCommitItems(); renderCommitCatReport(); renderFixed(); _renderFixedExtras();
+    await renderCommitItems();
+    renderCommitCatReport();
+    refreshFixed();
     toast('تم الحذف','bad');
   });
 }
@@ -2031,7 +2067,7 @@ function doDelItemFromEdit(){
 // ══════════════════════════════════════════
 //  STOCK
 // ══════════════════════════════════════════
-let stockItemGlobalIdx = -1;
+let stockItemId = null;
 
 const STOCK_LABELS = {full:'🟢 كامل', half:'🟡 النصف', quarter:'🟠 الربع', out:'🔴 نفذ'};
 const STOCK_CLASS  = {full:'stock-full', half:'stock-half', quarter:'stock-quarter', out:'stock-out'};
@@ -2047,9 +2083,9 @@ function stockClass(s){
   return '';
 }
 
-function openStockPicker(globalIdx, itemName){
-  stockItemGlobalIdx = globalIdx;
-  document.getElementById('stockOverlayTitle').textContent = `🗃️ مخزون: ${itemName}`;
+function openStockPicker(itemId, itemName){
+  stockItemId=itemId;
+  document.getElementById('stockOverlayTitle').textContent=`🗃️ مخزون: ${itemName}`;
   document.getElementById('stockCustomInp').value='';
   document.getElementById('stockOverlay').classList.add('open');
 }
@@ -2064,28 +2100,13 @@ function setStockCustom(){
   else applyStock('full');
 }
 
-function applyStock(val){
-  const id = currentCommitId;
-  const all = DB.commitmentItems[id]||[];
-  if(stockItemGlobalIdx >= 0 && all[stockItemGlobalIdx]){
-    all[stockItemGlobalIdx].stock = val;
-    saveDB();
-    renderCommitItems();
-  }
+async function applyStock(val){
+  const {error}=await sb.from('commitment_items').update({stock:val}).eq('id',stockItemId);
+  if(!error) await renderCommitItems();
   closeSheet('stockOverlay');
   toast('✅ تم تحديث المخزون','ok');
 }
 
-// ══════════════════════════════════════════
-//  UPDATE fixedLog AFTER ITEM CHANGE
-// ══════════════════════════════════════════
-function updateFixedLogIfExists(id){
-  const mk = getCurrentMonthKey();
-  const log = DB.fixedLogs.find(l=>l.catId===id&&l.monthKey===mk);
-  if(!log) return;
-  const items = (DB.commitmentItems[id]||[]).filter(i=>i.monthKey===mk);
-  log.amount = items.reduce((s,i)=>s+i.price*i.qty, 0);
-}
 
 // ══════════════════════════════════════════
 //  BUDGET ENTRIES LIST
@@ -2154,35 +2175,41 @@ async function initAuth(){
     return;
   }
   currentUser = data.session.user;
-  DB = loadDB(currentUser.id);
-  migrateDB();
   const { data: prof } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
   currentProfile = prof;
 
   const displayName = prof?.name || currentUser.email.split('@')[0];
-  document.getElementById('topbarUserName').textContent = displayName;
+  ['topbarUserName','fixedTopbarUserName','statsTopbarUserName','groupsTopbarUserName'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.textContent=displayName;
+  });
 
   // إذا ما عنده مجموعة محفوظة، نجيب أول مجموعة له أو ننشئ واحدة تلقائياً
   if(!currentGroupId){
     await autoSelectGroup();
   } else {
     document.getElementById('menuGroupName').textContent = '📁 ' + (currentGroupName || '');
+    await loadCurrentUserPerms(currentGroupId);
+    await loadGroupCommitmentsData();
   }
 
+  DB = loadDB(currentUser.id, currentGroupId);
+  migrateDB();
   initAppUI();
 }
 
 async function autoSelectGroup(){
   const { data: memberships } = await sb
     .from('group_members')
-    .select('role, groups(id, name)')
+    .select('role, joined_at, groups(id, name)')
     .eq('user_id', currentUser.id)
+    .order('joined_at', { ascending: false })
     .limit(1);
 
   if(memberships && memberships.length > 0){
     const g = memberships[0].groups;
     setActiveGroup(g.id, g.name);
     await loadCurrentUserPerms(g.id);
+    await loadGroupCommitmentsData();
   } else {
     // ننشئ مجموعة شخصية تلقائياً للمستخدم الجديد
     const defaultName = (currentProfile?.name || 'مصروفاتي') + ' — الشخصية';
@@ -2194,6 +2221,7 @@ async function autoSelectGroup(){
       await sb.from('group_settings').insert({ group_id: g.id });
       setActiveGroup(g.id, g.name);
       await loadCurrentUserPerms(g.id);
+      await loadGroupCommitmentsData();
     }
   }
 }
@@ -2431,9 +2459,12 @@ async function renderGroupsPage(){
 
 async function switchToGroup(id, name){
   setActiveGroup(id, name);
+  DB = loadDB(currentUser.id, id);
+  migrateDB();
   await loadCurrentUserPerms(id);
+  await loadGroupCommitmentsData();
   toast('✅ تم التبديل إلى: ' + name, 'ok');
-  if(currentUserPerms.can_view_expenses) goPage('home');
+  if(currentUserPerms.can_view_expenses){ renderHome(); goPage('home'); }
   else if(currentUserPerms.can_view_commitments) goPage('fixed');
   else goPage('stats');
 }
