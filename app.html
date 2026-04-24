@@ -2145,6 +2145,7 @@ let currentUser = null;
 let currentProfile = null;
 let currentGroupId = sessionStorage.getItem('groupId');
 let currentGroupName = sessionStorage.getItem('groupName');
+let currentUserPerms = { role: 'owner', can_view_expenses: true, can_edit_expenses: true, can_view_commitments: true, can_edit_commitments: true };
 
 async function initAuth(){
   const { data } = await sb.auth.getSession();
@@ -2181,6 +2182,7 @@ async function autoSelectGroup(){
   if(memberships && memberships.length > 0){
     const g = memberships[0].groups;
     setActiveGroup(g.id, g.name);
+    await loadCurrentUserPerms(g.id);
   } else {
     // ننشئ مجموعة شخصية تلقائياً للمستخدم الجديد
     const defaultName = (currentProfile?.name || 'مصروفاتي') + ' — الشخصية';
@@ -2191,6 +2193,7 @@ async function autoSelectGroup(){
       await sb.from('group_members').insert({ group_id: g.id, user_id: currentUser.id, role: 'owner' });
       await sb.from('group_settings').insert({ group_id: g.id });
       setActiveGroup(g.id, g.name);
+      await loadCurrentUserPerms(g.id);
     }
   }
 }
@@ -2201,6 +2204,45 @@ function setActiveGroup(id, name){
   sessionStorage.setItem('groupId', id);
   sessionStorage.setItem('groupName', name);
   document.getElementById('menuGroupName').textContent = '📁 ' + name;
+}
+
+async function loadCurrentUserPerms(groupId){
+  if(!currentUser || !groupId) return;
+  const { data } = await sb.from('group_members')
+    .select('role, can_view_expenses, can_edit_expenses, can_view_commitments, can_edit_commitments')
+    .eq('group_id', groupId)
+    .eq('user_id', currentUser.id)
+    .single();
+  if(data){
+    const isOwner = data.role === 'owner';
+    currentUserPerms = {
+      role:                 data.role,
+      can_view_expenses:    isOwner ? true : (data.can_view_expenses    ?? true),
+      can_edit_expenses:    isOwner ? true : (data.can_edit_expenses    ?? false),
+      can_view_commitments: isOwner ? true : (data.can_view_commitments ?? true),
+      can_edit_commitments: isOwner ? true : (data.can_edit_commitments ?? false),
+    };
+  } else {
+    currentUserPerms = { role: 'viewer', can_view_expenses: true, can_edit_expenses: false, can_view_commitments: true, can_edit_commitments: false };
+  }
+  applyPermissions();
+}
+
+function applyPermissions(){
+  const p = currentUserPerms;
+  const show = (id, visible) => { const el = document.getElementById(id); if(el) el.style.display = visible ? '' : 'none'; };
+  show('nav-home',  p.can_view_expenses);
+  show('nav-mic',   p.can_edit_expenses);
+  show('nav-fixed', p.can_view_commitments);
+  // إذا كان المستخدم على صفحة ممنوعة، حوّله لأقرب صفحة مسموحة
+  const active = document.querySelector('.page.active');
+  if(!active) return;
+  const pid = active.id;
+  if(pid === 'pg-home' && !p.can_view_expenses){
+    if(p.can_view_commitments) goPage('fixed'); else goPage('stats');
+  } else if(pid === 'pg-fixed' && !p.can_view_commitments){
+    if(p.can_view_expenses) goPage('home'); else goPage('stats');
+  }
 }
 
 // ══════════════════════════════════════════
@@ -2387,10 +2429,13 @@ async function renderGroupsPage(){
     }).join('');
 }
 
-function switchToGroup(id, name){
+async function switchToGroup(id, name){
   setActiveGroup(id, name);
+  await loadCurrentUserPerms(id);
   toast('✅ تم التبديل إلى: ' + name, 'ok');
-  goPage('home');
+  if(currentUserPerms.can_view_expenses) goPage('home');
+  else if(currentUserPerms.can_view_commitments) goPage('fixed');
+  else goPage('stats');
 }
 
 async function openGroupsPage(){
