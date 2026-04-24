@@ -869,24 +869,26 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 const DEFAULT_API_KEY = 'ضع-مفتاحك-هنا';
 
 // ══════════════════════════════════════════
-//  DB
+//  DB — مفتاح خاص بكل مستخدم
 // ══════════════════════════════════════════
-let DB = loadDB();
-function loadDB(){
-  try{ return JSON.parse(localStorage.getItem('msf_v3'))||{cats:{},logs:[],fixedCats:[],fixedLogs:[]}; }
+let DB = {cats:{},logs:[],fixedCats:[],fixedLogs:[]};
+function getDBKey(uid){ return 'msf_v3_' + uid; }
+function loadDB(uid){
+  try{ return JSON.parse(localStorage.getItem(getDBKey(uid)))||{cats:{},logs:[],fixedCats:[],fixedLogs:[]}; }
   catch(e){ return {cats:{},logs:[],fixedCats:[],fixedLogs:[]}; }
 }
-function saveDB(){ localStorage.setItem('msf_v3',JSON.stringify(DB)); }
-// migrate old data
-if(!DB.fixedCats) DB.fixedCats=[];
-if(!DB.fixedLogs) DB.fixedLogs=[];
-if(!DB.commitmentItems) DB.commitmentItems={};
-DB.fixedCats.forEach(c=>{if(!c.type) c.type='list';});
-if(DB.budget===undefined) DB.budget=0;
-if(!DB.budgetEntries) DB.budgetEntries=[];
-if(DB.monthStart===undefined) DB.monthStart=null;
-if(DB.monthAuto===undefined) DB.monthAuto=false;
-if(!DB.apiKey) DB.apiKey='';
+function saveDB(){ if(currentUser) localStorage.setItem(getDBKey(currentUser.id),JSON.stringify(DB)); }
+function migrateDB(){
+  if(!DB.fixedCats) DB.fixedCats=[];
+  if(!DB.fixedLogs) DB.fixedLogs=[];
+  if(!DB.commitmentItems) DB.commitmentItems={};
+  DB.fixedCats.forEach(c=>{if(!c.type) c.type='list';});
+  if(DB.budget===undefined) DB.budget=0;
+  if(!DB.budgetEntries) DB.budgetEntries=[];
+  if(DB.monthStart===undefined) DB.monthStart=null;
+  if(DB.monthAuto===undefined) DB.monthAuto=false;
+  if(!DB.apiKey) DB.apiKey='';
+}
 
 // ══════════════════════════════════════════
 //  ICONS & COLORS
@@ -2070,6 +2072,8 @@ async function initAuth(){
     return;
   }
   currentUser = data.session.user;
+  DB = loadDB(currentUser.id);
+  migrateDB();
   const { data: prof } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
   currentProfile = prof;
 
