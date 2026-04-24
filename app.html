@@ -2432,17 +2432,30 @@ async function removeMemberFromGroup() {
 }
 
 async function renderGroupsPage(){
-  const { data: memberships } = await sb
+  const { data: memberships, error } = await sb
     .from('group_members')
-    .select('role, groups(id, name, invite_code)')
+    .select('role, group_id, groups(id, name, invite_code)')
     .eq('user_id', currentUser.id);
 
   const el = document.getElementById('groupsList');
-  if(!memberships?.length){ el.innerHTML = ''; return; }
+  if(error){ el.innerHTML = `<div style="color:var(--danger);padding:16px;text-align:center">خطأ في تحميل المجموعات</div>`; return; }
+
+  // إذا فشل الـ join نجيب بيانات المجموعات يدوياً
+  let list = (memberships||[]).filter(m => m.groups);
+  if(!list.length && memberships?.length){
+    const groupIds = memberships.map(m => m.group_id);
+    const { data: groups } = await sb.from('groups').select('id, name, invite_code').in('id', groupIds);
+    list = (memberships||[]).map(m => ({
+      ...m,
+      groups: (groups||[]).find(g => g.id === m.group_id) || null
+    })).filter(m => m.groups);
+  }
+
+  if(!list.length){ el.innerHTML = '<div style="text-align:center;color:var(--text2);padding:20px">لا توجد مجموعات</div>'; return; }
 
   const roleLabel = r => r==='owner'?'👑 مالك':r==='editor'?'✏️ محرر':'👁️ مشاهد';
   el.innerHTML = `<div class="sec-hd" style="padding:0 0 10px"><h2>مجموعاتي</h2></div>` +
-    memberships.map(m => {
+    list.map(m => {
       const g = m.groups;
       const isOwner = m.role === 'owner';
       const active = g.id === currentGroupId ? 'border-color:var(--accent)' : '';
