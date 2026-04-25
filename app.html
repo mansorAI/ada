@@ -1756,9 +1756,8 @@ async function openCommitDetail(id){
   document.getElementById('commitDetailLabel').textContent=`${getIcon(cat.name)} ${cat.name}${isArchived?' 🗂️':''}`;
   document.getElementById('commitDetailDate').textContent=isArchived?getMonthLabel(cat.month_key):document.getElementById('dateLabel').textContent;
   document.getElementById('registerMonthBtn').style.display=(!isArchived&&!cat.is_paid)?'block':'none';
-  // إخفاء أزرار الإضافة للأرشيف (للعرض فقط)
   const actionRow=document.querySelector('#pg-commit-detail .action-row');
-  if(actionRow) actionRow.style.display=isArchived?'none':'';
+  if(actionRow) actionRow.style.display='';
   await renderCommitItems();
   renderCommitCatReport();
   goPage('commit-detail');
