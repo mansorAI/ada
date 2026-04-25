@@ -128,6 +128,12 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .back-row { text-align: center; margin-top: 14px; }
     .subtitle { color: var(--muted); font-size: 0.88rem; text-align: center; margin-bottom: 18px; }
+    .acc-type-btn {
+      flex:1; padding:10px 8px; border-radius:10px; border:2px solid var(--border);
+      background:var(--bg); color:var(--muted); font-family:'Tajawal',sans-serif;
+      font-size:0.9rem; cursor:pointer; transition:all 0.2s; font-weight:500;
+    }
+    .acc-type-btn.active { border-color:var(--accent); color:var(--accent); background:rgba(108,99,255,0.1); }
   </style>
 </head>
 <body>
@@ -179,6 +185,17 @@
           <label>تأكيد كلمة المرور</label>
           <input type="password" id="regPass2" placeholder="أعد كتابة كلمة المرور" autocomplete="new-password">
         </div>
+        <div class="form-group">
+          <label>نوع الحساب</label>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button type="button" class="acc-type-btn active" id="typePersonal" onclick="selectAccType('personal')">
+              👤 شخصي / عائلي
+            </button>
+            <button type="button" class="acc-type-btn" id="typeBusiness" onclick="selectAccType('business')">
+              🏪 عمل / تجاري
+            </button>
+          </div>
+        </div>
         <button class="btn" onclick="doRegister()" id="regBtn">
           إنشاء حساب
           <span class="spinner" id="regSpinner"></span>
@@ -211,9 +228,11 @@
     const SUPABASE_KEY = 'sb_publishable_nUDdwuF5r5KdA78CYm2hGA_R5gvLzha';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // إذا المستخدم مسجل دخول — روّحه للتطبيق
-    sb.auth.getSession().then(({ data }) => {
-      if (data.session) window.location.href = 'app.html';
+    // إذا المستخدم مسجل دخول — روّحه للتطبيق المناسب
+    sb.auth.getSession().then(async ({ data }) => {
+      if (!data.session) return;
+      const { data: prof } = await sb.from('profiles').select('account_type').eq('id', data.session.user.id).single();
+      window.location.href = (prof?.account_type === 'business') ? 'business.html' : 'app.html';
     });
 
     function showTab(tab) {
@@ -246,18 +265,26 @@
       document.getElementById(spinnerId).classList.toggle('show', on);
     }
 
+    let _accType = 'personal';
+    function selectAccType(t){
+      _accType = t;
+      document.getElementById('typePersonal').classList.toggle('active', t==='personal');
+      document.getElementById('typeBusiness').classList.toggle('active', t==='business');
+    }
+
     async function doLogin() {
       const email = document.getElementById('loginEmail').value.trim();
       const pass  = document.getElementById('loginPass').value;
       if (!email || !pass) return showMsg('أدخل البريد وكلمة المرور');
       setLoading('loginBtn', 'loginSpinner', true);
       clearMsg();
-      const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+      const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
       setLoading('loginBtn', 'loginSpinner', false);
       if (error) {
         showMsg(error.message.includes('Invalid') ? 'البريد أو كلمة المرور غير صحيحة' : error.message);
       } else {
-        window.location.href = 'app.html';
+        const { data: prof } = await sb.from('profiles').select('account_type').eq('id', data.user.id).single();
+        window.location.href = (prof?.account_type === 'business') ? 'business.html' : 'app.html';
       }
     }
 
@@ -272,14 +299,18 @@
       if (pass !== pass2)   return showMsg('كلمتا المرور غير متطابقتين');
       setLoading('regBtn', 'regSpinner', true);
       clearMsg();
-      const { error } = await sb.auth.signUp({
+      const { data, error } = await sb.auth.signUp({
         email, password: pass,
-        options: { data: { name } }
+        options: { data: { name, account_type: _accType } }
       });
       setLoading('regBtn', 'regSpinner', false);
       if (error) {
         showMsg(error.message);
       } else {
+        // حفظ account_type في profiles
+        if (data?.user) {
+          await sb.from('profiles').update({ account_type: _accType }).eq('id', data.user.id);
+        }
         showMsg('تم إنشاء الحساب! تحقق من بريدك الإلكتروني لتأكيد الحساب.', 'success');
       }
     }
