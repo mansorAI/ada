@@ -719,6 +719,12 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         </div>
       </div>
     </div>
+    <div class="inp-wrap">
+      <div class="inp-lbl">إرسال المهمة إلى</div>
+      <select id="taskAssignSel" class="inp">
+        <option value="">🌐 عامة (كل الأعضاء)</option>
+      </select>
+    </div>
     <button class="btn-primary" onclick="doAddTask()">➕ إضافة المهمة</button>
   </div>
 </div>
@@ -2656,9 +2662,23 @@ function selectTaskType(type){
   document.getElementById('typeNormalSel').classList.toggle('selected', type==='normal');
 }
 
-function openAddTask(){
+async function openAddTask(){
   document.getElementById('taskNameInp').value='';
   selectTaskType('normal');
+  // populate assign dropdown
+  const sel=document.getElementById('taskAssignSel');
+  sel.innerHTML='<option value="">🌐 عامة (كل الأعضاء)</option>';
+  const {data:members}=await sb.from('group_members')
+    .select('user_id, profiles(name,email)')
+    .eq('group_id',currentGroupId);
+  (members||[]).filter(m=>m.user_id!==currentUser.id).forEach(m=>{
+    const n=m.profiles?.name||m.profiles?.email||'مستخدم';
+    const opt=document.createElement('option');
+    opt.value=m.user_id;
+    opt.dataset.name=n;
+    opt.textContent='👤 '+n;
+    sel.appendChild(opt);
+  });
   document.getElementById('addTaskOverlay').classList.add('open');
   setTimeout(()=>document.getElementById('taskNameInp').focus(),350);
 }
@@ -2666,16 +2686,29 @@ function openAddTask(){
 async function doAddTask(){
   const name=document.getElementById('taskNameInp').value.trim();
   if(!name){toast('أدخل اسم المهمة','bad');return;}
-  const {error}=await sb.from('tasks').insert({
+  const sel=document.getElementById('taskAssignSel');
+  const toUserId=sel.value;
+  const toUserName=sel.selectedOptions[0]?.dataset.name||'';
+  const {data:inserted,error}=await sb.from('tasks').insert({
     group_id:currentGroupId, name, type:_selectedTaskType,
     status:'pending', added_by:currentUser.id
-  });
+  }).select().single();
   if(error) return toast('خطأ: '+error.message,'err');
-  logAction('add','task',name);
+  // if assigned to a specific member → create transfer immediately
+  if(toUserId && inserted){
+    const fromName=currentProfile?.name||currentUser?.email||'';
+    await sb.from('task_transfers').insert({
+      task_id:inserted.id, group_id:currentGroupId,
+      from_user:currentUser.id, from_name:fromName,
+      to_user:toUserId, to_name:toUserName, status:'pending'
+    });
+  }
+  logAction('add','task',name,{assigned_to:toUserName||'عامة'});
   closeSheet('addTaskOverlay');
   await loadGroupTasks();
   renderTasksTable();
-  toast('✅ تم إضافة المهمة','ok');
+  await loadPendingTransfers();
+  toast(toUserId?`✅ أُضيفت وأُرسلت إلى ${toUserName}`:'✅ تم إضافة المهمة','ok');
 }
 
 function openChangeTaskStatus(id, name){
