@@ -1186,8 +1186,8 @@ function renderHome(){
   document.getElementById('emptyLog').style.display=recentLogs.length?'none':'block';
   recentLogs.forEach(log=>{
     const d=new Date(log.ts);
-    const timeStr=d.toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
-    const dateStr=d.toLocaleDateString('ar-SA',{weekday:'short',month:'short',day:'numeric'});
+    const timeStr=d.toLocaleTimeString('ar-SA-u-ca-gregory',{hour:'2-digit',minute:'2-digit'});
+    const dateStr=d.toLocaleDateString('ar-SA-u-ca-gregory',{weekday:'short',month:'short',day:'numeric'});
     const li=document.createElement('div'); li.className='log-item';
     li.innerHTML=`
       <div class="log-dot" style="background:${catColor(Object.keys(cats).indexOf(log.name))}"></div>
@@ -1230,8 +1230,8 @@ function openCatDetail(name){
   } else {
     logs.forEach(log=>{
       const d=new Date(log.ts);
-      const timeStr=d.toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
-      const dateStr=d.toLocaleDateString('ar-SA',{weekday:'long',month:'long',day:'numeric'});
+      const timeStr=d.toLocaleTimeString('ar-SA-u-ca-gregory',{hour:'2-digit',minute:'2-digit'});
+      const dateStr=d.toLocaleDateString('ar-SA-u-ca-gregory',{weekday:'long',month:'long',day:'numeric'});
       const li=document.createElement('div'); li.className='log-item';
       li.innerHTML=`
         <div class="log-dot" style="background:${color}"></div>
@@ -1274,7 +1274,7 @@ async function renderFixed(){
       if(catType==='list') openCommitDetail(cat.id);
       else openPayFixed(cat.id,cat.name,cat.budget||0);
     };
-    const paidDate=paid&&cat.paid_at?new Date(cat.paid_at).toLocaleDateString('ar-SA',{day:'numeric',month:'short',year:'numeric'}):'';
+    const paidDate=paid&&cat.paid_at?new Date(cat.paid_at).toLocaleDateString('ar-SA-u-ca-gregory',{day:'numeric',month:'short',year:'numeric'}):'';
     card.innerHTML=`
       <div class="fc-icon">${getIcon(cat.name)}</div>
       <div class="fc-body">
@@ -1645,14 +1645,14 @@ function getMonthLabel(mk){
     const startDay=DB.monthStart?new Date(DB.monthStart).getDate():start.getDate();
     const nextPs=_getNextPeriodStart(start,startDay);
     const end=new Date(nextPs.getTime()-86400000);
-    const s=start.toLocaleDateString('ar-SA',{day:'numeric',month:'long'});
-    const e=end.toLocaleDateString('ar-SA',{day:'numeric',month:'long',year:'numeric'});
+    const s=start.toLocaleDateString('ar-SA-u-ca-gregory',{day:'numeric',month:'long'});
+    const e=end.toLocaleDateString('ar-SA-u-ca-gregory',{day:'numeric',month:'long',year:'numeric'});
     return `${s} - ${e}`;
   }
   if(!mk) return '';
   const parts=mk.split('-');
   const d=new Date(parseInt(parts[0]),parseInt(parts[1]),1);
-  return d.toLocaleDateString('ar-SA',{month:'long',year:'numeric'});
+  return d.toLocaleDateString('ar-SA-u-ca-gregory',{month:'long',year:'numeric'});
 }
 
 function getMonthProgress(){
@@ -1688,7 +1688,7 @@ function updateMonthBar(){
     document.getElementById('monthProgressFill').style.width=p.pct+'%';
     document.getElementById('monthProgressLabel').textContent=p.label+` · ${p.daysLeft} يوم متبقٍ`;
     pw.style.display='block';
-    btn.textContent=DB.monthAuto?'📅 تلقائي':`📅 ${new Date(DB.monthStart).toLocaleDateString('ar-SA',{day:'numeric',month:'short'})}`;
+    btn.textContent=DB.monthAuto?'📅 تلقائي':`📅 ${new Date(DB.monthStart).toLocaleDateString('ar-SA-u-ca-gregory',{day:'numeric',month:'short'})}`;
   }else{pw.style.display='none';btn.textContent='📅 بداية الشهر';}
 }
 
@@ -2548,7 +2548,7 @@ function renderNotifList(){
   list.innerHTML=_pendingTransfers.map(tr=>{
     const taskName=tr.tasks?.name||'—';
     const fromName=tr.from_name||'—';
-    const date=new Date(tr.created_at).toLocaleString('ar-SA');
+    const date=new Date(tr.created_at).toLocaleString('ar-SA-u-ca-gregory');
     return `<div style="background:var(--surface2);border-radius:12px;padding:14px;margin-bottom:10px;border-right:3px solid var(--accent)">
       <div style="font-weight:700;font-size:14px;margin-bottom:4px">📦 ${taskName}</div>
       <div style="font-size:12px;color:var(--text2);margin-bottom:10px">أرسلها: <b>${fromName}</b> — ${date}</div>
@@ -2601,8 +2601,8 @@ async function openTaskHistory(taskId){
     const sClass=tr.status==='accepted'?'accepted':tr.status==='rejected'?'rejected':'pending';
     const sIcon=tr.status==='accepted'?'✅':tr.status==='rejected'?'❌':'⏳';
     const sText=tr.status==='accepted'?'قَبِل':tr.status==='rejected'?'رفض':'معلق';
-    const created=new Date(tr.created_at).toLocaleString('ar-SA');
-    const responded=tr.responded_at?new Date(tr.responded_at).toLocaleString('ar-SA'):null;
+    const created=new Date(tr.created_at).toLocaleString('ar-SA-u-ca-gregory');
+    const responded=tr.responded_at?new Date(tr.responded_at).toLocaleString('ar-SA-u-ca-gregory'):null;
     return `<div class="transfer-history-item ${sClass}">
       <div style="font-size:13px;font-weight:700;margin-bottom:5px">
         📤 أرسلها <span style="color:var(--accent)">${tr.from_name||'—'}</span>
@@ -2730,8 +2730,8 @@ async function openBudgetEntries(){
     let html='';
     entries.forEach(e=>{
       const d=new Date(e.created_at);
-      const dateStr=d.toLocaleDateString('ar-SA',{day:'numeric',month:'long'});
-      const timeStr=d.toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
+      const dateStr=d.toLocaleDateString('ar-SA-u-ca-gregory',{day:'numeric',month:'long'});
+      const timeStr=d.toLocaleTimeString('ar-SA-u-ca-gregory',{hour:'2-digit',minute:'2-digit'});
       const name=e.profiles?.name||e.profiles?.email||'غير معروف';
       const isMyEntry=e.added_by===currentUser.id;
       const canEdit=isOwner||isMyEntry;
