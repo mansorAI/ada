@@ -345,6 +345,17 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .task-status-pending{background:rgba(245,166,35,.12);color:var(--accent);border-color:rgba(245,166,35,.3)}
 .task-status-in_progress{background:rgba(62,207,207,.12);color:var(--accent3);border-color:rgba(62,207,207,.3)}
 .task-status-done{background:rgba(34,197,94,.12);color:var(--success);border-color:rgba(34,197,94,.3);opacity:.7}
+.task-status-received{background:rgba(139,92,246,.12);color:#a78bfa;border-color:rgba(139,92,246,.3)}
+.task-receiver-name{font-size:10px;color:#a78bfa;margin-top:3px}
+.notif-bell-btn{position:relative;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:16px;color:var(--text2)}
+.notif-badge{position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;display:none}
+.transfer-history-item{background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:8px;border-right:3px solid var(--border)}
+.transfer-history-item.accepted{border-right-color:var(--success)}
+.transfer-history-item.rejected{border-right-color:#ef4444}
+.transfer-history-item.pending{border-right-color:var(--accent)}
+.task-action-btns{display:flex;gap:4px;justify-content:center}
+.task-mini-btn{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:4px 7px;cursor:pointer;font-size:13px;color:var(--text2);transition:all .15s}
+.task-mini-btn:hover{border-color:var(--accent);color:var(--accent)}
 .task-elapsed{font-size:11px;color:var(--text2);white-space:nowrap}
 .task-elapsed.running{color:var(--accent3)}
 .task-elapsed.frozen{color:var(--text2);opacity:.6}
@@ -674,8 +685,13 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   <div class="topbar">
     <div class="topbar-row">
       <div class="page-title">المهام 📋</div>
-      <div class="user-chip" onclick="toggleUserMenu(event)">
-        <span>👤</span><span class="uname" id="tasksTopbarUserName">...</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="notif-bell-btn" onclick="openNotifications()" title="المهام الواردة">
+          🔔<span class="notif-badge" id="notifBadge">0</span>
+        </button>
+        <div class="user-chip" onclick="toggleUserMenu(event)">
+          <span>👤</span><span class="uname" id="tasksTopbarUserName">...</span>
+        </div>
       </div>
     </div>
     <div class="tasks-filter-row" id="tasksFilterRow">
@@ -726,8 +742,42 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <div id="taskStatusName" style="text-align:center;background:var(--surface2);border-radius:12px;padding:10px;margin-bottom:16px;font-size:14px;font-weight:700;color:var(--text)"></div>
     <button class="btn-muted" style="width:100%;margin-bottom:10px" onclick="setTaskStatus('pending')">⏳ قيد الانتظار</button>
     <button class="btn-muted" style="width:100%;margin-bottom:10px;border-color:rgba(62,207,207,.4);color:var(--accent3)" onclick="setTaskStatus('in_progress')">🔄 جاري العمل</button>
-    <button class="btn-muted" style="width:100%;margin-bottom:16px;border-color:rgba(34,197,94,.4);color:var(--success)" onclick="setTaskStatus('done')">✅ منجزة</button>
+    <button class="btn-muted" style="width:100%;margin-bottom:10px;border-color:rgba(34,197,94,.4);color:var(--success)" onclick="setTaskStatus('done')">✅ منجزة</button>
+    <button class="btn-muted" style="width:100%;margin-bottom:16px;border-color:rgba(139,92,246,.4);color:#a78bfa" onclick="setTaskStatus('received')">📦 تم الاستلام</button>
     <button class="btn-muted" onclick="closeSheet('taskStatusOverlay')">إلغاء</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: TRANSFER TASK ══════════ -->
+<div class="overlay" id="transferTaskOverlay" onclick="bgClose(event,'transferTaskOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title">📤 إرسال المهمة</div>
+    <div id="transferTaskTitle" style="text-align:center;background:var(--surface2);border-radius:12px;padding:10px;margin-bottom:16px;font-size:14px;font-weight:700;color:var(--text)"></div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px;text-align:center">اختر العضو الذي تريد إرسال المهمة إليه</div>
+    <div id="transferMembersList"></div>
+    <button class="btn-muted" style="width:100%;margin-top:6px" onclick="closeSheet('transferTaskOverlay')">إلغاء</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: NOTIFICATIONS ══════════ -->
+<div class="overlay" id="taskNotifOverlay" onclick="bgClose(event,'taskNotifOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title">🔔 المهام الواردة</div>
+    <div id="taskNotifList"></div>
+    <button class="btn-muted" style="width:100%;margin-top:6px" onclick="closeSheet('taskNotifOverlay')">إغلاق</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: TASK HISTORY ══════════ -->
+<div class="overlay" id="taskHistoryOverlay" onclick="bgClose(event,'taskHistoryOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title">📋 سجل المهمة</div>
+    <div id="taskHistoryTaskName" style="text-align:center;background:var(--surface2);border-radius:12px;padding:10px;margin-bottom:16px;font-size:14px;font-weight:700;color:var(--text)"></div>
+    <div id="taskHistoryList"></div>
+    <button class="btn-muted" style="width:100%;margin-top:6px" onclick="closeSheet('taskHistoryOverlay')">إغلاق</button>
   </div>
 </div>
 
@@ -958,7 +1008,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <div class="inp-wrap"><div class="inp-lbl">تاريخ بداية الشهر</div>
       <input id="monthStartInp" class="inp" type="date">
     </div>
-    <p style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.8">سيحسب الموقع الشهر من هذا التاريخ لمدة 30 يوماً. فعّل "تلقائي" لاستخدام التقويم الميلادي بدلاً من ذلك.</p>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.8">كل شهر يبدأ من هذا اليوم ويمتد حسب طول الشهر (28–31 يوم). فعّل "تلقائي" لاستخدام التقويم الميلادي بدلاً من ذلك.</p>
     <button class="btn-primary" onclick="saveMonthStart()">✅ حفظ التاريخ</button>
   </div>
 </div>
@@ -1564,23 +1614,40 @@ let _groupApiKey='';
 let _groupBudgetEntries=[];
 let _editingBudgetId=null;
 
+function _getPeriodStart(now,startDay){
+  let y=now.getFullYear(),m=now.getMonth();
+  let ps=new Date(y,m,Math.min(startDay,new Date(y,m+1,0).getDate()),0,0,0,0);
+  if(ps>now){
+    m--;if(m<0){m=11;y--;}
+    ps=new Date(y,m,Math.min(startDay,new Date(y,m+1,0).getDate()),0,0,0,0);
+  }
+  return ps;
+}
+
+function _getNextPeriodStart(ps,startDay){
+  let y=ps.getFullYear(),m=ps.getMonth()+1;
+  if(m>11){m=0;y++;}
+  return new Date(y,m,Math.min(startDay,new Date(y,m+1,0).getDate()),0,0,0,0);
+}
+
 function getCurrentMonthKey(){
   if(DB.monthAuto||!DB.monthStart){
     const n=new Date();return `${n.getFullYear()}-${n.getMonth()}`;
   }
-  const start=new Date(DB.monthStart);
-  const now=new Date();
-  const periodMs=30*24*3600*1000;
-  const diff=Math.floor((now-start)/periodMs);
-  const ps=new Date(start.getTime()+diff*periodMs);
-  return `custom-${ps.getTime()}`;
+  const startDay=new Date(DB.monthStart).getDate();
+  return `custom-${_getPeriodStart(new Date(),startDay).getTime()}`;
 }
 
 function getMonthLabel(mk){
   if(mk&&mk.startsWith('custom-')){
-    const ts=parseInt(mk.split('-')[1]);
-    const d=new Date(ts);
-    return d.toLocaleDateString('ar-SA',{month:'long',year:'numeric'});
+    const ts=parseInt(mk.replace('custom-',''));
+    const start=new Date(ts);
+    const startDay=DB.monthStart?new Date(DB.monthStart).getDate():start.getDate();
+    const nextPs=_getNextPeriodStart(start,startDay);
+    const end=new Date(nextPs.getTime()-86400000);
+    const s=start.toLocaleDateString('ar-SA',{day:'numeric',month:'long'});
+    const e=end.toLocaleDateString('ar-SA',{day:'numeric',month:'long',year:'numeric'});
+    return `${s} - ${e}`;
   }
   if(!mk) return '';
   const parts=mk.split('-');
@@ -1595,11 +1662,13 @@ function getMonthProgress(){
     const passed=n.getDate();
     return{pct:Math.round(passed/total*100),label:`${passed} من ${total} يوم`,daysLeft:total-passed};
   }
-  const start=new Date(DB.monthStart);
+  const startDay=new Date(DB.monthStart).getDate();
   const now=new Date();
-  const periodMs=30*24*3600*1000;
-  const passed=Math.floor(((now-start)%periodMs)/(24*3600*1000));
-  return{pct:Math.round(passed/30*100),label:`${passed} من 30 يوم`,daysLeft:30-passed};
+  const ps=_getPeriodStart(now,startDay);
+  const nextPs=_getNextPeriodStart(ps,startDay);
+  const total=Math.round((nextPs-ps)/86400000);
+  const passed=Math.floor((now-ps)/86400000);
+  return{pct:Math.min(100,Math.round(passed/total*100)),label:`${passed} من ${total} يوم`,daysLeft:Math.max(0,total-passed)};
 }
 
 async function toggleMonthAuto(){
@@ -1632,7 +1701,8 @@ function openMonthStart(){
 async function saveMonthStart(){
   const v=document.getElementById('monthStartInp').value;
   if(!v){toast('اختر تاريخاً','bad');return;}
-  DB.monthStart=new Date(v).getTime();DB.monthAuto=false;
+  const[y,mo,d]=v.split('-').map(Number);
+  DB.monthStart=new Date(y,mo-1,d,0,0,0,0).getTime();DB.monthAuto=false;
   document.getElementById('monthAutoToggle').checked=false;
   saveDB();updateMonthBar();closeSheet('monthStartOverlay');
   if(currentGroupId) await sb.from('group_settings').upsert({group_id:currentGroupId,month_start:DB.monthStart,month_auto:false,updated_at:new Date().toISOString()},{onConflict:'group_id'});
@@ -2185,7 +2255,7 @@ let _selectedTaskType='normal';
 async function loadGroupTasks(){
   if(!currentGroupId) return;
   const {data}=await sb.from('tasks')
-    .select('*, profiles(name,email)')
+    .select('*, profiles!added_by(name,email), receiver:profiles!received_by(name,email)')
     .eq('group_id',currentGroupId)
     .order('created_at',{ascending:false});
   _groupTasks=data||[];
@@ -2195,7 +2265,7 @@ async function openTasksPage(){
   goPage('tasks');
   const un=document.getElementById('tasksTopbarUserName');
   if(un) un.textContent=currentProfile?.name||currentUser?.email||'';
-  await loadGroupTasks();
+  await Promise.all([loadGroupTasks(), loadPendingTransfers()]);
   renderTasksTable();
   startTasksTimer();
 }
@@ -2242,37 +2312,49 @@ function renderTasksTable(){
   }
 
   const typeLabel=t=>t==='urgent'?`<span class="task-type-badge task-type-urgent">🔴 عاجل</span>`:`<span class="task-type-badge task-type-normal">🟢 عادي</span>`;
-  const statusLabel=s=>{
+  const statusBadge=s=>{
     if(s==='done') return `<span class="task-status-badge task-status-done">✅ منجزة</span>`;
     if(s==='in_progress') return `<span class="task-status-badge task-status-in_progress">🔄 جاري</span>`;
+    if(s==='received') return `<span class="task-status-badge task-status-received">📦 استُلمت</span>`;
     return `<span class="task-status-badge task-status-pending">⏳ انتظار</span>`;
   };
 
-  let html=`<div class="items-table-wrap" style="padding:0"><table class="items-table" style="min-width:320px">
+  let html=`<div class="items-table-wrap" style="padding:0"><table class="items-table" style="min-width:340px">
     <thead><tr>
       <th style="width:28px">#</th>
       <th style="text-align:right">المهمة</th>
       <th>النوع</th>
       <th>المدة</th>
       <th>الحالة</th>
-      ${canEdit?'<th></th>':''}
+      <th></th>
     </tr></thead><tbody>`;
 
   list.forEach((t,i)=>{
-    const isDone=t.status==='done';
-    const elapsed=formatElapsed(t.created_at, t.completed_at);
-    const elapsedClass=isDone?'frozen':'running';
+    const isDone=t.status==='done'||t.status==='received';
+    const elapsed=formatElapsed(t.created_at, isDone?(t.completed_at||t.received_at):null);
+    const elapsedClass=(t.status==='done'||t.status==='received')?'frozen':'running';
     const addedBy=t.profiles?.name||t.profiles?.email||'';
+    const rName=t.receiver?.name||t.receiver?.email||'';
+    const safeId=t.id;
+    const safeName=t.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    const clickableBadge=canEdit
+      ?`<span onclick="openChangeTaskStatus('${safeId}','${safeName}')" style="cursor:pointer">${statusBadge(t.status)}</span>`
+      :statusBadge(t.status);
+    const receiverLine=rName?`<div class="task-receiver-name">👤 ${rName}</div>`:'';
     html+=`<tr>
       <td style="color:var(--text2);font-size:11px">${i+1}</td>
       <td style="font-weight:700;font-size:13px">
         ${t.name}
-        ${addedBy?`<div style="font-size:10px;color:var(--text2);margin-top:2px">👤 ${addedBy}</div>`:''}
+        ${addedBy?`<div style="font-size:10px;color:var(--text2);margin-top:2px">➕ ${addedBy}</div>`:''}
       </td>
       <td>${typeLabel(t.type)}</td>
       <td><span class="task-elapsed ${elapsedClass}" id="elapsed-${t.id}">${elapsed}</span></td>
-      <td>${canEdit?`<span onclick="openChangeTaskStatus('${t.id}','${t.name.replace(/'/g,"\\'")}')">${statusLabel(t.status)}</span>`:statusLabel(t.status)}</td>
-      ${canEdit?`<td><button class="del-btn" onclick="deleteTask('${t.id}')">🗑️</button></td>`:''}
+      <td>${clickableBadge}${receiverLine}</td>
+      <td><div class="task-action-btns">
+        ${canEdit?`<button class="task-mini-btn" onclick="openTransferTask('${safeId}')" title="إرسال المهمة">📤</button>`:''}
+        <button class="task-mini-btn" onclick="openTaskHistory('${safeId}')" title="سجل المهمة">📋</button>
+        ${canEdit?`<button class="del-btn" onclick="deleteTask('${safeId}')">🗑️</button>`:''}
+      </div></td>
     </tr>`;
   });
 
@@ -2335,12 +2417,15 @@ async function setTaskStatus(status){
   const updates={status};
   if(status==='done') updates.completed_at=new Date().toISOString();
   else updates.completed_at=null;
+  if(status==='received'){updates.received_by=currentUser.id;updates.received_at=new Date().toISOString();}
+  else{updates.received_by=null;updates.received_at=null;}
   const {error}=await sb.from('tasks').update(updates).eq('id',_changingStatusTaskId);
   if(error) return toast('خطأ: '+error.message,'err');
   closeSheet('taskStatusOverlay');
   await loadGroupTasks();
   renderTasksTable();
-  toast(status==='done'?'✅ تم إنجاز المهمة':status==='in_progress'?'🔄 بدأ العمل على المهمة':'⏳ أُعيدت للانتظار','ok');
+  const msgs={done:'✅ تم إنجاز المهمة',in_progress:'🔄 بدأ العمل على المهمة',received:'📦 تم تسجيل الاستلام',pending:'⏳ أُعيدت للانتظار'};
+  toast(msgs[status]||'','ok');
 }
 
 async function deleteTask(id){
@@ -2349,6 +2434,157 @@ async function deleteTask(id){
   await loadGroupTasks();
   renderTasksTable();
   toast('تم حذف المهمة','bad');
+}
+
+// ══════════════════════════════════════════
+//  TASK TRANSFERS
+// ══════════════════════════════════════════
+let _transferTaskId=null;
+let _pendingTransfers=[];
+
+async function loadPendingTransfers(){
+  if(!currentUser||!currentGroupId) return;
+  const {data}=await sb.from('task_transfers')
+    .select('*, tasks(name)')
+    .eq('to_user',currentUser.id)
+    .eq('group_id',currentGroupId)
+    .eq('status','pending')
+    .order('created_at',{ascending:false});
+  _pendingTransfers=data||[];
+  updateNotifBadge();
+}
+
+function updateNotifBadge(){
+  const badge=document.getElementById('notifBadge');
+  if(!badge) return;
+  const c=_pendingTransfers.length;
+  badge.textContent=c;
+  badge.style.display=c>0?'flex':'none';
+}
+
+function openTransferTask(taskId){
+  _transferTaskId=taskId;
+  const task=_groupTasks.find(t=>t.id===taskId);
+  if(!task) return;
+  document.getElementById('transferTaskTitle').textContent=task.name;
+  renderTransferMembersList();
+  document.getElementById('transferTaskOverlay').classList.add('open');
+}
+
+async function renderTransferMembersList(){
+  const list=document.getElementById('transferMembersList');
+  if(!list) return;
+  list.innerHTML='<div style="text-align:center;color:var(--text2);padding:16px">جارٍ التحميل...</div>';
+  const {data:members}=await sb.from('group_members')
+    .select('user_id, profiles(name,email)')
+    .eq('group_id',currentGroupId);
+  const others=(members||[]).filter(m=>m.user_id!==currentUser.id);
+  if(!others.length){
+    list.innerHTML='<p style="text-align:center;color:var(--text2);padding:20px">لا يوجد أعضاء آخرون في المجموعة</p>';
+    return;
+  }
+  list.innerHTML=others.map(m=>{
+    const name=m.profiles?.name||m.profiles?.email||'مستخدم';
+    return `<button class="btn-muted" style="width:100%;margin-bottom:10px;text-align:right;font-size:14px"
+      onclick="sendTransfer('${m.user_id}','${name.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">
+      👤 ${name}
+    </button>`;
+  }).join('');
+}
+
+async function sendTransfer(toUserId,toUserName){
+  if(!_transferTaskId) return;
+  const fromName=currentProfile?.name||currentUser?.email||'';
+  const {error}=await sb.from('task_transfers').insert({
+    task_id:_transferTaskId, group_id:currentGroupId,
+    from_user:currentUser.id, from_name:fromName,
+    to_user:toUserId, to_name:toUserName, status:'pending'
+  });
+  if(error) return toast('خطأ في الإرسال: '+error.message,'err');
+  closeSheet('transferTaskOverlay');
+  toast(`✅ أُرسلت المهمة إلى ${toUserName}`,'ok');
+}
+
+async function openNotifications(){
+  await loadPendingTransfers();
+  renderNotifList();
+  document.getElementById('taskNotifOverlay').classList.add('open');
+}
+
+function renderNotifList(){
+  const list=document.getElementById('taskNotifList');
+  if(!list) return;
+  if(!_pendingTransfers.length){
+    list.innerHTML='<div style="text-align:center;padding:32px;color:var(--text2)">📭 لا توجد مهام واردة</div>';
+    return;
+  }
+  list.innerHTML=_pendingTransfers.map(tr=>{
+    const taskName=tr.tasks?.name||'—';
+    const fromName=tr.from_name||'—';
+    const date=new Date(tr.created_at).toLocaleString('ar-SA');
+    return `<div style="background:var(--surface2);border-radius:12px;padding:14px;margin-bottom:10px;border-right:3px solid var(--accent)">
+      <div style="font-weight:700;font-size:14px;margin-bottom:4px">📦 ${taskName}</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px">أرسلها: <b>${fromName}</b> — ${date}</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-primary" style="flex:1;padding:8px;font-size:13px" onclick="acceptTransfer('${tr.id}','${tr.task_id}')">✅ قبول</button>
+        <button class="btn-muted" style="flex:1;padding:8px;font-size:13px;color:#ef4444;border-color:rgba(239,68,68,.4)" onclick="rejectTransfer('${tr.id}')">❌ رفض</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function acceptTransfer(transferId,taskId){
+  const myName=currentProfile?.name||currentUser?.email||'';
+  const [r1,r2]=await Promise.all([
+    sb.from('task_transfers').update({status:'accepted',responded_at:new Date().toISOString()}).eq('id',transferId),
+    sb.from('tasks').update({received_by:currentUser.id,received_at:new Date().toISOString(),status:'received'}).eq('id',taskId)
+  ]);
+  if(r1.error||r2.error) return toast('خطأ في القبول','err');
+  toast('✅ تم قبول المهمة','ok');
+  await loadPendingTransfers();
+  renderNotifList();
+  await loadGroupTasks();
+  renderTasksTable();
+}
+
+async function rejectTransfer(transferId){
+  const {error}=await sb.from('task_transfers').update({status:'rejected',responded_at:new Date().toISOString()}).eq('id',transferId);
+  if(error) return toast('خطأ في الرفض','err');
+  toast('تم رفض المهمة','bad');
+  await loadPendingTransfers();
+  renderNotifList();
+}
+
+async function openTaskHistory(taskId){
+  const task=_groupTasks.find(t=>t.id===taskId);
+  document.getElementById('taskHistoryTaskName').textContent=task?.name||'—';
+  const histList=document.getElementById('taskHistoryList');
+  histList.innerHTML='<div style="text-align:center;color:var(--text2);padding:16px">جارٍ التحميل...</div>';
+  document.getElementById('taskHistoryOverlay').classList.add('open');
+  const {data}=await sb.from('task_transfers')
+    .select('*')
+    .eq('task_id',taskId)
+    .order('created_at',{ascending:true});
+  const transfers=data||[];
+  if(!transfers.length){
+    histList.innerHTML='<div style="text-align:center;padding:32px;color:var(--text2)">لا توجد عمليات تحويل لهذه المهمة</div>';
+    return;
+  }
+  histList.innerHTML=transfers.map(tr=>{
+    const sClass=tr.status==='accepted'?'accepted':tr.status==='rejected'?'rejected':'pending';
+    const sIcon=tr.status==='accepted'?'✅':tr.status==='rejected'?'❌':'⏳';
+    const sText=tr.status==='accepted'?'قَبِل':tr.status==='rejected'?'رفض':'معلق';
+    const created=new Date(tr.created_at).toLocaleString('ar-SA');
+    const responded=tr.responded_at?new Date(tr.responded_at).toLocaleString('ar-SA'):null;
+    return `<div class="transfer-history-item ${sClass}">
+      <div style="font-size:13px;font-weight:700;margin-bottom:5px">
+        📤 أرسلها <span style="color:var(--accent)">${tr.from_name||'—'}</span>
+        إلى <span style="color:#a78bfa">${tr.to_name||'—'}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:4px">🕐 ${created}</div>
+      ${responded?`<div style="font-size:12px;margin-top:6px">${sIcon} ${sText} — ${responded}</div>`:`<div style="font-size:12px;color:var(--accent);margin-top:4px">⏳ في انتظار الرد</div>`}
+    </div>`;
+  }).join('');
 }
 
 // ══════════════════════════════════════════
