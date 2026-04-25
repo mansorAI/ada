@@ -99,6 +99,17 @@ input:checked+.slider:before{transform:translateX(20px);background:var(--success
 .cat-chip .rm{background:none;border:none;color:var(--text2);cursor:pointer;font-size:14px;margin-right:2px;transition:color .2s}
 .cat-chip .rm:hover{color:var(--danger)}
 input[type=color]{width:44px;height:38px;padding:2px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);cursor:pointer;flex-shrink:0}
+/* EMOJI PICKER */
+.emoji-picker-wrap{position:relative;flex-shrink:0}
+.emoji-trigger{width:52px;height:38px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .2s}
+.emoji-trigger:hover{border-color:var(--accent)}
+.emoji-popup{position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px;width:280px;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,.5);display:none}
+.emoji-popup.open{display:block}
+.emoji-sections{max-height:220px;overflow-y:auto;scrollbar-width:thin}
+.emoji-section-lbl{font-size:10px;color:var(--text2);font-weight:700;padding:6px 4px 4px;letter-spacing:1px}
+.emoji-grid{display:flex;flex-wrap:wrap;gap:2px;margin-bottom:6px}
+.emoji-btn{width:34px;height:34px;border:none;background:none;font-size:20px;cursor:pointer;border-radius:8px;transition:background .15s;display:flex;align-items:center;justify-content:center}
+.emoji-btn:hover{background:var(--surface2)}
 
 /* TOAST */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface);border:1px solid var(--border);padding:10px 20px;border-radius:20px;font-size:13px;font-weight:700;opacity:0;transition:all .3s;z-index:999;pointer-events:none;white-space:nowrap}
@@ -188,7 +199,12 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1px solid var(--bord
       <div class="add-form">
         <div class="inp-grp" style="flex:0">
           <div class="inp-lbl">أيقونة</div>
-          <input class="inp" id="catIcon" type="text" placeholder="📦" maxlength="2" style="width:64px;text-align:center;font-size:20px;margin-bottom:0">
+          <div class="emoji-picker-wrap">
+            <button class="emoji-trigger" id="emojiTrigger" onclick="toggleEmojiPicker()" type="button">📦</button>
+            <div class="emoji-popup" id="emojiPopup">
+              <div class="emoji-sections" id="emojiSections"></div>
+            </div>
+          </div>
         </div>
         <div class="inp-grp">
           <div class="inp-lbl">اسم الفئة</div>
@@ -374,6 +390,44 @@ async function deleteGroup(id,name){
   loadGroups();
 }
 
+// ── EMOJI PICKER ──
+const EMOJI_GROUPS=[
+  {lbl:'🍽️ طعام وشراب', emojis:['🛒','🍎','🥦','🥕','🍅','🥩','🍗','🐟','🥚','🧀','🍞','🥐','🧈','🥛','🍰','🍫','🍬','☕','🧃','🥤','🍵','🧋']},
+  {lbl:'🏠 منزل وتنظيف', emojis:['🏠','🧴','🧼','🧹','🧺','🪣','🛁','🚿','🪥','🧻','🕯️','💡','🔌','🪑','🛋️','🛏️']},
+  {lbl:'👕 ملابس وأناقة', emojis:['👕','👗','👔','👖','👠','👟','🧣','🎩','👜','💍','💄','🪮','✂️']},
+  {lbl:'💊 صحة وجمال', emojis:['💊','💉','🩺','🏥','🩹','🧬','🩻','🧴','🪥','🧖','🏋️']},
+  {lbl:'🚗 مواصلات', emojis:['🚗','⛽','🛵','🚕','✈️','🚂','⚓','🛣️','🅿️','🔧','🛞']},
+  {lbl:'📱 تقنية وأجهزة', emojis:['📱','💻','🖥️','⌨️','🖨️','📷','📺','🎮','🔋','🔌','📡','🎧']},
+  {lbl:'🎓 تعليم وترفيه', emojis:['📚','🎓','✏️','🖊️','📖','🎬','🎵','🎨','🏆','🎯','🎲','🎭']},
+  {lbl:'💰 مالية', emojis:['💰','💳','🏦','📊','💵','🪙','💸','📈','🤝','📋','🗂️','📦']},
+  {lbl:'🌿 أخرى', emojis:['🌿','⭐','🔑','🎁','🛍️','📦','🏷️','🗑️','🔔','💬','📍','❤️']},
+];
+let _selectedEmoji='📦';
+
+function buildEmojiPicker(){
+  const sec=document.getElementById('emojiSections');
+  sec.innerHTML=EMOJI_GROUPS.map(g=>`
+    <div class="emoji-section-lbl">${g.lbl}</div>
+    <div class="emoji-grid">${g.emojis.map(e=>`<button class="emoji-btn" onclick="pickEmoji('${e}')">${e}</button>`).join('')}</div>
+  `).join('');
+}
+
+function toggleEmojiPicker(){
+  const p=document.getElementById('emojiPopup');
+  if(!p.classList.contains('open')){ buildEmojiPicker(); p.classList.add('open'); }
+  else p.classList.remove('open');
+}
+
+function pickEmoji(e){
+  _selectedEmoji=e;
+  document.getElementById('emojiTrigger').textContent=e;
+  document.getElementById('emojiPopup').classList.remove('open');
+}
+
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.emoji-picker-wrap')) document.getElementById('emojiPopup')?.classList.remove('open');
+});
+
 // ── CATEGORIES ──
 const DEFAULT_CATS=[
   {name:'مواد غذائية',icon:'🛒',color:'#22c55e'},
@@ -407,13 +461,14 @@ async function loadCategories(){
 }
 
 async function addCategory(){
-  const icon=document.getElementById('catIcon').value.trim()||'📦';
+  const icon=_selectedEmoji||'📦';
   const name=document.getElementById('catName').value.trim();
   const color=document.getElementById('catColor').value||'#6366f1';
   if(!name){toast('أدخل اسم الفئة','err');return;}
   const {error}=await sb.from('global_categories').insert({icon,name,color});
   if(error){toast('خطأ: '+(error.code==='23505'?'الفئة موجودة مسبقاً':error.message),'err');return;}
-  document.getElementById('catIcon').value='';
+  _selectedEmoji='📦';
+  document.getElementById('emojiTrigger').textContent='📦';
   document.getElementById('catName').value='';
   document.getElementById('catColor').value='#6366f1';
   toast('✅ تم إضافة الفئة');
