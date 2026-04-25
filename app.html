@@ -1695,14 +1695,23 @@ async function loadGroupCommitmentsData(){
   // حمّل إعدادات المجموعة من Supabase (مفتاح Claude + بداية الشهر)
   const {data:gs}=await sb.from('group_settings').select('claude_api_key,month_start,month_auto').eq('group_id',currentGroupId).single();
   _groupApiKey = gs?.claude_api_key || '';
-  // زامن إعداد بداية الشهر من Supabase → DB (المصدر الموثوق هو Supabase)
+  // زامن إعداد بداية الشهر
   if(gs){
     const remoteStart = gs.month_start ? Number(gs.month_start) : null;
-    const remoteAuto  = gs.month_auto  ?? false;
-    if(remoteStart !== DB.monthStart || remoteAuto !== DB.monthAuto){
-      DB.monthStart = remoteStart;
-      DB.monthAuto  = remoteAuto;
-      saveDB();
+    const remoteAuto  = gs.month_auto;
+    if(remoteStart){
+      // Supabase عنده قيمة → استخدمها كمصدر موثوق
+      if(remoteStart !== DB.monthStart || remoteAuto !== DB.monthAuto){
+        DB.monthStart = remoteStart;
+        DB.monthAuto  = remoteAuto ?? false;
+        saveDB();
+      }
+    } else if(DB.monthStart){
+      // localStorage عنده قيمة لكن Supabase فارغ → ارفعها لـ Supabase
+      await sb.from('group_settings').upsert({
+        group_id:currentGroupId, month_start:DB.monthStart,
+        month_auto:DB.monthAuto||false, updated_at:new Date().toISOString()
+      },{onConflict:'group_id'});
     }
   }
   const mk=getCurrentMonthKey();
