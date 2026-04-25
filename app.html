@@ -2466,8 +2466,24 @@ async function renderGroupsPage(){
           <div class="ec-meta"><span class="ec-count">${roleLabel(m.role)}</span>${g.id===currentGroupId?'<span class="ec-pct">نشطة</span>':''}</div>
         </div>
         <button class="member-add-btn" onclick="openGroupDetail('${g.id}','${g.name.replace(/'/g,"\\'")}',${isOwner})">👥 الأعضاء</button>
+        ${isOwner ? `<button class="del-btn" style="margin-right:6px" onclick="deleteGroup('${g.id}','${g.name.replace(/'/g,"\\'")}')">🗑️</button>` : ''}
       </div>`;
     }).join('');
+}
+
+async function deleteGroup(id, name){
+  if(!confirm(`هل أنت متأكد من حذف مجموعة "${name}"؟\nسيتم حذف جميع البيانات نهائياً ولا يمكن التراجع.`)) return;
+  const { error } = await sb.from('groups').delete().eq('id', id);
+  if(error) return toast('خطأ في الحذف: ' + error.message, 'err');
+  toast('تم حذف المجموعة', 'bad');
+  // إذا كانت المجموعة المحذوفة هي النشطة حالياً، ننتقل لمجموعة أخرى
+  if(currentGroupId === id){
+    const { data: others } = await sb.from('group_members').select('group_id, groups(id,name)').eq('user_id', currentUser.id).neq('group_id', id).limit(1);
+    const next = others?.[0]?.groups;
+    if(next){ await switchToGroup(next.id, next.name); }
+    else { currentGroupId = null; currentGroupName = null; localStorage.removeItem('msf_activeGroup'); goPage('groups'); }
+  }
+  await renderGroupsPage();
 }
 
 async function switchToGroup(id, name){
