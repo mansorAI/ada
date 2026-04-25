@@ -859,18 +859,18 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
-<!-- ══════════ OVERLAY: ADD BUDGET ══════════ -->
+<!-- ══════════ OVERLAY: ADD/EDIT BUDGET ══════════ -->
 <div class="overlay" id="budgetAddOverlay" onclick="bgClose(event,'budgetAddOverlay')">
   <div class="sheet">
     <div class="sh-handle"></div>
-    <div class="sh-title">💰 إضافة مبلغ للميزانية</div>
+    <div class="sh-title" id="budgetAddTitle">💰 إضافة مبلغ للميزانية</div>
     <div class="inp-wrap"><div class="inp-lbl">المبلغ (ريال)</div>
       <input id="budgetInpAmt" class="inp" type="number" inputmode="decimal" placeholder="0.00">
     </div>
     <div class="inp-wrap"><div class="inp-lbl">ملاحظة (اختياري)</div>
       <input id="budgetInpNote" class="inp" type="text" placeholder="مثال: راتب الشهر، مكافأة...">
     </div>
-    <button class="btn-primary" onclick="doAddBudget()">إضافة للميزانية</button>
+    <button class="btn-primary" id="budgetAddBtn" onclick="doAddBudget()">إضافة للميزانية</button>
   </div>
 </div>
 
@@ -1477,6 +1477,8 @@ let _groupCommits=[];
 let _allGroupCommits=[];
 let _commitItemsCache=[];
 let _groupApiKey='';
+let _groupBudgetEntries=[];
+let _editingBudgetId=null;
 
 function getCurrentMonthKey(){
   if(DB.monthAuto||!DB.monthStart){
@@ -1554,20 +1556,45 @@ function saveMonthStart(){
 //  BUDGET
 // ══════════════════════════════════════════
 function openBudgetAdd(){
+  _editingBudgetId=null;
   document.getElementById('budgetInpAmt').value='';
   document.getElementById('budgetInpNote').value='';
+  document.getElementById('budgetAddTitle').textContent='💰 إضافة مبلغ للميزانية';
+  document.getElementById('budgetAddBtn').textContent='إضافة للميزانية';
   document.getElementById('budgetAddOverlay').classList.add('open');
   setTimeout(()=>document.getElementById('budgetInpAmt').focus(),350);
 }
 
-function doAddBudget(){
+function openEditBudget(id, amount, note){
+  _editingBudgetId=id;
+  document.getElementById('budgetInpAmt').value=amount;
+  document.getElementById('budgetInpNote').value=note||'';
+  document.getElementById('budgetAddTitle').textContent='✏️ تعديل المبلغ';
+  document.getElementById('budgetAddBtn').textContent='حفظ التعديل';
+  closeSheet('budgetEntriesOverlay');
+  document.getElementById('budgetAddOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('budgetInpAmt').focus(),350);
+}
+
+async function doAddBudget(){
   const amt=parseFloat(document.getElementById('budgetInpAmt').value);
   const note=document.getElementById('budgetInpNote').value.trim();
   if(!amt||amt<=0){toast('أدخل مبلغاً صحيحاً','bad');return;}
-  DB.budget+=amt;
-  DB.budgetEntries.push({amount:amt,note,ts:Date.now()});
-  saveDB();closeSheet('budgetAddOverlay');renderBudget();
-  toast(`✅ أُضيف ${amt} ر.س للميزانية`,'ok');
+  if(_editingBudgetId){
+    const {error}=await sb.from('budget_entries').update({amount:amt,note}).eq('id',_editingBudgetId);
+    if(error) return toast('خطأ في التعديل: '+error.message,'err');
+    _editingBudgetId=null;
+    await loadGroupBudgetData(); closeSheet('budgetAddOverlay'); renderBudget();
+    toast('✅ تم تعديل المبلغ','ok');
+  } else {
+    const mk=getCurrentMonthKey();
+    const {error}=await sb.from('budget_entries').insert({
+      group_id:currentGroupId, added_by:currentUser.id, amount:amt, note, month_key:mk
+    });
+    if(error) return toast('خطأ: '+error.message,'err');
+    await loadGroupBudgetData(); closeSheet('budgetAddOverlay'); renderBudget();
+    toast(`✅ أُضيف ${amt} ر.س للميزانية`,'ok');
+  }
 }
 
 function getCommitsMonthTotal(){
@@ -1595,6 +1622,22 @@ async function loadGroupCommitmentsData(){
   }
   const {data:all}=await sb.from('commitments').select('*').eq('group_id',currentGroupId).order('created_at');
   _allGroupCommits=all||[];
+  await loadGroupBudgetData();
+}
+
+async function loadGroupBudgetData(){
+  if(!currentGroupId) return;
+  const mk=getCurrentMonthKey();
+  const {data}=await sb.from('budget_entries')
+    .select('*, profiles(name,email)')
+    .eq('group_id',currentGroupId)
+    .eq('month_key',mk)
+    .order('created_at',{ascending:false});
+  _groupBudgetEntries=data||[];
+}
+
+function getGroupBudgetTotal(){
+  return _groupBudgetEntries.reduce((s,e)=>s+Number(e.amount),0);
 }
 
 async function updateCommitPaidAmountIfPaid(){
@@ -1614,10 +1657,11 @@ function renderBudget(){
   const expTotal=Object.values(DB.cats).reduce((s,c)=>s+c.amount,0);
   const commitsTotal=getCommitsMonthTotal();
   const spent=expTotal+commitsTotal;
-  const rem=DB.budget-spent;
+  const budget=getGroupBudgetTotal();
+  const rem=budget-spent;
   const bEl=document.getElementById('budgetAmt');
   const rEl=document.getElementById('remainingAmt');
-  if(bEl) bEl.textContent=DB.budget.toFixed(2);
+  if(bEl) bEl.textContent=budget.toFixed(2);
   if(rEl){
     rEl.textContent=(rem<0?'-':'')+Math.abs(rem).toFixed(2)+' ر.س'+(rem<0?' (عجز)':'');
     rEl.className='remaining-amount '+(rem>=0?'pos':'neg');
@@ -2008,10 +2052,10 @@ function renderComprehensiveReport(){
         </div>
         <div style="margin-top:14px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
           <div style="font-size:13px;color:var(--text2)">الإجمالي الكلي: <b style="color:var(--accent)">${grand.toFixed(2)} ر.س</b></div>
-          <div style="font-size:13px;color:var(--text2)">الميزانية: <b style="color:var(--success)">${DB.budget.toFixed(2)} ر.س</b></div>
+          <div style="font-size:13px;color:var(--text2)">الميزانية: <b style="color:var(--success)">${getGroupBudgetTotal().toFixed(2)} ر.س</b></div>
         </div>
-        ${DB.budget>0?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:13px;text-align:center">
-          المتبقي: <b style="color:${DB.budget-grand>=0?'var(--success)':'var(--danger)'}">${(DB.budget-grand).toFixed(2)} ر.س</b>
+        ${getGroupBudgetTotal()>0?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:13px;text-align:center">
+          المتبقي: <b style="color:${getGroupBudgetTotal()-grand>=0?'var(--success)':'var(--danger)'}">${(getGroupBudgetTotal()-grand).toFixed(2)} ر.س</b>
         </div>`:''}
       </div>
     </div>`;
@@ -2122,25 +2166,36 @@ async function applyStock(val){
 // ══════════════════════════════════════════
 //  BUDGET ENTRIES LIST
 // ══════════════════════════════════════════
-function openBudgetEntries(){
-  const entries = DB.budgetEntries||[];
-  const container = document.getElementById('budgetEntriesList');
+async function openBudgetEntries(){
+  await loadGroupBudgetData();
+  const entries=_groupBudgetEntries;
+  const container=document.getElementById('budgetEntriesList');
+  const isOwner=currentUserPerms.role==='owner';
   if(!entries.length){
     container.innerHTML='<div class="empty" style="padding:20px"><p>لا توجد مبالغ مضافة بعد</p></div>';
   } else {
     let html='';
-    [...entries].reverse().forEach(e=>{
-      const d=new Date(e.ts);
-      const dateStr=d.toLocaleDateString('ar-SA',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
-      html+=`<div class="budget-entry-row">
-        <div>
-          <div class="budget-entry-amt">${e.amount.toFixed(2)} ر.س</div>
+    entries.forEach(e=>{
+      const d=new Date(e.created_at);
+      const dateStr=d.toLocaleDateString('ar-SA',{day:'numeric',month:'long'});
+      const timeStr=d.toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
+      const name=e.profiles?.name||e.profiles?.email||'غير معروف';
+      const isMyEntry=e.added_by===currentUser.id;
+      const canEdit=isOwner||isMyEntry;
+      const noteEsc=(e.note||'').replace(/'/g,"\\'");
+      html+=`<div class="budget-entry-row" style="align-items:flex-start">
+        <div style="flex:1">
+          <div class="budget-entry-amt">${Number(e.amount).toFixed(2)} ر.س</div>
           ${e.note?`<div class="budget-entry-note">${e.note}</div>`:''}
+          <div style="font-size:11px;color:var(--text2);margin-top:4px">👤 ${name} · ${dateStr} ${timeStr}</div>
         </div>
-        <div class="budget-entry-date">${dateStr}</div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          ${canEdit?`<button class="back-btn" style="padding:5px 10px;font-size:12px" onclick="openEditBudget('${e.id}',${e.amount},'${noteEsc}')">✏️</button>`:''}
+          ${isOwner?`<button class="del-btn" onclick="deleteBudgetEntry('${e.id}')">🗑️</button>`:''}
+        </div>
       </div>`;
     });
-    const total = entries.reduce((s,e)=>s+e.amount,0);
+    const total=entries.reduce((s,e)=>s+Number(e.amount),0);
     html+=`<div class="budget-total-row">
       <span style="font-size:12px;color:var(--text2);font-weight:700">الإجمالي</span>
       <span style="font-size:16px;font-weight:900;color:var(--success)">${total.toFixed(2)} ر.س</span>
@@ -2148,6 +2203,14 @@ function openBudgetEntries(){
     container.innerHTML=html;
   }
   document.getElementById('budgetEntriesOverlay').classList.add('open');
+}
+
+async function deleteBudgetEntry(id){
+  if(!confirm('حذف هذا المبلغ؟')) return;
+  await sb.from('budget_entries').delete().eq('id',id);
+  await loadGroupBudgetData();
+  renderBudget();
+  await openBudgetEntries();
 }
 
 // ══════════════════════════════════════════
