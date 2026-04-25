@@ -946,7 +946,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <div class="sh-title">🔑 مفتاح Claude API</div>
     <div class="api-hint" style="font-size:12px;color:var(--text2);line-height:1.8;margin-bottom:12px;background:var(--surface2);padding:10px 12px;border-radius:10px">
       لتحليل الصور يلزم مفتاح Claude API من Anthropic.<br>
-      المفتاح يُحفظ محلياً في جهازك فقط ولا يُرسَل لأي خادم آخر.
+      إذا كنت <b style="color:var(--accent)">مالك المجموعة</b>، سيُشارَك المفتاح تلقائياً مع جميع الأعضاء.<br>
+      إذا كنت عضواً، يمكنك إدخال مفتاحك الخاص أو انتظر أن يضيفه المالك.
     </div>
     <div class="inp-wrap"><div class="inp-lbl">المفتاح (يبدأ بـ sk-ant-)</div>
       <input id="apiKeyInp" class="inp" type="password" placeholder="sk-ant-api...">
@@ -1475,6 +1476,7 @@ let currentCommitId=null;
 let _groupCommits=[];
 let _allGroupCommits=[];
 let _commitItemsCache=[];
+let _groupApiKey='';
 
 function getCurrentMonthKey(){
   if(DB.monthAuto||!DB.monthStart){
@@ -1574,6 +1576,9 @@ function getCommitsMonthTotal(){
 
 async function loadGroupCommitmentsData(){
   if(!currentGroupId) return;
+  // حمّل مفتاح Claude من إعدادات المجموعة (للأعضاء غير المالكين)
+  const {data:gs}=await sb.from('group_settings').select('claude_api_key').eq('group_id',currentGroupId).single();
+  _groupApiKey = gs?.claude_api_key || '';
   const mk=getCurrentMonthKey();
   const {data:curr}=await sb.from('commitments').select('*').eq('group_id',currentGroupId).eq('month_key',mk).order('created_at');
   _groupCommits=curr||[];
@@ -1791,17 +1796,23 @@ function iVMsg(msg,cls){const el=document.getElementById('iVMsg');el.textContent
 // ══════════════════════════════════════════
 //  ADD ITEM: PHOTO
 // ══════════════════════════════════════════
-function getApiKey(){ return DB.apiKey || (DEFAULT_API_KEY.startsWith('ضع')?'':DEFAULT_API_KEY); }
+function getApiKey(){ return DB.apiKey || _groupApiKey || (DEFAULT_API_KEY.startsWith('ضع')?'':DEFAULT_API_KEY); }
 
 function openAddItemPhoto(){
   if(!getApiKey()){document.getElementById('apiKeyInp').value='';document.getElementById('apiKeyOverlay').classList.add('open');return;}
   document.getElementById('photoInput').click();
 }
 
-function saveApiKey(){
+async function saveApiKey(){
   const key=document.getElementById('apiKeyInp').value.trim();
   if(!key.startsWith('sk-ant-')){toast('مفتاح غير صحيح، يجب أن يبدأ بـ sk-ant-','bad');return;}
-  DB.apiKey=key;saveDB();closeSheet('apiKeyOverlay');toast('✅ تم حفظ المفتاح','ok');
+  DB.apiKey=key; saveDB();
+  // إذا كان المستخدم مالكاً، احفظ المفتاح في Supabase ليستخدمه بقية الأعضاء
+  if(currentGroupId && currentUserPerms.role==='owner'){
+    await sb.from('group_settings').upsert({ group_id: currentGroupId, claude_api_key: key }, { onConflict: 'group_id' });
+    _groupApiKey = key;
+  }
+  closeSheet('apiKeyOverlay'); toast('✅ تم حفظ المفتاح','ok');
   setTimeout(()=>document.getElementById('photoInput').click(),300);
 }
 
