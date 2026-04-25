@@ -622,6 +622,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       </div>
       <div id="memberSearchResults" style="margin-top:6px"></div>
     </div>
+    <button class="btn-muted" style="width:100%;margin-bottom:8px" onclick="openActivityLog()">📊 سجل النشاط</button>
     <button class="btn-muted" onclick="closeSheet('groupDetailOverlay')">إغلاق</button>
   </div>
 </div>
@@ -635,38 +636,23 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
     <div class="perm-section">
       <div class="perm-section-title">💸 المصروفات</div>
-      <label class="perm-row">
-        <span>رؤية المصروفات</span>
-        <input type="checkbox" id="permViewExp" class="perm-check">
-      </label>
-      <label class="perm-row">
-        <span>إضافة وتعديل المصروفات</span>
-        <input type="checkbox" id="permEditExp" class="perm-check">
-      </label>
+      <label class="perm-row"><span>رؤية المصروفات</span><input type="checkbox" id="permViewExp" class="perm-check"></label>
+      <label class="perm-row"><span>إضافة وتعديل المصروفات</span><input type="checkbox" id="permEditExp" class="perm-check"></label>
+      <label class="perm-row"><span>حذف المصروفات</span><input type="checkbox" id="permDelExp" class="perm-check"></label>
     </div>
 
     <div class="perm-section">
-      <div class="perm-section-title">📋 الالتزامات الشهرية</div>
-      <label class="perm-row">
-        <span>رؤية الالتزامات</span>
-        <input type="checkbox" id="permViewCom" class="perm-check">
-      </label>
-      <label class="perm-row">
-        <span>إضافة وتعديل الالتزامات</span>
-        <input type="checkbox" id="permEditCom" class="perm-check">
-      </label>
+      <div class="perm-section-title">📌 الالتزامات الشهرية</div>
+      <label class="perm-row"><span>رؤية الالتزامات</span><input type="checkbox" id="permViewCom" class="perm-check"></label>
+      <label class="perm-row"><span>إضافة وتعديل الالتزامات</span><input type="checkbox" id="permEditCom" class="perm-check"></label>
+      <label class="perm-row"><span>حذف الالتزامات</span><input type="checkbox" id="permDelCom" class="perm-check"></label>
     </div>
 
     <div class="perm-section">
       <div class="perm-section-title">📋 المهام</div>
-      <label class="perm-row">
-        <span>رؤية المهام</span>
-        <input type="checkbox" id="permViewTasks" class="perm-check">
-      </label>
-      <label class="perm-row">
-        <span>إضافة وتعديل المهام</span>
-        <input type="checkbox" id="permEditTasks" class="perm-check">
-      </label>
+      <label class="perm-row"><span>رؤية المهام</span><input type="checkbox" id="permViewTasks" class="perm-check"></label>
+      <label class="perm-row"><span>إضافة وتعديل المهام</span><input type="checkbox" id="permEditTasks" class="perm-check"></label>
+      <label class="perm-row"><span>حذف المهام</span><input type="checkbox" id="permDelTasks" class="perm-check"></label>
     </div>
 
     <div class="perm-section">
@@ -748,6 +734,16 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <button class="btn-muted" style="width:100%;margin-bottom:10px;border-color:rgba(34,197,94,.4);color:var(--success)" onclick="setTaskStatus('done')">✅ منجزة</button>
     <button class="btn-muted" style="width:100%;margin-bottom:16px;border-color:rgba(139,92,246,.4);color:#a78bfa" onclick="setTaskStatus('received')">📦 تم الاستلام</button>
     <button class="btn-muted" onclick="closeSheet('taskStatusOverlay')">إلغاء</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: ACTIVITY LOG ══════════ -->
+<div class="overlay" id="activityLogOverlay" onclick="bgClose(event,'activityLogOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title">📊 سجل النشاط</div>
+    <div id="activityLogList" style="max-height:60vh;overflow-y:auto"></div>
+    <button class="btn-muted" style="width:100%;margin-top:8px" onclick="closeSheet('activityLogOverlay')">إغلاق</button>
   </div>
 </div>
 
@@ -1323,6 +1319,7 @@ async function doAddFixed(){
   const mk=getCurrentMonthKey();
   const {error}=await sb.from('commitments').insert({group_id:currentGroupId,name,budget,type,month_key:mk});
   if(error){toast('خطأ: '+error.message,'err');return;}
+  logAction('add','commitment',name);
   closeSheet('addFixedOverlay');
   toast(`✅ أُضيفت "${name}" للثابتة`,'ok');
   await refreshFixed();
@@ -1348,8 +1345,11 @@ async function doPayFixed(){
 }
 
 async function delFixed(id){
+  if(!currentUserPerms.can_delete_commitments&&currentUserPerms.role!=='owner'){toast('ليس لديك صلاحية الحذف','bad');return;}
+  const commit=_groupCommits.find(c=>c.id===id)||_allGroupCommits.find(c=>c.id===id);
   const {error}=await sb.from('commitments').delete().eq('id',id);
   if(error){toast('خطأ: '+error.message,'err');return;}
+  logAction('delete','commitment',commit?.name||id);
   await refreshFixed();
   toast('تم الحذف','bad');
 }
@@ -1374,10 +1374,12 @@ function addEntry(name,amount,src='manual'){
 }
 
 function delCat(name){
+  if(!currentUserPerms.can_delete_expenses&&currentUserPerms.role!=='owner'){toast('ليس لديك صلاحية الحذف','bad');return;}
   if(!DB.cats[name]) return;
   DB.logs=DB.logs.filter(l=>l.name!==name);
   delete DB.cats[name];
   saveDB(); renderHome();
+  logAction('delete','expense',name);
   toast(`تم حذف "${name}"`, 'bad');
 }
 
@@ -1387,6 +1389,7 @@ function doAddManual(){
   if(!name){toast('أدخل اسم المصروف','bad');return;}
   if(!amt||amt<=0){toast('أدخل مبلغاً صحيحاً','bad');return;}
   addEntry(name,amt,'manual');
+  logAction('add','expense',name,{amount:amt});
   document.getElementById('inpName').value='';
   document.getElementById('inpAmt').value='';
   closeSheet('addOverlay');
@@ -2016,8 +2019,11 @@ function exportCommitToPDF(){
 }
 
 async function delCommitItem(itemId){
+  if(!currentUserPerms.can_delete_commitments&&currentUserPerms.role!=='owner'){toast('ليس لديك صلاحية الحذف','bad');return;}
+  const item=_commitItemsCache.find(i=>i.id===itemId);
   const {error}=await sb.from('commitment_items').delete().eq('id',itemId);
   if(error){toast('خطأ: '+error.message,'err');return;}
+  logAction('delete','item',item?.name||itemId);
   await updateCommitPaidAmountIfPaid();
   await renderCommitItems();
   renderCommitCatReport();
@@ -2516,6 +2522,7 @@ async function doAddTask(){
     status:'pending', added_by:currentUser.id
   });
   if(error) return toast('خطأ: '+error.message,'err');
+  logAction('add','task',name);
   closeSheet('addTaskOverlay');
   await loadGroupTasks();
   renderTasksTable();
@@ -2540,13 +2547,18 @@ async function setTaskStatus(status){
   closeSheet('taskStatusOverlay');
   await loadGroupTasks();
   renderTasksTable();
+  const task=_groupTasks.find(t=>t.id===_changingStatusTaskId);
+  logAction('edit','task',task?.name||'',{status});
   const msgs={done:'✅ تم إنجاز المهمة',in_progress:'🔄 بدأ العمل على المهمة',received:'📦 تم تسجيل الاستلام',pending:'⏳ أُعيدت للانتظار'};
   toast(msgs[status]||'','ok');
 }
 
 async function deleteTask(id){
+  if(!currentUserPerms.can_delete_tasks&&currentUserPerms.role!=='owner'){toast('ليس لديك صلاحية الحذف','bad');return;}
   if(!confirm('حذف هذه المهمة؟')) return;
+  const task=_groupTasks.find(t=>t.id===id);
   await sb.from('tasks').delete().eq('id',id);
+  logAction('delete','task',task?.name||id);
   await loadGroupTasks();
   renderTasksTable();
   toast('تم حذف المهمة','bad');
@@ -2699,6 +2711,52 @@ async function openTaskHistory(taskId){
       </div>
       <div style="font-size:11px;color:var(--text2);margin-bottom:4px">🕐 ${created}</div>
       ${responded?`<div style="font-size:12px;margin-top:6px">${sIcon} ${sText} — ${responded}</div>`:`<div style="font-size:12px;color:var(--accent);margin-top:4px">⏳ في انتظار الرد</div>`}
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+//  AUDIT LOG
+// ══════════════════════════════════════════
+async function logAction(action, entityType, entityName, details={}){
+  if(!currentGroupId||!currentUser) return;
+  const name=currentProfile?.name||currentUser.email||'';
+  await sb.from('audit_log').insert({
+    group_id:currentGroupId, user_id:currentUser.id,
+    user_email:currentUser.email, user_name:name,
+    action, entity_type:entityType, entity_name:entityName, details
+  });
+}
+
+async function openActivityLog(){
+  const list=document.getElementById('activityLogList');
+  list.innerHTML='<div style="text-align:center;color:var(--text2);padding:16px">جارٍ التحميل...</div>';
+  document.getElementById('activityLogOverlay').classList.add('open');
+  const {data}=await sb.from('audit_log')
+    .select('*')
+    .eq('group_id',viewingGroupId||currentGroupId)
+    .order('created_at',{ascending:false})
+    .limit(50);
+  if(!data||!data.length){
+    list.innerHTML='<div style="text-align:center;padding:32px;color:var(--text2)">لا توجد أنشطة مسجلة</div>';
+    return;
+  }
+  const actionIcon={add:'➕',edit:'✏️',delete:'🗑️',pay:'✅',transfer:'📤',accept:'✅',reject:'❌'};
+  list.innerHTML=data.map(log=>{
+    const icon=actionIcon[log.action]||'📝';
+    const dt=new Date(log.created_at).toLocaleString('ar-SA-u-ca-gregory',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const typeLabel={expense:'مصروف',commitment:'التزام',task:'مهمة',item:'صنف',budget:'ميزانية'}[log.entity_type]||log.entity_type||'';
+    return `<div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:8px;border-right:3px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div>
+          <span style="font-size:14px">${icon}</span>
+          <span style="font-weight:700;font-size:13px;margin-right:4px">${log.user_name||log.user_email||'—'}</span>
+          <span style="font-size:12px;color:var(--text2)">${log.action==='add'?'أضاف':log.action==='edit'?'عدّل':log.action==='delete'?'حذف':log.action==='pay'?'سجّل دفعة':log.action}</span>
+          ${typeLabel?`<span style="font-size:11px;color:var(--text2)"> ${typeLabel}</span>`:''}
+          ${log.entity_name?`<div style="font-size:12px;color:var(--accent);margin-top:2px">«${log.entity_name}»</div>`:''}
+        </div>
+        <div style="font-size:10px;color:var(--text2);white-space:nowrap;text-align:left">${dt}</div>
+      </div>
     </div>`;
   }).join('');
 }
@@ -2882,7 +2940,7 @@ let currentUser = null;
 let currentProfile = null;
 let currentGroupId = sessionStorage.getItem('groupId');
 let currentGroupName = sessionStorage.getItem('groupName');
-let currentUserPerms = { role: 'owner', can_view_expenses: true, can_edit_expenses: true, can_view_commitments: true, can_edit_commitments: true, can_view_tasks: true, can_edit_tasks: true };
+let currentUserPerms = { role: 'owner', can_view_expenses: true, can_edit_expenses: true, can_delete_expenses: true, can_view_commitments: true, can_edit_commitments: true, can_delete_commitments: true, can_view_tasks: true, can_edit_tasks: true, can_delete_tasks: true };
 
 async function initAuth(){
   const { data } = await sb.auth.getSession();
@@ -2953,23 +3011,26 @@ function setActiveGroup(id, name){
 async function loadCurrentUserPerms(groupId){
   if(!currentUser || !groupId) return;
   const { data } = await sb.from('group_members')
-    .select('role, can_view_expenses, can_edit_expenses, can_view_commitments, can_edit_commitments, can_view_tasks, can_edit_tasks')
+    .select('role, can_view_expenses, can_edit_expenses, can_delete_expenses, can_view_commitments, can_edit_commitments, can_delete_commitments, can_view_tasks, can_edit_tasks, can_delete_tasks')
     .eq('group_id', groupId)
     .eq('user_id', currentUser.id)
     .single();
   if(data){
     const isOwner = data.role === 'owner';
     currentUserPerms = {
-      role:                 data.role,
-      can_view_expenses:    isOwner ? true : (data.can_view_expenses    ?? true),
-      can_edit_expenses:    isOwner ? true : (data.can_edit_expenses    ?? false),
-      can_view_commitments: isOwner ? true : (data.can_view_commitments ?? true),
-      can_edit_commitments: isOwner ? true : (data.can_edit_commitments ?? false),
-      can_view_tasks:       isOwner ? true : (data.can_view_tasks       ?? true),
-      can_edit_tasks:       isOwner ? true : (data.can_edit_tasks       ?? false),
+      role:                   data.role,
+      can_view_expenses:      isOwner ? true  : (data.can_view_expenses      ?? true),
+      can_edit_expenses:      isOwner ? true  : (data.can_edit_expenses      ?? false),
+      can_delete_expenses:    isOwner ? true  : (data.can_delete_expenses    ?? false),
+      can_view_commitments:   isOwner ? true  : (data.can_view_commitments   ?? true),
+      can_edit_commitments:   isOwner ? true  : (data.can_edit_commitments   ?? false),
+      can_delete_commitments: isOwner ? true  : (data.can_delete_commitments ?? false),
+      can_view_tasks:         isOwner ? true  : (data.can_view_tasks         ?? true),
+      can_edit_tasks:         isOwner ? true  : (data.can_edit_tasks         ?? false),
+      can_delete_tasks:       isOwner ? true  : (data.can_delete_tasks       ?? false),
     };
   } else {
-    currentUserPerms = { role: 'viewer', can_view_expenses: true, can_edit_expenses: false, can_view_commitments: true, can_edit_commitments: false, can_view_tasks: true, can_edit_tasks: false };
+    currentUserPerms = { role: 'viewer', can_view_expenses: true, can_edit_expenses: false, can_delete_expenses: false, can_view_commitments: true, can_edit_commitments: false, can_delete_commitments: false, can_view_tasks: true, can_edit_tasks: false, can_delete_tasks: false };
   }
   applyPermissions();
 }
@@ -3017,7 +3078,7 @@ async function openGroupDetail(groupId, groupName, isOwner) {
 async function renderMembersList() {
   const { data: members } = await sb
     .from('group_members')
-    .select('id, user_id, role, can_view_expenses, can_edit_expenses, can_view_commitments, can_edit_commitments, can_view_tasks, can_edit_tasks, profiles(name, email)')
+    .select('id, user_id, role, can_view_expenses, can_edit_expenses, can_delete_expenses, can_view_commitments, can_edit_commitments, can_delete_commitments, can_view_tasks, can_edit_tasks, can_delete_tasks, profiles(name, email)')
     .eq('group_id', viewingGroupId);
 
   const el = document.getElementById('membersList');
@@ -3032,14 +3093,17 @@ async function renderMembersList() {
       const email = m.profiles?.email || '';
       const isMe  = m.user_id === currentUser.id;
       const canManage = viewingGroupIsOwner && m.role !== 'owner';
-      const ve = m.can_view_expenses    ?? true;
-      const ee = m.can_edit_expenses    ?? false;
-      const vc = m.can_view_commitments ?? true;
-      const ec = m.can_edit_commitments ?? false;
-      const vt = m.can_view_tasks       ?? true;
-      const et = m.can_edit_tasks       ?? false;
-      const perms = `مصروفات:${yn(ve)}${yn(ee)} التزامات:${yn(vc)}${yn(ec)} مهام:${yn(vt)}${yn(et)}`;
-      return `<div class="exp-card" style="margin-bottom:8px${canManage?';cursor:pointer':''}" ${canManage ? `onclick="openMemberPerms('${m.id}','${name.replace(/'/g,"\\'")}','${m.role}',${ve},${ee},${vc},${ec},${vt},${et})"` : ''}>
+      const ve = m.can_view_expenses      ?? true;
+      const ee = m.can_edit_expenses      ?? false;
+      const de = m.can_delete_expenses    ?? false;
+      const vc = m.can_view_commitments   ?? true;
+      const ec = m.can_edit_commitments   ?? false;
+      const dc = m.can_delete_commitments ?? false;
+      const vt = m.can_view_tasks         ?? true;
+      const et = m.can_edit_tasks         ?? false;
+      const dt = m.can_delete_tasks       ?? false;
+      const perms = `مصروفات:${yn(ve)}${yn(ee)}${yn(de)} التزامات:${yn(vc)}${yn(ec)}${yn(dc)} مهام:${yn(vt)}${yn(et)}${yn(dt)}`;
+      return `<div class="exp-card" style="margin-bottom:8px${canManage?';cursor:pointer':''}" ${canManage ? `onclick="openMemberPerms('${m.id}','${name.replace(/'/g,"\\'")}','${m.role}',${ve},${ee},${de},${vc},${ec},${dc},${vt},${et},${dt})"` : ''}>
         <div class="ec-icon">${m.role==='owner'?'👑':'👤'}</div>
         <div class="ec-body">
           <div class="ec-name">${name}${isMe?' (أنت)':''}</div>
@@ -3113,10 +3177,13 @@ async function addMemberToGroup(userId, userName) {
   toast(`✅ تمت إضافة ${userName}`, 'ok');
 }
 
-function openMemberPerms(memberId, name, role, ve, ee, vc, ec, vt=true, et=false) {
+function openMemberPerms(memberId, name, role, ve, ee, de, vc, ec, dc, vt=true, et=false, dt=false) {
   editingMemberId  = memberId;
   editingMemberRole = role;
   document.getElementById('memberPermsName').textContent = name;
+  document.getElementById('permDelExp').checked  = de;
+  document.getElementById('permDelCom').checked  = dc;
+  document.getElementById('permDelTasks').checked = dt;
   document.getElementById('permViewExp').checked = ve;
   document.getElementById('permEditExp').checked = ee;
   document.getElementById('permViewCom').checked = vc;
@@ -3135,13 +3202,16 @@ function selectMemberRole(role) {
 
 async function saveMemberPerms() {
   const { error } = await sb.from('group_members').update({
-    role: editingMemberRole,
-    can_view_expenses:    document.getElementById('permViewExp').checked,
-    can_edit_expenses:    document.getElementById('permEditExp').checked,
-    can_view_commitments: document.getElementById('permViewCom').checked,
-    can_edit_commitments: document.getElementById('permEditCom').checked,
-    can_view_tasks:       document.getElementById('permViewTasks').checked,
-    can_edit_tasks:       document.getElementById('permEditTasks').checked
+    role:                   editingMemberRole,
+    can_view_expenses:      document.getElementById('permViewExp').checked,
+    can_edit_expenses:      document.getElementById('permEditExp').checked,
+    can_delete_expenses:    document.getElementById('permDelExp').checked,
+    can_view_commitments:   document.getElementById('permViewCom').checked,
+    can_edit_commitments:   document.getElementById('permEditCom').checked,
+    can_delete_commitments: document.getElementById('permDelCom').checked,
+    can_view_tasks:         document.getElementById('permViewTasks').checked,
+    can_edit_tasks:         document.getElementById('permEditTasks').checked,
+    can_delete_tasks:       document.getElementById('permDelTasks').checked,
   }).eq('id', editingMemberId);
   if (error) return toast('خطأ: ' + error.message, 'err');
   closeSheet('memberPermsOverlay');
