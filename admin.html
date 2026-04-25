@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة التحكم — مصروفاتي</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#0a0a0f;--surface:#13131a;--surface2:#1c1c26;--surface3:#242432;--border:#2a2a3a;--accent:#f5a623;--accent2:#e8441a;--accent3:#3ecfcf;--text:#f0eeea;--text2:#7e7c8e;--text3:#b0adc0;--success:#22c55e;--danger:#ef4444;--r:14px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* AUTH SCREEN */
+.auth-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px 28px;width:100%;max-width:380px}
+.auth-logo{text-align:center;font-size:40px;margin-bottom:8px}
+.auth-title{text-align:center;font-size:22px;font-weight:900;margin-bottom:4px}
+.auth-sub{text-align:center;font-size:13px;color:var(--text2);margin-bottom:24px}
+.inp{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-family:'Tajawal',sans-serif;font-size:14px;outline:none;margin-bottom:12px}
+.inp:focus{border-color:var(--accent)}
+.btn{width:100%;padding:13px;border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:800;cursor:pointer;transition:opacity .2s}
+.btn:active{opacity:.8}
+.btn-primary{background:var(--accent);color:#000}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-muted{background:var(--surface2);border:1px solid var(--border);color:var(--text2)}
+.err-msg{color:var(--danger);font-size:13px;text-align:center;margin-top:8px}
+
+/* LAYOUT */
+.app{display:none}
+.sidebar{position:fixed;top:0;right:0;bottom:0;width:220px;background:var(--surface);border-left:1px solid var(--border);padding:24px 0;display:flex;flex-direction:column;gap:4px;z-index:10}
+.sidebar-logo{padding:0 20px 20px;border-bottom:1px solid var(--border);margin-bottom:8px}
+.sidebar-logo h1{font-size:18px;font-weight:900;color:var(--accent)}
+.sidebar-logo p{font-size:11px;color:var(--text2);margin-top:2px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:11px 20px;font-size:14px;font-weight:700;color:var(--text2);cursor:pointer;border-radius:0;transition:all .2s;border-right:3px solid transparent}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--surface2);color:var(--accent);border-right-color:var(--accent)}
+.nav-item .ni{font-size:18px}
+.sidebar-footer{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border)}
+.admin-badge{font-size:11px;background:rgba(245,166,35,.15);color:var(--accent);border:1px solid rgba(245,166,35,.3);padding:3px 8px;border-radius:6px}
+
+.main{margin-right:220px;padding:28px 32px;min-height:100vh}
+.page-hd{font-size:22px;font-weight:900;margin-bottom:6px}
+.page-sub{font-size:13px;color:var(--text2);margin-bottom:24px}
+
+/* CARDS */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:28px}
+.stat-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px}
+.stat-box-val{font-size:28px;font-weight:900;color:var(--accent)}
+.stat-box-lbl{font-size:12px;color:var(--text2);margin-top:4px}
+
+/* TABLE */
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:20px}
+.tbl-hd{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.tbl-hd h2{font-size:15px;font-weight:800}
+.tbl-hd .badge{font-size:11px;background:var(--surface2);border:1px solid var(--border);padding:3px 8px;border-radius:6px;color:var(--text2)}
+table{width:100%;border-collapse:collapse}
+th{text-align:right;padding:10px 16px;font-size:11px;color:var(--text2);font-weight:700;letter-spacing:.5px;background:var(--surface2);border-bottom:1px solid var(--border)}
+td{padding:12px 16px;font-size:13px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.badge-admin{display:inline-block;font-size:10px;background:rgba(245,166,35,.15);color:var(--accent);border:1px solid rgba(245,166,35,.3);padding:2px 7px;border-radius:5px;font-weight:700}
+.badge-owner{display:inline-block;font-size:10px;background:rgba(162,89,255,.15);color:#a259ff;border:1px solid rgba(162,89,255,.3);padding:2px 7px;border-radius:5px;font-weight:700}
+
+/* ACTIONS */
+.act-btn{background:none;border:1px solid var(--border);color:var(--text2);padding:5px 10px;border-radius:7px;font-family:'Tajawal',sans-serif;font-size:12px;cursor:pointer;transition:all .2s}
+.act-btn:hover{border-color:var(--accent3);color:var(--accent3)}
+.act-btn.del:hover{border-color:var(--danger);color:var(--danger)}
+.act-btn.prm:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ADD FORM */
+.add-form{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:20px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.add-form .inp{margin-bottom:0;flex:1;min-width:160px}
+.add-form .btn{width:auto;padding:12px 20px}
+.inp-lbl{font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:700}
+.inp-grp{display:flex;flex-direction:column;flex:1;min-width:140px}
+
+/* FEATURE TOGGLES */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-info h3{font-size:14px;font-weight:700}
+.toggle-info p{font-size:12px;color:var(--text2);margin-top:3px}
+.toggle{position:relative;width:44px;height:24px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.slider{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--surface3);border-radius:24px;cursor:pointer;transition:.3s;border:1px solid var(--border)}
+.slider:before{content:'';position:absolute;height:16px;width:16px;left:4px;bottom:3px;background:var(--text2);border-radius:50%;transition:.3s}
+input:checked+.slider{background:rgba(34,197,94,.2);border-color:var(--success)}
+input:checked+.slider:before{transform:translateX(20px);background:var(--success)}
+
+/* ANNOUNCEMENT */
+.announce-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:20px}
+.announce-box textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--text);font-family:'Tajawal',sans-serif;font-size:14px;outline:none;resize:vertical;min-height:80px}
+.announce-box textarea:focus{border-color:var(--accent)}
+
+/* CAT GRID */
+.cat-grid{display:flex;flex-wrap:wrap;gap:8px;padding:16px 18px}
+.cat-chip{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:7px 12px;font-size:13px;font-weight:700}
+.cat-chip .rm{background:none;border:none;color:var(--text2);cursor:pointer;font-size:14px;margin-right:2px;transition:color .2s}
+.cat-chip .rm:hover{color:var(--danger)}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface);border:1px solid var(--border);padding:10px 20px;border-radius:20px;font-size:13px;font-weight:700;opacity:0;transition:all .3s;z-index:999;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* LOADING */
+.loading{text-align:center;padding:48px;color:var(--text2);font-size:14px}
+
+@media(max-width:700px){
+  .sidebar{width:100%;height:auto;position:relative;flex-direction:row;padding:10px;overflow-x:auto}
+  .sidebar-logo{display:none}
+  .sidebar-footer{display:none}
+  .main{margin-right:0;padding:16px}
+  .nav-item{padding:8px 12px;font-size:12px;border-right:none;border-bottom:3px solid transparent}
+  .nav-item.active{border-bottom-color:var(--accent);border-right:none}
+}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div class="auth-wrap" id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">⚙️</div>
+    <div class="auth-title">لوحة التحكم</div>
+    <div class="auth-sub">مصروفاتي — للمدير فقط</div>
+    <input class="inp" type="email" id="adminEmail" placeholder="البريد الإلكتروني">
+    <input class="inp" type="password" id="adminPass" placeholder="كلمة المرور" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn btn-primary" onclick="doLogin()">دخول</button>
+    <div class="err-msg" id="authErr"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="appScreen">
+
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <h1>⚙️ لوحة التحكم</h1>
+      <p>مصروفاتي</p>
+    </div>
+    <div class="nav-item active" onclick="showTab('users')"><span class="ni">👥</span>المستخدمون</div>
+    <div class="nav-item" onclick="showTab('groups')"><span class="ni">📁</span>المجموعات</div>
+    <div class="nav-item" onclick="showTab('categories')"><span class="ni">🏷️</span>الفئات العالمية</div>
+    <div class="nav-item" onclick="showTab('settings')"><span class="ni">🔧</span>الإعدادات</div>
+    <div class="sidebar-footer">
+      <div id="adminName" style="font-size:13px;font-weight:700;margin-bottom:6px"></div>
+      <span class="admin-badge">👑 مدير</span>
+      <button class="act-btn del" style="margin-top:10px;width:100%" onclick="doLogout()">تسجيل الخروج</button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- USERS TAB -->
+    <div id="tab-users" class="tab-content">
+      <div class="page-hd">👥 المستخدمون</div>
+      <div class="page-sub">جميع الحسابات المسجّلة في التطبيق</div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-box-val" id="statUsers">—</div><div class="stat-box-lbl">إجمالي المستخدمين</div></div>
+        <div class="stat-box"><div class="stat-box-val" id="statAdmins">—</div><div class="stat-box-lbl">المدراء</div></div>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-hd"><h2>قائمة المستخدمين</h2><span class="badge" id="usersBadge">0</span></div>
+        <div id="usersTable"><div class="loading">جار التحميل...</div></div>
+      </div>
+    </div>
+
+    <!-- GROUPS TAB -->
+    <div id="tab-groups" class="tab-content" style="display:none">
+      <div class="page-hd">📁 المجموعات</div>
+      <div class="page-sub">جميع المجموعات المنشأة في التطبيق</div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-box-val" id="statGroups">—</div><div class="stat-box-lbl">إجمالي المجموعات</div></div>
+        <div class="stat-box"><div class="stat-box-val" id="statMembers">—</div><div class="stat-box-lbl">إجمالي الأعضاء</div></div>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-hd"><h2>قائمة المجموعات</h2><span class="badge" id="groupsBadge">0</span></div>
+        <div id="groupsTable"><div class="loading">جار التحميل...</div></div>
+      </div>
+    </div>
+
+    <!-- CATEGORIES TAB -->
+    <div id="tab-categories" class="tab-content" style="display:none">
+      <div class="page-hd">🏷️ الفئات العالمية</div>
+      <div class="page-sub">فئات تظهر كاقتراحات لجميع المستخدمين عند إضافة مصروف</div>
+      <div class="add-form">
+        <div class="inp-grp">
+          <div class="inp-lbl">أيقونة</div>
+          <input class="inp" id="catIcon" type="text" placeholder="📦" maxlength="2" style="width:70px;text-align:center;font-size:20px">
+        </div>
+        <div class="inp-grp">
+          <div class="inp-lbl">اسم الفئة</div>
+          <input class="inp" id="catName" type="text" placeholder="مثال: مطاعم، وقود، صحة...">
+        </div>
+        <button class="btn btn-primary" style="padding:12px 20px;width:auto" onclick="addCategory()">➕ إضافة</button>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-hd"><h2>الفئات المضافة</h2><span class="badge" id="catsBadge">0</span></div>
+        <div class="cat-grid" id="catsGrid"><div class="loading">جار التحميل...</div></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div id="tab-settings" class="tab-content" style="display:none">
+      <div class="page-hd">🔧 الإعدادات</div>
+      <div class="page-sub">تحكم في ميزات التطبيق لجميع المستخدمين</div>
+
+      <div class="announce-box">
+        <div class="inp-lbl" style="margin-bottom:10px">📢 رسالة إعلانية (تظهر لجميع المستخدمين عند الدخول)</div>
+        <textarea id="announceTxt" placeholder="اترك فارغاً لإيقاف الإعلان..."></textarea>
+        <button class="btn btn-primary" style="margin-top:10px;padding:10px 20px;width:auto" onclick="saveAnnouncement()">💾 حفظ</button>
+      </div>
+
+      <div class="tbl-wrap">
+        <div class="tbl-hd"><h2>⚡ تفعيل/إيقاف الميزات</h2></div>
+        <div class="toggle-row">
+          <div class="toggle-info"><h3>🎙️ الإدخال الصوتي</h3><p>إضافة مصروف أو صنف بالصوت</p></div>
+          <label class="toggle"><input type="checkbox" id="feat-voice" onchange="saveFeature('voice',this.checked)"><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-info"><h3>📷 تحليل الصور</h3><p>استخراج أصناف الفاتورة بالكاميرا</p></div>
+          <label class="toggle"><input type="checkbox" id="feat-image" onchange="saveFeature('image',this.checked)"><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-info"><h3>📋 المهام</h3><p>نظام تتبع المهام اليومية</p></div>
+          <label class="toggle"><input type="checkbox" id="feat-tasks" onchange="saveFeature('tasks',this.checked)"><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-info"><h3>📊 التقارير</h3><p>الإحصائيات والتقارير الشهرية</p></div>
+          <label class="toggle"><input type="checkbox" id="feat-stats" onchange="saveFeature('stats',this.checked)"><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-info"><h3>💰 الميزانية</h3><p>تتبع الميزانية والمتبقي</p></div>
+          <label class="toggle"><input type="checkbox" id="feat-budget" onchange="saveFeature('budget',this.checked)"><span class="slider"></span></label>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPA_URL='https://xnfzttjnwkfznxvohngy.supabase.co';
+const SUPA_KEY='sb_publishable_nUDdwuF5r5KdA78CYm2hGA_R5gvLzha';
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
+let adminUser=null;
+
+// ── AUTH ──
+async function doLogin(){
+  const email=document.getElementById('adminEmail').value.trim();
+  const pass=document.getElementById('adminPass').value;
+  document.getElementById('authErr').textContent='';
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){document.getElementById('authErr').textContent='خطأ: '+error.message;return;}
+  const {data:profile}=await sb.from('profiles').select('name,is_super_admin').eq('id',data.user.id).single();
+  if(!profile?.is_super_admin){
+    await sb.auth.signOut();
+    document.getElementById('authErr').textContent='❌ هذا الحساب ليس لديه صلاحية الدخول للوحة التحكم';
+    return;
+  }
+  adminUser=data.user;
+  document.getElementById('adminName').textContent=profile.name||email;
+  document.getElementById('authScreen').style.display='none';
+  document.getElementById('appScreen').style.display='flex';
+  loadAll();
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+  location.reload();
+}
+
+// ── TABS ──
+function showTab(name){
+  document.querySelectorAll('.tab-content').forEach(t=>t.style.display='none');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('tab-'+name).style.display='block';
+  event.currentTarget.classList.add('active');
+}
+
+// ── LOAD ALL ──
+async function loadAll(){
+  loadUsers();
+  loadGroups();
+  loadCategories();
+  loadSettings();
+}
+
+// ── USERS ──
+async function loadUsers(){
+  const {data}=await sb.from('profiles').select('*').order('created_at',{ascending:false});
+  const users=data||[];
+  document.getElementById('statUsers').textContent=users.length;
+  document.getElementById('statAdmins').textContent=users.filter(u=>u.is_super_admin).length;
+  document.getElementById('usersBadge').textContent=users.length;
+  if(!users.length){document.getElementById('usersTable').innerHTML='<div class="loading">لا يوجد مستخدمون</div>';return;}
+  let html=`<table><thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>تاريخ التسجيل</th><th>الصلاحية</th><th>إجراءات</th></tr></thead><tbody>`;
+  users.forEach(u=>{
+    const d=new Date(u.created_at).toLocaleDateString('ar-SA',{day:'numeric',month:'short',year:'numeric'});
+    html+=`<tr>
+      <td style="font-weight:700">${u.name||'—'}</td>
+      <td style="color:var(--text2);direction:ltr;text-align:right">${u.email}</td>
+      <td style="color:var(--text2)">${d}</td>
+      <td>${u.is_super_admin?'<span class="badge-admin">👑 مدير</span>':'<span style="color:var(--text2);font-size:12px">عضو عادي</span>'}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="act-btn prm" onclick="toggleAdmin('${u.id}',${!u.is_super_admin})">${u.is_super_admin?'إلغاء المدير':'تعيين مدير'}</button>
+        ${u.id!==adminUser.id?`<button class="act-btn del" onclick="deleteUser('${u.id}','${u.email}')">حذف</button>`:''}
+      </td>
+    </tr>`;
+  });
+  html+=`</tbody></table>`;
+  document.getElementById('usersTable').innerHTML=html;
+}
+
+async function toggleAdmin(userId,val){
+  await sb.from('profiles').update({is_super_admin:val}).eq('id',userId);
+  toast(val?'✅ تم تعيين مدير':'تم إلغاء صلاحية المدير');
+  loadUsers();
+}
+
+async function deleteUser(userId,email){
+  if(!confirm(`حذف حساب ${email}؟\nسيتم حذف كل بياناته نهائياً.`)) return;
+  await sb.from('profiles').delete().eq('id',userId);
+  toast('تم حذف الحساب');
+  loadUsers();
+}
+
+// ── GROUPS ──
+async function loadGroups(){
+  const {data:groups}=await sb.from('groups').select('*, profiles(name,email)').order('created_at',{ascending:false});
+  const {data:members}=await sb.from('group_members').select('group_id');
+  const gs=groups||[];
+  const ms=members||[];
+  document.getElementById('statGroups').textContent=gs.length;
+  document.getElementById('statMembers').textContent=ms.length;
+  document.getElementById('groupsBadge').textContent=gs.length;
+  if(!gs.length){document.getElementById('groupsTable').innerHTML='<div class="loading">لا توجد مجموعات</div>';return;}
+  const countMap={};
+  ms.forEach(m=>{countMap[m.group_id]=(countMap[m.group_id]||0)+1;});
+  let html=`<table><thead><tr><th>اسم المجموعة</th><th>المالك</th><th>عدد الأعضاء</th><th>تاريخ الإنشاء</th><th>إجراءات</th></tr></thead><tbody>`;
+  gs.forEach(g=>{
+    const d=new Date(g.created_at).toLocaleDateString('ar-SA',{day:'numeric',month:'short',year:'numeric'});
+    const owner=g.profiles?.name||g.profiles?.email||'—';
+    html+=`<tr>
+      <td style="font-weight:700">📁 ${g.name}</td>
+      <td style="color:var(--text2)">${owner}</td>
+      <td style="text-align:center">${countMap[g.id]||0}</td>
+      <td style="color:var(--text2)">${d}</td>
+      <td><button class="act-btn del" onclick="deleteGroup('${g.id}','${g.name.replace(/'/g,"\\'")}')">حذف</button></td>
+    </tr>`;
+  });
+  html+=`</tbody></table>`;
+  document.getElementById('groupsTable').innerHTML=html;
+}
+
+async function deleteGroup(id,name){
+  if(!confirm(`حذف مجموعة "${name}"؟\nسيتم حذف كل بياناتها نهائياً.`)) return;
+  await sb.from('groups').delete().eq('id',id);
+  toast('تم حذف المجموعة');
+  loadGroups();
+}
+
+// ── CATEGORIES ──
+async function loadCategories(){
+  const {data}=await sb.from('global_categories').select('*').order('created_at');
+  const cats=data||[];
+  document.getElementById('catsBadge').textContent=cats.length;
+  if(!cats.length){document.getElementById('catsGrid').innerHTML='<div style="padding:16px 0;color:var(--text2);font-size:13px">لا توجد فئات — أضف الأولى</div>';return;}
+  document.getElementById('catsGrid').innerHTML=cats.map(c=>`
+    <div class="cat-chip">
+      <span>${c.icon}</span>
+      <span>${c.name}</span>
+      <button class="rm" onclick="deleteCategory('${c.id}')">✕</button>
+    </div>`).join('');
+}
+
+async function addCategory(){
+  const icon=document.getElementById('catIcon').value.trim()||'📦';
+  const name=document.getElementById('catName').value.trim();
+  if(!name){toast('أدخل اسم الفئة','err');return;}
+  const {error}=await sb.from('global_categories').insert({icon,name});
+  if(error){toast('خطأ: '+(error.code==='23505'?'الفئة موجودة مسبقاً':error.message),'err');return;}
+  document.getElementById('catIcon').value='';
+  document.getElementById('catName').value='';
+  toast('✅ تم إضافة الفئة');
+  loadCategories();
+}
+
+async function deleteCategory(id){
+  await sb.from('global_categories').delete().eq('id',id);
+  toast('تم حذف الفئة');
+  loadCategories();
+}
+
+// ── SETTINGS ──
+async function loadSettings(){
+  const {data}=await sb.from('app_settings').select('*');
+  const map={};
+  (data||[]).forEach(r=>{map[r.key]=r.value;});
+  document.getElementById('announceTxt').value=map['announcement']||'';
+  ['voice','image','tasks','stats','budget'].forEach(f=>{
+    const el=document.getElementById('feat-'+f);
+    if(el) el.checked=map['feat_'+f]!=='0';
+  });
+}
+
+async function saveAnnouncement(){
+  const val=document.getElementById('announceTxt').value.trim();
+  await sb.from('app_settings').upsert({key:'announcement',value:val,updated_at:new Date().toISOString()},{onConflict:'key'});
+  toast('✅ تم حفظ الرسالة الإعلانية');
+}
+
+async function saveFeature(name,enabled){
+  await sb.from('app_settings').upsert({key:'feat_'+name,value:enabled?'1':'0',updated_at:new Date().toISOString()},{onConflict:'key'});
+  toast((enabled?'✅ تم تفعيل':'⛔ تم إيقاف')+' الميزة');
+}
+
+// ── TOAST ──
+function toast(msg,type){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className='toast show';
+  setTimeout(()=>t.className='toast',2500);
+}
+
+// ── INIT ──
+sb.auth.getSession().then(({data})=>{
+  if(data?.session){
+    sb.from('profiles').select('name,is_super_admin').eq('id',data.session.user.id).single().then(({data:p})=>{
+      if(p?.is_super_admin){
+        adminUser=data.session.user;
+        document.getElementById('adminName').textContent=p.name||data.session.user.email;
+        document.getElementById('authScreen').style.display='none';
+        document.getElementById('appScreen').style.display='flex';
+        loadAll();
+      }
+    });
+  }
+});
+</script>
+</body>
+</html>
