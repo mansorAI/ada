@@ -932,6 +932,62 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
+<!-- ══════════ OVERLAY: EDIT EXPENSE ══════════ -->
+<div class="overlay" id="editExpenseOverlay" onclick="bgClose(event,'editExpenseOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title">✏️ تعديل المصروف</div>
+    <div class="inp-wrap"><div class="inp-lbl">اسم المصروف</div>
+      <input id="editExpName" class="inp" type="text">
+    </div>
+    <div class="inp-wrap"><div class="inp-lbl">المبلغ (ريال)</div>
+      <input id="editExpAmt" class="inp" type="number" inputmode="decimal">
+    </div>
+    <button class="btn-primary" onclick="doEditExpense()">✅ حفظ التعديل</button>
+    <button class="btn-danger-soft" style="margin-top:8px" onclick="doDelExpense()">🗑 حذف المصروف</button>
+    <button class="btn-muted" style="margin-top:8px" onclick="closeSheet('editExpenseOverlay')">إلغاء</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: EDIT TASK ══════════ -->
+<div class="overlay" id="editTaskOverlay" onclick="bgClose(event,'editTaskOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title">✏️ تعديل المهمة</div>
+    <div class="inp-wrap"><div class="inp-lbl">اسم المهمة</div>
+      <input id="editTaskName" class="inp" type="text">
+    </div>
+    <div class="inp-wrap"><div class="inp-lbl">النوع</div>
+      <div style="display:flex;gap:10px;margin-top:6px">
+        <div class="task-type-sel" id="editTaskTypeUrgent" onclick="setEditTaskType('urgent')">
+          <span>🔴</span><span style="font-weight:700">عاجل</span>
+        </div>
+        <div class="task-type-sel" id="editTaskTypeNormal" onclick="setEditTaskType('normal')">
+          <span>🟢</span><span style="font-weight:700">عادي</span>
+        </div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="doEditTask()">✅ حفظ التعديل</button>
+    <button class="btn-muted" style="margin-top:8px" onclick="closeSheet('editTaskOverlay')">إلغاء</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: EDIT COMMITMENT ══════════ -->
+<div class="overlay" id="editCommitOverlay" onclick="bgClose(event,'editCommitOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title">✏️ تعديل الالتزام</div>
+    <div class="inp-wrap"><div class="inp-lbl">اسم الالتزام</div>
+      <input id="editCommitName" class="inp" type="text">
+    </div>
+    <div class="inp-wrap"><div class="inp-lbl">المبلغ المعتاد (ريال) — اختياري</div>
+      <input id="editCommitBudget" class="inp" type="number" inputmode="decimal" placeholder="0.00">
+    </div>
+    <button class="btn-primary" onclick="doEditCommit()">✅ حفظ التعديل</button>
+    <button class="btn-muted" style="margin-top:8px" onclick="closeSheet('editCommitOverlay')">إلغاء</button>
+  </div>
+</div>
+
 <!-- ══════════ OVERLAY: EDIT ITEM ══════════ -->
 <div class="overlay" id="editItemOverlay" onclick="bgClose(event,'editItemOverlay')">
   <div class="sheet">
@@ -1231,14 +1287,19 @@ function openCatDetail(name){
       const d=new Date(log.ts);
       const timeStr=d.toLocaleTimeString('ar-SA-u-ca-gregory',{hour:'2-digit',minute:'2-digit'});
       const dateStr=d.toLocaleDateString('ar-SA-u-ca-gregory',{weekday:'long',month:'long',day:'numeric'});
-      const li=document.createElement('div'); li.className='log-item';
+      const canEdit=currentUserPerms.can_edit_expenses||currentUserPerms.role==='owner';
+      const li=document.createElement('div'); li.className='log-item'; li.style.cursor=canEdit?'pointer':'default';
+      if(canEdit) li.onclick=()=>openEditExpense(log.ts);
       li.innerHTML=`
         <div class="log-dot" style="background:${color}"></div>
         <div class="log-body">
           <div class="log-name" style="font-size:13px">${dateStr}</div>
           <div class="log-time">${timeStr} ${log.src==='voice'?'🎙️ صوتي':'✏️ يدوي'}</div>
         </div>
-        <div class="log-amt" style="color:${color}">${log.amount.toFixed(2)} ر.س</div>`;
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="log-amt" style="color:${color}">${log.amount.toFixed(2)} ر.س</div>
+          ${canEdit?`<span style="font-size:11px;color:var(--text2)">✏️</span>`:''}
+        </div>`;
       container.appendChild(li);
     });
   }
@@ -1269,7 +1330,7 @@ async function renderFixed(){
     const catType=cat.type||'list';
     card.style.cursor='pointer';
     card.onclick=(e)=>{
-      if(e.target.closest('.fc-add-btn,.fc-del-btn')) return;
+      if(e.target.closest('.fc-add-btn,.fc-del-btn,.fc-edit-btn')) return;
       if(catType==='list') openCommitDetail(cat.id);
       else openPayFixed(cat.id,cat.name,cat.budget||0);
     };
@@ -1284,7 +1345,10 @@ async function renderFixed(){
       <div class="fc-right">
         <div class="fc-paid-amt ${paid?'':'zero'}">${paid?paidAmt.toFixed(2):'—'}<small>${paid?' ر.س':''}</small></div>
         ${paid?`<span class="paid-badge">✓ مدفوع</span>`:`<button class="fc-add-btn" onclick="openPayFixed('${cat.id}','${cat.name.replace(/'/g,"\\'")}',${cat.budget||0})">+ تسجيل</button>`}
-        <button class="fc-del-btn" onclick="confirmDel('حذف الالتزام «${cat.name.replace(/'/g,"\\'")}»؟',()=>delFixed('${cat.id}'))">🗑</button>
+        <div style="display:flex;gap:4px">
+          <button class="fc-edit-btn" style="background:rgba(99,102,241,.12);border:none;color:#818cf8;width:22px;height:22px;border-radius:6px;cursor:pointer;font-size:11px" onclick="openEditCommit('${cat.id}','${cat.name.replace(/'/g,"\\'")}',${cat.budget||0})">✏️</button>
+          <button class="fc-del-btn" onclick="confirmDel('حذف الالتزام «${cat.name.replace(/'/g,"\\'")}»؟',()=>delFixed('${cat.id}'))">🗑</button>
+        </div>
       </div>`;
     list.appendChild(card);
   });
@@ -1381,6 +1445,90 @@ function delCat(name){
   saveDB(); renderHome();
   logAction('delete','expense',name);
   toast(`تم حذف "${name}"`, 'bad');
+}
+
+// ══════════════════════════════════════════
+//  EDIT EXPENSE (single log entry)
+// ══════════════════════════════════════════
+let _editingExpTs = null;
+
+function openEditExpense(ts){
+  const log=DB.logs.find(l=>l.ts===ts);
+  if(!log) return;
+  _editingExpTs=ts;
+  document.getElementById('editExpName').value=log.name;
+  document.getElementById('editExpAmt').value=log.amount;
+  document.getElementById('editExpenseOverlay').classList.add('open');
+}
+
+function doEditExpense(){
+  const newName=document.getElementById('editExpName').value.trim();
+  const newAmt=parseFloat(document.getElementById('editExpAmt').value);
+  if(!newName){toast('أدخل اسم المصروف','bad');return;}
+  if(!newAmt||newAmt<=0){toast('أدخل مبلغاً صحيحاً','bad');return;}
+  const idx=DB.logs.findIndex(l=>l.ts===_editingExpTs);
+  if(idx<0){toast('لم يُعثر على الإدخال','bad');return;}
+  const old=DB.logs[idx];
+  // update cats: remove old contribution, add new
+  if(DB.cats[old.name]){
+    DB.cats[old.name].amount-=old.amount;
+    DB.cats[old.name].count--;
+    if(DB.cats[old.name].count<=0||DB.cats[old.name].amount<0) delete DB.cats[old.name];
+  }
+  if(DB.cats[newName]){DB.cats[newName].amount+=newAmt;DB.cats[newName].count++;}
+  else{DB.cats[newName]={amount:newAmt,count:1};}
+  DB.logs[idx]={...old,name:newName,amount:newAmt};
+  saveDB();
+  closeSheet('editExpenseOverlay');
+  logAction('edit','expense',newName,{old_name:old.name,old_amount:old.amount,new_amount:newAmt});
+  const catName=document.getElementById('catDetailTitle')?.textContent;
+  if(catName) openCatDetail(newName===old.name?newName:old.name);
+  renderHome();
+  toast('✅ تم التعديل','ok');
+}
+
+function doDelExpense(){
+  if(!_editingExpTs) return;
+  confirmDel('حذف هذا الإدخال؟',()=>{
+    const log=DB.logs.find(l=>l.ts===_editingExpTs);
+    if(!log) return;
+    if(DB.cats[log.name]){
+      DB.cats[log.name].amount-=log.amount;
+      DB.cats[log.name].count--;
+      if(DB.cats[log.name].count<=0||DB.cats[log.name].amount<=0) delete DB.cats[log.name];
+    }
+    DB.logs=DB.logs.filter(l=>l.ts!==_editingExpTs);
+    saveDB();
+    closeSheet('editExpenseOverlay');
+    logAction('delete','expense',log.name,{amount:log.amount});
+    renderHome();
+    goPage('home');
+    toast('تم الحذف','bad');
+  });
+}
+
+// ══════════════════════════════════════════
+//  EDIT COMMITMENT
+// ══════════════════════════════════════════
+let _editingCommitId = null;
+
+function openEditCommit(id, name, budget){
+  _editingCommitId=id;
+  document.getElementById('editCommitName').value=name;
+  document.getElementById('editCommitBudget').value=budget||'';
+  document.getElementById('editCommitOverlay').classList.add('open');
+}
+
+async function doEditCommit(){
+  const name=document.getElementById('editCommitName').value.trim();
+  const budget=parseFloat(document.getElementById('editCommitBudget').value)||0;
+  if(!name){toast('أدخل اسم الالتزام','bad');return;}
+  const {error}=await sb.from('commitments').update({name,budget}).eq('id',_editingCommitId);
+  if(error){toast('خطأ: '+error.message,'err');return;}
+  closeSheet('editCommitOverlay');
+  logAction('edit','commitment',name,{budget});
+  await refreshFixed();
+  toast('✅ تم التعديل','ok');
 }
 
 function doAddManual(){
@@ -2473,6 +2621,7 @@ function renderTasksTable(){
       <td><span class="task-elapsed ${elapsedClass}" id="elapsed-${t.id}">${elapsed}</span></td>
       <td>${clickableBadge}${receiverLine}</td>
       <td><div class="task-action-btns">
+        ${canEdit?`<button class="task-mini-btn" onclick="openEditTask('${safeId}')" title="تعديل المهمة">✏️</button>`:''}
         ${canEdit?`<button class="task-mini-btn" onclick="openTransferTask('${safeId}')" title="إرسال المهمة">📤</button>`:''}
         <button class="task-mini-btn" onclick="openTaskHistory('${safeId}')" title="سجل المهمة">📋</button>
         ${canEdit?`<button class="del-btn" onclick="deleteTask('${safeId}')">🗑️</button>`:''}
@@ -2562,6 +2711,41 @@ async function deleteTask(id){
   await loadGroupTasks();
   renderTasksTable();
   toast('تم حذف المهمة','bad');
+}
+
+// ══════════════════════════════════════════
+//  EDIT TASK
+// ══════════════════════════════════════════
+let _editingTaskId = null;
+let _editingTaskType = 'normal';
+
+function openEditTask(id){
+  const task=_groupTasks.find(t=>t.id===id);
+  if(!task) return;
+  _editingTaskId=id;
+  _editingTaskType=task.type||'normal';
+  document.getElementById('editTaskName').value=task.name;
+  setEditTaskType(_editingTaskType);
+  document.getElementById('editTaskOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('editTaskName').focus(),350);
+}
+
+function setEditTaskType(type){
+  _editingTaskType=type;
+  document.getElementById('editTaskTypeUrgent').classList.toggle('selected',type==='urgent');
+  document.getElementById('editTaskTypeNormal').classList.toggle('selected',type==='normal');
+}
+
+async function doEditTask(){
+  const name=document.getElementById('editTaskName').value.trim();
+  if(!name){toast('أدخل اسم المهمة','bad');return;}
+  const {error}=await sb.from('tasks').update({name,type:_editingTaskType}).eq('id',_editingTaskId);
+  if(error){toast('خطأ: '+error.message,'err');return;}
+  closeSheet('editTaskOverlay');
+  logAction('edit','task',name,{type:_editingTaskType});
+  await loadGroupTasks();
+  renderTasksTable();
+  toast('✅ تم التعديل','ok');
 }
 
 // ══════════════════════════════════════════
