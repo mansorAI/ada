@@ -2133,18 +2133,20 @@ async function saveAnalyzedItems(){
 function renderArchive(){
   const container=document.getElementById('archiveSection');
   const mk=getCurrentMonthKey();
-  const paidOld=_allGroupCommits.filter(c=>c.is_paid&&c.month_key!==mk);
-  const months=[...new Set(paidOld.map(c=>c.month_key))].filter(Boolean).sort().reverse();
+  const oldCommits=_allGroupCommits.filter(c=>c.month_key!==mk);
+  const months=[...new Set(oldCommits.map(c=>c.month_key))].filter(Boolean).sort().reverse();
   if(!container||!months.length){if(container)container.innerHTML='';return;}
   let html='<div class="archive-hd">🗂️ الأرشيف الشهري</div>';
   months.forEach(m=>{
-    const monthCommits=paidOld.filter(c=>c.month_key===m);
-    const total=monthCommits.reduce((s,c)=>s+(c.paid_amount||0),0);
+    const monthCommits=oldCommits.filter(c=>c.month_key===m);
+    const paidTotal=monthCommits.reduce((s,c)=>s+(c.paid_amount||0),0);
+    const paidCount=monthCommits.filter(c=>c.is_paid).length;
     html+=`<div class="archive-card">
       <div class="archive-card-hd" onclick="toggleArchiveCard(this)">
         <div class="archive-card-title">📅 ${getMonthLabel(m)}</div>
         <div style="display:flex;align-items:center;gap:6px">
-          <span class="archive-card-total">${total.toFixed(2)} ر.س</span>
+          <span style="font-size:11px;color:var(--text2)">${paidCount}/${monthCommits.length} مدفوع</span>
+          <span class="archive-card-total">${paidTotal.toFixed(2)} ر.س</span>
           <span class="archive-chevron">▾</span>
         </div>
       </div>
@@ -2152,12 +2154,15 @@ function renderArchive(){
     const canEdit=currentUserPerms.can_edit_commitments||currentUserPerms.role==='owner';
     monthCommits.sort((a,b)=>(b.paid_amount||0)-(a.paid_amount||0)).forEach(c=>{
       const clickable=(c.type||'list')==='list';
+      const paidBadge=c.is_paid
+        ?`<span style="font-size:10px;color:var(--success)">✅ ${(c.paid_amount||0).toFixed(2)} ر.س</span>`
+        :`<span style="font-size:10px;color:var(--text2)">⬜ لم يُدفع</span>`;
       html+=`<div class="archive-cat-row" style="display:flex;align-items:center;gap:6px">
-        <div style="flex:1;display:flex;align-items:center;gap:6px${clickable?';cursor:pointer':''}" ${clickable?`onclick="openCommitDetail('${c.id}')"`:''}>
-          <span class="archive-cat-name">${getIcon(c.name)} ${c.name}${clickable?' <span style=\'font-size:10px;color:var(--text2)\'>← تفاصيل</span>':''}</span>
-          <span class="archive-cat-amt">${(c.paid_amount||0).toFixed(2)} ر.س</span>
+        <div style="flex:1;display:flex;align-items:center;justify-content:space-between${clickable?';cursor:pointer':''}" ${clickable?`onclick="openCommitDetail('${c.id}')"`:''}>
+          <span class="archive-cat-name">${getIcon(c.name)} ${c.name}${clickable?' <span style=\'font-size:10px;color:var(--text2)\'>←</span>':''}</span>
+          ${paidBadge}
         </div>
-        ${canEdit?`<button onclick="unarchiveCommit('${c.id}')" title="إلغاء الأرشفة" style="background:none;border:1px solid rgba(245,166,35,.3);border-radius:6px;color:var(--accent);font-size:11px;padding:2px 7px;cursor:pointer;white-space:nowrap;flex-shrink:0">↩ إرجاع</button>`:''}
+        ${canEdit?`<button onclick="unarchiveCommit('${c.id}')" title="إرجاع للشهر الحالي" style="background:none;border:1px solid rgba(245,166,35,.3);border-radius:6px;color:var(--accent);font-size:11px;padding:2px 7px;cursor:pointer;white-space:nowrap;flex-shrink:0">↩</button>`:''}
       </div>`;
     });
     html+='</div></div>';
