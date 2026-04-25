@@ -1692,9 +1692,14 @@ function updateMonthBar(){
   }else{pw.style.display='none';btn.textContent='📅 بداية الشهر';}
 }
 
+function toLocalDateStr(ts){
+  const d=new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 function openMonthStart(){
   if(DB.monthAuto){toast('التقويم التلقائي مفعّل، عطّله أولاً','');return;}
-  document.getElementById('monthStartInp').value=DB.monthStart?new Date(DB.monthStart).toISOString().split('T')[0]:new Date().toISOString().split('T')[0];
+  document.getElementById('monthStartInp').value=DB.monthStart?toLocalDateStr(DB.monthStart):toLocalDateStr(Date.now());
   document.getElementById('monthStartOverlay').classList.add('open');
 }
 
