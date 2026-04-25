@@ -1179,12 +1179,41 @@ const DEFAULT_API_KEY = 'ضع-مفتاحك-هنا';
 // ══════════════════════════════════════════
 let DB = {cats:{},logs:[],fixedCats:[],fixedLogs:[]};
 function getDBKey(uid, gid){ return 'msf_v3_' + uid + '_' + (gid||'default'); }
+// ── expenses cache (Supabase) ───────────────
+let _groupExpenses = [];
+
+function _normExp(e){ return {...e, ts: new Date(e.created_at).getTime()}; }
+
+async function loadGroupExpenses(){
+  if(!currentGroupId) return;
+  const {data} = await sb.from('expenses')
+    .select('*').eq('group_id',currentGroupId)
+    .order('created_at',{ascending:false});
+  _groupExpenses = (data||[]).map(_normExp);
+}
+
+async function migrateLocalExpenses(){
+  const oldLogs = DB.logs||[];
+  if(!oldLogs.length) return;
+  const {count} = await sb.from('expenses')
+    .select('id',{count:'exact',head:true})
+    .eq('group_id',currentGroupId).eq('added_by',currentUser.id);
+  if(count>0){ DB.logs=[]; DB.cats={}; saveDB(); return; }
+  const rows=oldLogs.map(l=>({
+    group_id:currentGroupId, added_by:currentUser.id,
+    name:l.name, amount:l.amount, src:l.src||'manual',
+    category:'', created_at:new Date(l.ts).toISOString()
+  }));
+  if(rows.length){ await sb.from('expenses').insert(rows); }
+  DB.logs=[]; DB.cats={}; saveDB();
+  toast(`✅ تم ترحيل ${rows.length} مصروف للسيرفر`,'ok');
+}
+
 function loadDB(uid, gid){
   const key = getDBKey(uid, gid);
   try{
     const saved = JSON.parse(localStorage.getItem(key));
     if(saved) return saved;
-    // ترحيل: إذا ما في بيانات للمجموعة الشخصية جرّب المفتاح القديم
     const oldKey = 'msf_v3_' + uid;
     const old = JSON.parse(localStorage.getItem(oldKey));
     if(old){ localStorage.setItem(key, JSON.stringify(old)); return old; }
@@ -1238,7 +1267,7 @@ function computeCatsFromLogs(logs){
 
 function renderHome(){
   const currentMK=getCurrentMonthKey();
-  const currentLogs=DB.logs.filter(l=>getLogPeriodKey(l.ts)===currentMK);
+  const currentLogs=_groupExpenses.filter(l=>getLogPeriodKey(l.ts)===currentMK);
   const currentCats=computeCatsFromLogs(currentLogs);
 
   const expTotal=currentLogs.reduce((s,l)=>s+l.amount,0);
@@ -1287,7 +1316,7 @@ function renderHome(){
   // recent logs (current period)
   const logList=document.getElementById('logList');
   [...logList.querySelectorAll('.log-item')].forEach(e=>e.remove());
-  const recentLogs=[...currentLogs].reverse().slice(0,15);
+  const recentLogs=currentLogs.slice(0,15);
   document.getElementById('logBadge').textContent=currentLogs.length;
   document.getElementById('emptyLog').style.display=recentLogs.length?'none':'block';
   recentLogs.forEach(log=>{
@@ -1310,7 +1339,7 @@ function renderHome(){
 
 // ── expense archive ─────────────────────────
 function renderExpArchive(currentMK){
-  const oldLogs=DB.logs.filter(l=>getLogPeriodKey(l.ts)!==currentMK);
+  const oldLogs=_groupExpenses.filter(l=>getLogPeriodKey(l.ts)!==currentMK);
   const section=document.getElementById('expArchiveSection');
   const list=document.getElementById('expArchiveList');
   if(!oldLogs.length){section.style.display='none';return;}
@@ -1346,7 +1375,7 @@ function renderExpArchive(currentMK){
 
 function openExpArchivePeriod(safeMk){
   const mk=decodeURIComponent(safeMk);
-  const logs=DB.logs.filter(l=>getLogPeriodKey(l.ts)===mk);
+  const logs=_groupExpenses.filter(l=>getLogPeriodKey(l.ts)===mk);
   const cats=computeCatsFromLogs(logs);
   const total=logs.reduce((s,l)=>s+l.amount,0);
   const label=getMonthLabel(mk);
@@ -1375,8 +1404,8 @@ function openExpArchivePeriod(safeMk){
 // ══════════════════════════════════════════
 function openCatDetail(name){
   const currentMK=getCurrentMonthKey();
-  const logs=DB.logs.filter(l=>l.name===name&&getLogPeriodKey(l.ts)===currentMK).reverse();
-  const allCats=computeCatsFromLogs(DB.logs.filter(l=>getLogPeriodKey(l.ts)===currentMK));
+  const logs=_groupExpenses.filter(l=>l.name===name&&getLogPeriodKey(l.ts)===currentMK);
+  const allCats=computeCatsFromLogs(_groupExpenses.filter(l=>getLogPeriodKey(l.ts)===currentMK));
   const data=allCats[name];
   if(!data) return;
 
@@ -1406,7 +1435,7 @@ function openCatDetail(name){
       const dateStr=d.toLocaleDateString('ar-SA-u-ca-gregory',{weekday:'long',month:'long',day:'numeric'});
       const canEdit=currentUserPerms.can_edit_expenses||currentUserPerms.role==='owner';
       const li=document.createElement('div'); li.className='log-item'; li.style.cursor=canEdit?'pointer':'default';
-      if(canEdit) li.onclick=()=>openEditExpense(log.ts);
+      if(canEdit) li.onclick=()=>openEditExpense(log.id);
       li.innerHTML=`
         <div class="log-dot" style="background:${color}"></div>
         <div class="log-body">
@@ -1544,23 +1573,27 @@ function _renderFixedExtras(){
 // ══════════════════════════════════════════
 //  ADD / DELETE MAIN
 // ══════════════════════════════════════════
-function addEntry(name,amount,src='manual'){
+async function addEntry(name,amount,src='manual'){
   name=name.trim();
   if(!name||!amount||amount<=0) return false;
-  if(DB.cats[name]){DB.cats[name].amount+=amount;DB.cats[name].count++;}
-  else{DB.cats[name]={amount,count:1};}
-  DB.logs.push({name,amount,ts:Date.now(),src});
-  saveDB(); renderHome();
+  const {data,error}=await sb.from('expenses').insert({
+    group_id:currentGroupId, added_by:currentUser.id,
+    name, amount, src, category:''
+  }).select().single();
+  if(error){toast('خطأ: '+error.message,'err');return false;}
+  _groupExpenses.unshift(_normExp(data));
+  renderHome();
   upsertVocab(name);
   return true;
 }
 
-function delCat(name){
+async function delCat(name){
   if(!currentUserPerms.can_delete_expenses&&currentUserPerms.role!=='owner'){toast('ليس لديك صلاحية الحذف','bad');return;}
-  if(!DB.cats[name]) return;
-  DB.logs=DB.logs.filter(l=>l.name!==name);
-  delete DB.cats[name];
-  saveDB(); renderHome();
+  const {error}=await sb.from('expenses').delete()
+    .eq('group_id',currentGroupId).eq('name',name);
+  if(error){toast('خطأ: '+error.message,'err');return;}
+  _groupExpenses=_groupExpenses.filter(l=>l.name!==name);
+  renderHome();
   logAction('delete','expense',name);
   toast(`تم حذف "${name}"`, 'bad');
 }
@@ -1568,57 +1601,42 @@ function delCat(name){
 // ══════════════════════════════════════════
 //  EDIT EXPENSE (single log entry)
 // ══════════════════════════════════════════
-let _editingExpTs = null;
+let _editingExpId = null;
 
-function openEditExpense(ts){
-  const log=DB.logs.find(l=>l.ts===ts);
-  if(!log) return;
-  _editingExpTs=ts;
-  document.getElementById('editExpName').value=log.name;
-  document.getElementById('editExpAmt').value=log.amount;
+function openEditExpense(id){
+  const exp=_groupExpenses.find(e=>e.id===id);
+  if(!exp) return;
+  _editingExpId=id;
+  document.getElementById('editExpName').value=exp.name;
+  document.getElementById('editExpAmt').value=exp.amount;
   document.getElementById('editExpenseOverlay').classList.add('open');
 }
 
-function doEditExpense(){
+async function doEditExpense(){
   const newName=document.getElementById('editExpName').value.trim();
   const newAmt=parseFloat(document.getElementById('editExpAmt').value);
   if(!newName){toast('أدخل اسم المصروف','bad');return;}
   if(!newAmt||newAmt<=0){toast('أدخل مبلغاً صحيحاً','bad');return;}
-  const idx=DB.logs.findIndex(l=>l.ts===_editingExpTs);
-  if(idx<0){toast('لم يُعثر على الإدخال','bad');return;}
-  const old=DB.logs[idx];
-  // update cats: remove old contribution, add new
-  if(DB.cats[old.name]){
-    DB.cats[old.name].amount-=old.amount;
-    DB.cats[old.name].count--;
-    if(DB.cats[old.name].count<=0||DB.cats[old.name].amount<0) delete DB.cats[old.name];
-  }
-  if(DB.cats[newName]){DB.cats[newName].amount+=newAmt;DB.cats[newName].count++;}
-  else{DB.cats[newName]={amount:newAmt,count:1};}
-  DB.logs[idx]={...old,name:newName,amount:newAmt};
-  saveDB();
+  const old=_groupExpenses.find(e=>e.id===_editingExpId);
+  const {error}=await sb.from('expenses').update({name:newName,amount:newAmt}).eq('id',_editingExpId);
+  if(error){toast('خطأ: '+error.message,'err');return;}
+  const idx=_groupExpenses.findIndex(e=>e.id===_editingExpId);
+  if(idx>=0) _groupExpenses[idx]={..._groupExpenses[idx],name:newName,amount:newAmt};
   closeSheet('editExpenseOverlay');
-  logAction('edit','expense',newName,{old_name:old.name,old_amount:old.amount,new_amount:newAmt});
-  const catName=document.getElementById('catDetailTitle')?.textContent;
-  if(catName) openCatDetail(newName===old.name?newName:old.name);
+  logAction('edit','expense',newName,{old_name:old?.name,old_amount:old?.amount,new_amount:newAmt});
   renderHome();
   toast('✅ تم التعديل','ok');
 }
 
 function doDelExpense(){
-  if(!_editingExpTs) return;
-  confirmDel('حذف هذا الإدخال؟',()=>{
-    const log=DB.logs.find(l=>l.ts===_editingExpTs);
-    if(!log) return;
-    if(DB.cats[log.name]){
-      DB.cats[log.name].amount-=log.amount;
-      DB.cats[log.name].count--;
-      if(DB.cats[log.name].count<=0||DB.cats[log.name].amount<=0) delete DB.cats[log.name];
-    }
-    DB.logs=DB.logs.filter(l=>l.ts!==_editingExpTs);
-    saveDB();
+  if(!_editingExpId) return;
+  confirmDel('حذف هذا الإدخال؟',async()=>{
+    const exp=_groupExpenses.find(e=>e.id===_editingExpId);
+    const {error}=await sb.from('expenses').delete().eq('id',_editingExpId);
+    if(error){toast('خطأ: '+error.message,'err');return;}
+    _groupExpenses=_groupExpenses.filter(e=>e.id!==_editingExpId);
     closeSheet('editExpenseOverlay');
-    logAction('delete','expense',log.name,{amount:log.amount});
+    logAction('delete','expense',exp?.name||'',{amount:exp?.amount});
     renderHome();
     goPage('home');
     toast('تم الحذف','bad');
@@ -1649,12 +1667,13 @@ async function doEditCommit(){
   toast('✅ تم التعديل','ok');
 }
 
-function doAddManual(){
+async function doAddManual(){
   const name=document.getElementById('inpName').value.trim();
   const amt=parseFloat(document.getElementById('inpAmt').value);
   if(!name){toast('أدخل اسم المصروف','bad');return;}
   if(!amt||amt<=0){toast('أدخل مبلغاً صحيحاً','bad');return;}
-  addEntry(name,amt,'manual');
+  const ok=await addEntry(name,amt,'manual');
+  if(!ok) return;
   logAction('add','expense',name,{amount:amt});
   document.getElementById('inpName').value='';
   document.getElementById('inpAmt').value='';
@@ -1674,7 +1693,7 @@ function setStatPeriod(p,btn){
 }
 function getFilteredLogs(){
   const now=new Date();
-  return DB.logs.filter(l=>{
+  return _groupExpenses.filter(l=>{
     const d=new Date(l.ts);
     if(statPeriod==='week'){const s=new Date(now);s.setDate(now.getDate()-now.getDay());s.setHours(0,0,0,0);return d>=s;}
     if(statPeriod==='month') return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
@@ -1700,7 +1719,7 @@ function renderStats(){
   for(let i=6;i>=0;i--){
     const d=new Date(now);d.setDate(now.getDate()-i);
     const ds=d.toDateString();
-    const dv=DB.logs.filter(l=>new Date(l.ts).toDateString()===ds).reduce((s,l)=>s+l.amount,0);
+    const dv=_groupExpenses.filter(l=>new Date(l.ts).toDateString()===ds).reduce((s,l)=>s+l.amount,0);
     weekData.push({label:dayNames[d.getDay()].slice(0,3),val:dv,isToday:i===0});
   }
   const maxW=Math.max(...weekData.map(d=>d.val),1);
@@ -1897,7 +1916,7 @@ function startVoice(){
   recognition.lang='ar-SA';recognition.interimResults=true;recognition.continuous=false;recognition.maxAlternatives=3;
   recognition.onstart=()=>{isListening=true;document.getElementById('vRing').classList.add('active');document.getElementById('nav-mic').classList.add('rec');document.getElementById('micIcon').textContent='🔴';vMsg('🔴 يستمع... تكلم الآن','');document.getElementById('vStartBtn').style.display='none';document.getElementById('vStopBtn').style.display='block';};
   recognition.onresult=(e)=>{const t=Array.from(e.results).map(r=>r[0].transcript).join('');document.getElementById('vTranscript').textContent=`"${t}"`;vMsg('جار التعرف...','heard');};
-  recognition.onend=()=>{
+  recognition.onend=async()=>{
     if(!isListening) return;
     const tr=document.getElementById('vTranscript').textContent;
     const match=tr.match(/"(.+)"/);
@@ -1905,7 +1924,7 @@ function startVoice(){
       const res=parseVoice(match[1]);
       if(res){
         const {name:corrName,corrected}=fuzzyCorrect(res.name);
-        addEntry(corrName,res.amount,'voice');
+        await addEntry(corrName,res.amount,'voice');
         const msg=corrected?`✅ صُحِّح إلى: ${corrName} — ${res.amount} ر.س`:`✅ أُضيف: ${corrName} — ${res.amount} ر.س`;
         vMsg(msg,'ok'); toast(`✅ ${corrName} — ${res.amount} ر.س`,'ok');
         setTimeout(()=>{closeSheet('voiceOverlay');resetVoice();},1600);
@@ -2198,7 +2217,8 @@ async function refreshFixed(){
 }
 
 function renderBudget(){
-  const expTotal=Object.values(DB.cats).reduce((s,c)=>s+c.amount,0);
+  const currentMK=getCurrentMonthKey();
+  const expTotal=_groupExpenses.filter(l=>getLogPeriodKey(l.ts)===currentMK).reduce((s,l)=>s+l.amount,0);
   const commitsTotal=getCommitsMonthTotal();
   const spent=expTotal+commitsTotal;
   const budget=getGroupBudgetTotal();
@@ -2698,7 +2718,8 @@ function renderCommitCompare(){
 function renderComprehensiveReport(){
   const container=document.getElementById('comprehensiveReport');
   if(!container) return;
-  const expTotal=Object.values(DB.cats).reduce((s,c)=>s+c.amount,0);
+  const currentMK=getCurrentMonthKey();
+  const expTotal=_groupExpenses.filter(l=>getLogPeriodKey(l.ts)===currentMK).reduce((s,l)=>s+l.amount,0);
   const commitsTotal=getCommitsMonthTotal();
   const grand=expTotal+commitsTotal;
   const ep=grand>0?Math.round(expTotal/grand*100):0;
@@ -3391,6 +3412,8 @@ async function initAuth(){
 
   DB = loadDB(currentUser.id, currentGroupId);
   migrateDB();
+  await loadGroupExpenses();
+  await migrateLocalExpenses();
   initAppUI();
 }
 
@@ -3712,6 +3735,8 @@ async function switchToGroup(id, name){
   migrateDB();
   await loadCurrentUserPerms(id);
   await loadGroupCommitmentsData();
+  await loadGroupExpenses();
+  await migrateLocalExpenses();
   toast('✅ تم التبديل إلى: ' + name, 'ok');
   if(currentUserPerms.can_view_expenses){ renderHome(); goPage('home'); }
   else if(currentUserPerms.can_view_commitments) goPage('fixed');
