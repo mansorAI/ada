@@ -1602,9 +1602,10 @@ function getMonthProgress(){
   return{pct:Math.round(passed/30*100),label:`${passed} من 30 يوم`,daysLeft:30-passed};
 }
 
-function toggleMonthAuto(){
+async function toggleMonthAuto(){
   DB.monthAuto=document.getElementById('monthAutoToggle').checked;
   saveDB();updateMonthBar();
+  if(currentGroupId) await sb.from('group_settings').upsert({group_id:currentGroupId,month_start:DB.monthStart||null,month_auto:DB.monthAuto,updated_at:new Date().toISOString()},{onConflict:'group_id'});
 }
 
 function updateMonthBar(){
@@ -1628,12 +1629,14 @@ function openMonthStart(){
   document.getElementById('monthStartOverlay').classList.add('open');
 }
 
-function saveMonthStart(){
+async function saveMonthStart(){
   const v=document.getElementById('monthStartInp').value;
   if(!v){toast('اختر تاريخاً','bad');return;}
   DB.monthStart=new Date(v).getTime();DB.monthAuto=false;
   document.getElementById('monthAutoToggle').checked=false;
-  saveDB();updateMonthBar();closeSheet('monthStartOverlay');toast('✅ تم تحديد بداية الشهر','ok');
+  saveDB();updateMonthBar();closeSheet('monthStartOverlay');
+  if(currentGroupId) await sb.from('group_settings').upsert({group_id:currentGroupId,month_start:DB.monthStart,month_auto:false,updated_at:new Date().toISOString()},{onConflict:'group_id'});
+  toast('✅ تم تحديد بداية الشهر','ok');
 }
 
 // ══════════════════════════════════════════
@@ -1689,9 +1692,19 @@ async function loadGroupCommitmentsData(){
   if(!currentGroupId) return;
   await loadGlobalCats();
   populateCatSelects();
-  // حمّل مفتاح Claude من إعدادات المجموعة (للأعضاء غير المالكين)
-  const {data:gs}=await sb.from('group_settings').select('claude_api_key').eq('group_id',currentGroupId).single();
+  // حمّل إعدادات المجموعة من Supabase (مفتاح Claude + بداية الشهر)
+  const {data:gs}=await sb.from('group_settings').select('claude_api_key,month_start,month_auto').eq('group_id',currentGroupId).single();
   _groupApiKey = gs?.claude_api_key || '';
+  // زامن إعداد بداية الشهر من Supabase → DB (المصدر الموثوق هو Supabase)
+  if(gs){
+    const remoteStart = gs.month_start ? Number(gs.month_start) : null;
+    const remoteAuto  = gs.month_auto  ?? false;
+    if(remoteStart !== DB.monthStart || remoteAuto !== DB.monthAuto){
+      DB.monthStart = remoteStart;
+      DB.monthAuto  = remoteAuto;
+      saveDB();
+    }
+  }
   const mk=getCurrentMonthKey();
   const {data:curr}=await sb.from('commitments').select('*').eq('group_id',currentGroupId).eq('month_key',mk).order('created_at');
   _groupCommits=curr||[];
