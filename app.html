@@ -334,10 +334,24 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .stock-custom{border-color:rgba(99,102,241,.4);color:#6366f1}
 
 /* ── TASKS PAGE ── */
-.tasks-coming{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;color:var(--text2);text-align:center;gap:12px}
-.tasks-coming .t-icon{font-size:56px;opacity:.3}
-.tasks-coming h3{font-size:18px;font-weight:800;color:var(--text3)}
-.tasks-coming p{font-size:13px;line-height:1.8;max-width:260px}
+.tasks-filter-row{display:flex;gap:8px;padding:0 18px 14px;overflow-x:auto;scrollbar-width:none}
+.tasks-filter-row::-webkit-scrollbar{display:none}
+.task-filter-btn{flex-shrink:0;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-family:'Tajawal',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s}
+.task-filter-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
+.task-type-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;white-space:nowrap}
+.task-type-urgent{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+.task-type-normal{background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)}
+.task-status-badge{display:inline-flex;align-items:center;gap:3px;padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid transparent;transition:all .2s;white-space:nowrap}
+.task-status-pending{background:rgba(245,166,35,.12);color:var(--accent);border-color:rgba(245,166,35,.3)}
+.task-status-in_progress{background:rgba(62,207,207,.12);color:var(--accent3);border-color:rgba(62,207,207,.3)}
+.task-status-done{background:rgba(34,197,94,.12);color:var(--success);border-color:rgba(34,197,94,.3);opacity:.7}
+.task-elapsed{font-size:11px;color:var(--text2);white-space:nowrap}
+.task-elapsed.running{color:var(--accent3)}
+.task-elapsed.frozen{color:var(--text2);opacity:.6}
+.task-type-sel{flex:1;display:flex;align-items:center;gap:8px;background:var(--surface2);border:2px solid var(--border);border-radius:12px;padding:12px;cursor:pointer;transition:all .2s}
+.task-type-sel.selected{border-color:var(--accent);background:rgba(245,166,35,.08)}
+.tasks-empty{text-align:center;padding:48px 20px;color:var(--text2)}
+.tasks-empty .ei{font-size:48px;opacity:.3;margin-bottom:12px}
 
 /* ── BUDGET ENTRIES LIST ── */
 .budget-entry-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
@@ -630,6 +644,18 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     </div>
 
     <div class="perm-section">
+      <div class="perm-section-title">📋 المهام</div>
+      <label class="perm-row">
+        <span>رؤية المهام</span>
+        <input type="checkbox" id="permViewTasks" class="perm-check">
+      </label>
+      <label class="perm-row">
+        <span>إضافة وتعديل المهام</span>
+        <input type="checkbox" id="permEditTasks" class="perm-check">
+      </label>
+    </div>
+
+    <div class="perm-section">
       <div class="perm-section-title">👤 دور العضو</div>
       <div class="role-btns">
         <button class="role-btn" id="roleBtnViewer" onclick="selectMemberRole('viewer')">👁️ مشاهد فقط</button>
@@ -646,12 +672,62 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 <!-- ══════════ PAGE: TASKS ══════════ -->
 <div id="pg-tasks" class="page">
   <div class="topbar">
-    <div class="topbar-row"><div class="page-title">المهام 📋</div><div class="date-chip" id="tasksDateLabel"></div></div>
+    <div class="topbar-row">
+      <div class="page-title">المهام 📋</div>
+      <div class="user-chip" onclick="toggleUserMenu(event)">
+        <span>👤</span><span class="uname" id="tasksTopbarUserName">...</span>
+      </div>
+    </div>
+    <div class="tasks-filter-row" id="tasksFilterRow">
+      <button class="task-filter-btn active" data-filter="all" onclick="setTaskFilter('all')">الكل</button>
+      <button class="task-filter-btn" data-filter="urgent" onclick="setTaskFilter('urgent')">🔴 عاجل</button>
+      <button class="task-filter-btn" data-filter="normal" onclick="setTaskFilter('normal')">🟢 عادي</button>
+      <button class="task-filter-btn" data-filter="in_progress" onclick="setTaskFilter('in_progress')">🔄 جاري</button>
+      <button class="task-filter-btn" data-filter="done" onclick="setTaskFilter('done')">✅ منجز</button>
+    </div>
   </div>
-  <div class="tasks-coming">
-    <div class="t-icon">📋</div>
-    <h3>نظام المهام</h3>
-    <p>قريباً — سيتمكن من إضافة المهام اليومية وتتبعها هنا</p>
+  <div style="padding:0 18px">
+    <div id="tasksTableWrap" style="margin-bottom:12px"></div>
+    <button class="btn-primary" id="addTaskBtn" style="width:100%" onclick="openAddTask()">➕ إضافة مهمة</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: ADD TASK ══════════ -->
+<div class="overlay" id="addTaskOverlay" onclick="bgClose(event,'addTaskOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title">➕ إضافة مهمة جديدة</div>
+    <div class="inp-wrap">
+      <div class="inp-lbl">اسم المهمة</div>
+      <input id="taskNameInp" class="inp" type="text" placeholder="مثال: شراء المستلزمات، دفع الفاتورة...">
+    </div>
+    <div class="inp-wrap">
+      <div class="inp-lbl" style="margin-bottom:10px">نوع المهمة</div>
+      <div style="display:flex;gap:10px">
+        <div class="task-type-sel" id="typeUrgentSel" onclick="selectTaskType('urgent')">
+          <span style="font-size:20px">🔴</span>
+          <span style="font-weight:700;font-size:14px">عاجل</span>
+        </div>
+        <div class="task-type-sel selected" id="typeNormalSel" onclick="selectTaskType('normal')">
+          <span style="font-size:20px">🟢</span>
+          <span style="font-weight:700;font-size:14px">غير عاجل</span>
+        </div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="doAddTask()">➕ إضافة المهمة</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: CHANGE TASK STATUS ══════════ -->
+<div class="overlay" id="taskStatusOverlay" onclick="bgClose(event,'taskStatusOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title">تغيير حالة المهمة</div>
+    <div id="taskStatusName" style="text-align:center;background:var(--surface2);border-radius:12px;padding:10px;margin-bottom:16px;font-size:14px;font-weight:700;color:var(--text)"></div>
+    <button class="btn-muted" style="width:100%;margin-bottom:10px" onclick="setTaskStatus('pending')">⏳ قيد الانتظار</button>
+    <button class="btn-muted" style="width:100%;margin-bottom:10px;border-color:rgba(62,207,207,.4);color:var(--accent3)" onclick="setTaskStatus('in_progress')">🔄 جاري العمل</button>
+    <button class="btn-muted" style="width:100%;margin-bottom:16px;border-color:rgba(34,197,94,.4);color:var(--success)" onclick="setTaskStatus('done')">✅ منجزة</button>
+    <button class="btn-muted" onclick="closeSheet('taskStatusOverlay')">إلغاء</button>
   </div>
 </div>
 
@@ -714,7 +790,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   <button class="nav-btn mic-nav" id="nav-mic" onclick="openVoice()">
     <span class="nicon" id="micIcon">🎙️</span>إضافة مصروف
   </button>
-  <button class="nav-btn" id="nav-tasks" onclick="goPage('tasks')">
+  <button class="nav-btn" id="nav-tasks" onclick="openTasksPage()">
     <span class="nicon">📋</span>المهام
   </button>
   <button class="nav-btn" id="nav-fixed" onclick="goPage('fixed')">
@@ -1673,12 +1749,16 @@ function renderBudget(){
 // ══════════════════════════════════════════
 async function openCommitDetail(id){
   currentCommitId=id;
-  const cat=_groupCommits.find(c=>c.id===id);
+  const cat=_groupCommits.find(c=>c.id===id)||_allGroupCommits.find(c=>c.id===id);
   if(!cat) return;
   if((cat.type||'list')==='simple'){openPayFixed(id,cat.name,cat.budget||0);return;}
-  document.getElementById('commitDetailLabel').textContent=`${getIcon(cat.name)} ${cat.name}`;
-  document.getElementById('commitDetailDate').textContent=document.getElementById('dateLabel').textContent;
-  document.getElementById('registerMonthBtn').style.display=cat.is_paid?'none':'block';
+  const isArchived=cat.is_paid&&cat.month_key!==getCurrentMonthKey();
+  document.getElementById('commitDetailLabel').textContent=`${getIcon(cat.name)} ${cat.name}${isArchived?' 🗂️':''}`;
+  document.getElementById('commitDetailDate').textContent=isArchived?getMonthLabel(cat.month_key):document.getElementById('dateLabel').textContent;
+  document.getElementById('registerMonthBtn').style.display=(!isArchived&&!cat.is_paid)?'block':'none';
+  // إخفاء أزرار الإضافة للأرشيف (للعرض فقط)
+  const actionRow=document.querySelector('#pg-commit-detail .action-row');
+  if(actionRow) actionRow.style.display=isArchived?'none':'';
   await renderCommitItems();
   renderCommitCatReport();
   goPage('commit-detail');
@@ -1964,8 +2044,9 @@ function renderArchive(){
       </div>
       <div class="archive-card-body">`;
     monthCommits.sort((a,b)=>(b.paid_amount||0)-(a.paid_amount||0)).forEach(c=>{
-      html+=`<div class="archive-cat-row">
-        <span class="archive-cat-name">${getIcon(c.name)} ${c.name}</span>
+      const clickable=(c.type||'list')==='list';
+      html+=`<div class="archive-cat-row" ${clickable?`onclick="openCommitDetail('${c.id}')" style="cursor:pointer"`:''}>
+        <span class="archive-cat-name">${getIcon(c.name)} ${c.name}${clickable?' <span style=\'font-size:10px;color:var(--text2)\'>← تفاصيل</span>':''}</span>
         <span class="archive-cat-amt">${(c.paid_amount||0).toFixed(2)} ر.س</span></div>`;
     });
     html+='</div></div>';
@@ -2059,6 +2140,184 @@ function renderComprehensiveReport(){
         </div>`:''}
       </div>
     </div>`;
+}
+
+// ══════════════════════════════════════════
+//  TASKS
+// ══════════════════════════════════════════
+let _groupTasks=[];
+let _tasksFilter='all';
+let _tasksTimer=null;
+let _changingStatusTaskId=null;
+let _selectedTaskType='normal';
+
+async function loadGroupTasks(){
+  if(!currentGroupId) return;
+  const {data}=await sb.from('tasks')
+    .select('*, profiles(name,email)')
+    .eq('group_id',currentGroupId)
+    .order('created_at',{ascending:false});
+  _groupTasks=data||[];
+}
+
+async function openTasksPage(){
+  goPage('tasks');
+  const un=document.getElementById('tasksTopbarUserName');
+  if(un) un.textContent=currentProfile?.name||currentUser?.email||'';
+  await loadGroupTasks();
+  renderTasksTable();
+  startTasksTimer();
+}
+
+function setTaskFilter(f){
+  _tasksFilter=f;
+  document.querySelectorAll('.task-filter-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.filter===f);
+  });
+  renderTasksTable();
+}
+
+function formatElapsed(createdAt, completedAt){
+  const end=completedAt?new Date(completedAt):new Date();
+  const ms=end-new Date(createdAt);
+  const mins=Math.floor(ms/60000);
+  if(mins<1) return 'الآن';
+  const hours=Math.floor(mins/60);
+  const days=Math.floor(hours/24);
+  if(days>0){
+    const rh=hours%24;
+    return rh>0?`${days} يوم ${rh} ساعة`:`${days} يوم`;
+  }
+  if(hours>0){
+    const rm=mins%60;
+    return rm>0?`${hours} ساعة ${rm} دقيقة`:`${hours} ساعة`;
+  }
+  return `${mins} دقيقة`;
+}
+
+function renderTasksTable(){
+  const wrap=document.getElementById('tasksTableWrap');
+  if(!wrap) return;
+  const canEdit=currentUserPerms.can_edit_tasks||currentUserPerms.role==='owner';
+  let list=_groupTasks;
+  if(_tasksFilter==='urgent') list=list.filter(t=>t.type==='urgent');
+  else if(_tasksFilter==='normal') list=list.filter(t=>t.type==='normal');
+  else if(_tasksFilter==='in_progress') list=list.filter(t=>t.status==='in_progress');
+  else if(_tasksFilter==='done') list=list.filter(t=>t.status==='done');
+
+  if(!list.length){
+    wrap.innerHTML=`<div class="tasks-empty"><div class="ei">📋</div><p>${_tasksFilter==='all'?'لا توجد مهام — اضغط إضافة مهمة':'لا توجد مهام في هذه الفئة'}</p></div>`;
+    return;
+  }
+
+  const typeLabel=t=>t==='urgent'?`<span class="task-type-badge task-type-urgent">🔴 عاجل</span>`:`<span class="task-type-badge task-type-normal">🟢 عادي</span>`;
+  const statusLabel=s=>{
+    if(s==='done') return `<span class="task-status-badge task-status-done">✅ منجزة</span>`;
+    if(s==='in_progress') return `<span class="task-status-badge task-status-in_progress">🔄 جاري</span>`;
+    return `<span class="task-status-badge task-status-pending">⏳ انتظار</span>`;
+  };
+
+  let html=`<div class="items-table-wrap" style="padding:0"><table class="items-table" style="min-width:320px">
+    <thead><tr>
+      <th style="width:28px">#</th>
+      <th style="text-align:right">المهمة</th>
+      <th>النوع</th>
+      <th>المدة</th>
+      <th>الحالة</th>
+      ${canEdit?'<th></th>':''}
+    </tr></thead><tbody>`;
+
+  list.forEach((t,i)=>{
+    const isDone=t.status==='done';
+    const elapsed=formatElapsed(t.created_at, t.completed_at);
+    const elapsedClass=isDone?'frozen':'running';
+    const addedBy=t.profiles?.name||t.profiles?.email||'';
+    html+=`<tr>
+      <td style="color:var(--text2);font-size:11px">${i+1}</td>
+      <td style="font-weight:700;font-size:13px">
+        ${t.name}
+        ${addedBy?`<div style="font-size:10px;color:var(--text2);margin-top:2px">👤 ${addedBy}</div>`:''}
+      </td>
+      <td>${typeLabel(t.type)}</td>
+      <td><span class="task-elapsed ${elapsedClass}" id="elapsed-${t.id}">${elapsed}</span></td>
+      <td>${canEdit?`<span onclick="openChangeTaskStatus('${t.id}','${t.name.replace(/'/g,"\\'")}')">${statusLabel(t.status)}</span>`:statusLabel(t.status)}</td>
+      ${canEdit?`<td><button class="del-btn" onclick="deleteTask('${t.id}')">🗑️</button></td>`:''}
+    </tr>`;
+  });
+
+  html+=`</tbody></table></div>`;
+  wrap.innerHTML=html;
+}
+
+function updateTasksElapsed(){
+  _groupTasks.forEach(t=>{
+    if(t.status==='done') return;
+    const el=document.getElementById('elapsed-'+t.id);
+    if(el) el.textContent=formatElapsed(t.created_at, null);
+  });
+}
+
+function startTasksTimer(){
+  stopTasksTimer();
+  _tasksTimer=setInterval(updateTasksElapsed, 30000);
+}
+
+function stopTasksTimer(){
+  if(_tasksTimer){ clearInterval(_tasksTimer); _tasksTimer=null; }
+}
+
+function selectTaskType(type){
+  _selectedTaskType=type;
+  document.getElementById('typeUrgentSel').classList.toggle('selected', type==='urgent');
+  document.getElementById('typeNormalSel').classList.toggle('selected', type==='normal');
+}
+
+function openAddTask(){
+  document.getElementById('taskNameInp').value='';
+  selectTaskType('normal');
+  document.getElementById('addTaskOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('taskNameInp').focus(),350);
+}
+
+async function doAddTask(){
+  const name=document.getElementById('taskNameInp').value.trim();
+  if(!name){toast('أدخل اسم المهمة','bad');return;}
+  const {error}=await sb.from('tasks').insert({
+    group_id:currentGroupId, name, type:_selectedTaskType,
+    status:'pending', added_by:currentUser.id
+  });
+  if(error) return toast('خطأ: '+error.message,'err');
+  closeSheet('addTaskOverlay');
+  await loadGroupTasks();
+  renderTasksTable();
+  toast('✅ تم إضافة المهمة','ok');
+}
+
+function openChangeTaskStatus(id, name){
+  _changingStatusTaskId=id;
+  document.getElementById('taskStatusName').textContent=name;
+  document.getElementById('taskStatusOverlay').classList.add('open');
+}
+
+async function setTaskStatus(status){
+  if(!_changingStatusTaskId) return;
+  const updates={status};
+  if(status==='done') updates.completed_at=new Date().toISOString();
+  else updates.completed_at=null;
+  const {error}=await sb.from('tasks').update(updates).eq('id',_changingStatusTaskId);
+  if(error) return toast('خطأ: '+error.message,'err');
+  closeSheet('taskStatusOverlay');
+  await loadGroupTasks();
+  renderTasksTable();
+  toast(status==='done'?'✅ تم إنجاز المهمة':status==='in_progress'?'🔄 بدأ العمل على المهمة':'⏳ أُعيدت للانتظار','ok');
+}
+
+async function deleteTask(id){
+  if(!confirm('حذف هذه المهمة؟')) return;
+  await sb.from('tasks').delete().eq('id',id);
+  await loadGroupTasks();
+  renderTasksTable();
+  toast('تم حذف المهمة','bad');
 }
 
 // ══════════════════════════════════════════
@@ -2240,7 +2499,7 @@ let currentUser = null;
 let currentProfile = null;
 let currentGroupId = sessionStorage.getItem('groupId');
 let currentGroupName = sessionStorage.getItem('groupName');
-let currentUserPerms = { role: 'owner', can_view_expenses: true, can_edit_expenses: true, can_view_commitments: true, can_edit_commitments: true };
+let currentUserPerms = { role: 'owner', can_view_expenses: true, can_edit_expenses: true, can_view_commitments: true, can_edit_commitments: true, can_view_tasks: true, can_edit_tasks: true };
 
 async function initAuth(){
   const { data } = await sb.auth.getSession();
@@ -2311,7 +2570,7 @@ function setActiveGroup(id, name){
 async function loadCurrentUserPerms(groupId){
   if(!currentUser || !groupId) return;
   const { data } = await sb.from('group_members')
-    .select('role, can_view_expenses, can_edit_expenses, can_view_commitments, can_edit_commitments')
+    .select('role, can_view_expenses, can_edit_expenses, can_view_commitments, can_edit_commitments, can_view_tasks, can_edit_tasks')
     .eq('group_id', groupId)
     .eq('user_id', currentUser.id)
     .single();
@@ -2323,9 +2582,11 @@ async function loadCurrentUserPerms(groupId){
       can_edit_expenses:    isOwner ? true : (data.can_edit_expenses    ?? false),
       can_view_commitments: isOwner ? true : (data.can_view_commitments ?? true),
       can_edit_commitments: isOwner ? true : (data.can_edit_commitments ?? false),
+      can_view_tasks:       isOwner ? true : (data.can_view_tasks       ?? true),
+      can_edit_tasks:       isOwner ? true : (data.can_edit_tasks       ?? false),
     };
   } else {
-    currentUserPerms = { role: 'viewer', can_view_expenses: true, can_edit_expenses: false, can_view_commitments: true, can_edit_commitments: false };
+    currentUserPerms = { role: 'viewer', can_view_expenses: true, can_edit_expenses: false, can_view_commitments: true, can_edit_commitments: false, can_view_tasks: true, can_edit_tasks: false };
   }
   applyPermissions();
 }
@@ -2336,6 +2597,8 @@ function applyPermissions(){
   show('nav-home',  p.can_view_expenses);
   show('nav-mic',   p.can_edit_expenses);
   show('nav-fixed', p.can_view_commitments);
+  show('nav-tasks', p.can_view_tasks);
+  show('addTaskBtn', p.can_edit_tasks || p.role==='owner');
   // إذا كان المستخدم على صفحة ممنوعة، حوّله لأقرب صفحة مسموحة
   const active = document.querySelector('.page.active');
   if(!active) return;
@@ -2371,7 +2634,7 @@ async function openGroupDetail(groupId, groupName, isOwner) {
 async function renderMembersList() {
   const { data: members } = await sb
     .from('group_members')
-    .select('id, user_id, role, can_view_expenses, can_edit_expenses, can_view_commitments, can_edit_commitments, profiles(name, email)')
+    .select('id, user_id, role, can_view_expenses, can_edit_expenses, can_view_commitments, can_edit_commitments, can_view_tasks, can_edit_tasks, profiles(name, email)')
     .eq('group_id', viewingGroupId);
 
   const el = document.getElementById('membersList');
@@ -2390,8 +2653,10 @@ async function renderMembersList() {
       const ee = m.can_edit_expenses    ?? false;
       const vc = m.can_view_commitments ?? true;
       const ec = m.can_edit_commitments ?? false;
-      const perms = `مصروفات:${yn(ve)}${yn(ee)} التزامات:${yn(vc)}${yn(ec)}`;
-      return `<div class="exp-card" style="margin-bottom:8px${canManage?';cursor:pointer':''}" ${canManage ? `onclick="openMemberPerms('${m.id}','${name.replace(/'/g,"\\'")}','${m.role}',${ve},${ee},${vc},${ec})"` : ''}>
+      const vt = m.can_view_tasks       ?? true;
+      const et = m.can_edit_tasks       ?? false;
+      const perms = `مصروفات:${yn(ve)}${yn(ee)} التزامات:${yn(vc)}${yn(ec)} مهام:${yn(vt)}${yn(et)}`;
+      return `<div class="exp-card" style="margin-bottom:8px${canManage?';cursor:pointer':''}" ${canManage ? `onclick="openMemberPerms('${m.id}','${name.replace(/'/g,"\\'")}','${m.role}',${ve},${ee},${vc},${ec},${vt},${et})"` : ''}>
         <div class="ec-icon">${m.role==='owner'?'👑':'👤'}</div>
         <div class="ec-body">
           <div class="ec-name">${name}${isMe?' (أنت)':''}</div>
@@ -2455,7 +2720,8 @@ async function addMemberToGroup(userId, userName) {
   const { error } = await sb.from('group_members').insert({
     group_id: viewingGroupId, user_id: userId, role: 'viewer',
     can_view_expenses: true, can_edit_expenses: false,
-    can_view_commitments: true, can_edit_commitments: false
+    can_view_commitments: true, can_edit_commitments: false,
+    can_view_tasks: true, can_edit_tasks: false
   });
   if (error) return toast('خطأ: ' + error.message, 'err');
   document.getElementById('memberSearchInp').value = '';
@@ -2464,7 +2730,7 @@ async function addMemberToGroup(userId, userName) {
   toast(`✅ تمت إضافة ${userName}`, 'ok');
 }
 
-function openMemberPerms(memberId, name, role, ve, ee, vc, ec) {
+function openMemberPerms(memberId, name, role, ve, ee, vc, ec, vt=true, et=false) {
   editingMemberId  = memberId;
   editingMemberRole = role;
   document.getElementById('memberPermsName').textContent = name;
@@ -2472,6 +2738,8 @@ function openMemberPerms(memberId, name, role, ve, ee, vc, ec) {
   document.getElementById('permEditExp').checked = ee;
   document.getElementById('permViewCom').checked = vc;
   document.getElementById('permEditCom').checked = ec;
+  document.getElementById('permViewTasks').checked = vt;
+  document.getElementById('permEditTasks').checked = et;
   selectMemberRole(role);
   document.getElementById('memberPermsOverlay').classList.add('open');
 }
@@ -2488,7 +2756,9 @@ async function saveMemberPerms() {
     can_view_expenses:    document.getElementById('permViewExp').checked,
     can_edit_expenses:    document.getElementById('permEditExp').checked,
     can_view_commitments: document.getElementById('permViewCom').checked,
-    can_edit_commitments: document.getElementById('permEditCom').checked
+    can_edit_commitments: document.getElementById('permEditCom').checked,
+    can_view_tasks:       document.getElementById('permViewTasks').checked,
+    can_edit_tasks:       document.getElementById('permEditTasks').checked
   }).eq('id', editingMemberId);
   if (error) return toast('خطأ: ' + error.message, 'err');
   closeSheet('memberPermsOverlay');
