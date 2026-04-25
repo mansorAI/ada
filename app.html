@@ -1546,6 +1546,7 @@ function addEntry(name,amount,src='manual'){
   else{DB.cats[name]={amount,count:1};}
   DB.logs.push({name,amount,ts:Date.now(),src});
   saveDB(); renderHome();
+  upsertVocab(name);
   return true;
 }
 
@@ -1775,7 +1776,7 @@ function goPage(p){
 //  SHEETS
 // ══════════════════════════════════════════
 function openAdd(){ document.getElementById('addOverlay').classList.add('open'); setTimeout(()=>document.getElementById('inpName').focus(),350); }
-function openVoice(){ document.getElementById('voiceOverlay').classList.add('open'); }
+function openVoice(){ document.getElementById('voiceOverlay').classList.add('open'); loadVocab(); }
 function closeSheet(id){ document.getElementById(id).classList.remove('open'); if(id==='voiceOverlay') stopVoice(); }
 function bgClose(e,id){ if(e.target===document.getElementById(id)) closeSheet(id); }
 
@@ -1803,6 +1804,48 @@ function parseVoice(raw){
   if(!name) return null;
   return{name,amount};
 }
+// ══════════════════════════════════════════
+//  GLOBAL VOCAB — smart voice correction
+// ══════════════════════════════════════════
+let _vocabCache=null;
+
+async function loadVocab(){
+  if(_vocabCache) return _vocabCache;
+  const {data}=await sb.from('global_vocab').select('name').order('count',{ascending:false}).limit(600);
+  _vocabCache=(data||[]).map(r=>r.name);
+  return _vocabCache;
+}
+
+async function upsertVocab(name){
+  if(!name||name.length<2) return;
+  try{
+    await sb.rpc('upsert_vocab',{word:name.trim()});
+    if(_vocabCache&&!_vocabCache.includes(name)) _vocabCache.unshift(name);
+  }catch(e){}
+}
+
+function strSimilarity(a,b){
+  a=a.trim(); b=b.trim();
+  if(a===b) return 1;
+  if(a.length<2||b.length<2) return 0;
+  const map=new Map();
+  for(let i=0;i<a.length-1;i++){const bg=a.slice(i,i+2);map.set(bg,(map.get(bg)||0)+1);}
+  let hits=0;
+  for(let i=0;i<b.length-1;i++){const bg=b.slice(i,i+2);const c=map.get(bg)||0;if(c>0){map.set(bg,c-1);hits++;}}
+  return(2*hits)/(a.length+b.length-2);
+}
+
+function fuzzyCorrect(name){
+  if(!_vocabCache||!_vocabCache.length) return{name,corrected:false};
+  let best=null,bestScore=0;
+  for(const w of _vocabCache){
+    const s=strSimilarity(name,w);
+    if(s>bestScore){bestScore=s;best=w;}
+  }
+  if(best&&bestScore>=0.80&&best!==name) return{name:best,corrected:true};
+  return{name,corrected:false};
+}
+
 function startVoice(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){vMsg('المتصفح لا يدعم الصوت — استخدم Chrome','err');return;}
@@ -1814,8 +1857,16 @@ function startVoice(){
     if(!isListening) return;
     const tr=document.getElementById('vTranscript').textContent;
     const match=tr.match(/"(.+)"/);
-    if(match){const res=parseVoice(match[1]);if(res){addEntry(res.name,res.amount,'voice');vMsg(`✅ أُضيف: ${res.name} — ${res.amount} ر.س`,'ok');toast(`✅ ${res.name} — ${res.amount} ر.س`,'ok');setTimeout(()=>{closeSheet('voiceOverlay');resetVoice();},1600);}else{vMsg('❌ لم أفهم. جرب: "قهوة 15 ريال"','err');resetListenUI();}}
-    else{vMsg('لم أسمع شيئاً. اضغط بدء وتكلم','');resetListenUI();}
+    if(match){
+      const res=parseVoice(match[1]);
+      if(res){
+        const {name:corrName,corrected}=fuzzyCorrect(res.name);
+        addEntry(corrName,res.amount,'voice');
+        const msg=corrected?`✅ صُحِّح إلى: ${corrName} — ${res.amount} ر.س`:`✅ أُضيف: ${corrName} — ${res.amount} ر.س`;
+        vMsg(msg,'ok'); toast(`✅ ${corrName} — ${res.amount} ر.س`,'ok');
+        setTimeout(()=>{closeSheet('voiceOverlay');resetVoice();},1600);
+      }else{vMsg('❌ لم أفهم. جرب: "قهوة 15 ريال"','err');resetListenUI();}
+    }else{vMsg('لم أسمع شيئاً. اضغط بدء وتكلم','');resetListenUI();}
   };
   recognition.onerror=(e)=>{const msgs={'not-allowed':'⚠️ يجب السماح بالمايك في المتصفح','no-speech':'لم يُسمع صوت','network':'خطأ في الشبكة'};vMsg(msgs[e.error]||`خطأ: ${e.error}`,'err');resetListenUI();};
   recognition.start();
@@ -2294,6 +2345,7 @@ async function delCommitItem(itemId){
 async function addCommitItem(item){
   const {error}=await sb.from('commitment_items').insert({commitment_id:currentCommitId,...item});
   if(error){toast('خطأ: '+error.message,'err');return;}
+  upsertVocab(item.name);
   await updateCommitPaidAmountIfPaid();
   await renderCommitItems();
   renderCommitCatReport();
@@ -2344,6 +2396,7 @@ function openAddItemVoice(){
   populateCatSelects();
   document.getElementById('addItemVoiceOverlay').classList.add('open');
   resetItemVoiceUI();
+  loadVocab();
 }
 
 function startItemVoice(){
@@ -2362,10 +2415,12 @@ function startItemVoice(){
       const parts=raw.split(/\s+/);
       const lastNum=parseNum(parts[parts.length-1]);
       if(lastNum&&parts.length>=2){
-        const itemName=parts.slice(0,-1).join(' ');
+        const rawName=parts.slice(0,-1).join(' ');
+        const {name:itemName,corrected}=fuzzyCorrect(rawName);
         const category=document.getElementById('iVCatSel').value;
         addCommitItem({name:itemName,price:lastNum,qty:1,category,src:'voice'});
-        iVMsg(`✅ ${itemName} — ${lastNum} ر.س`,'ok');
+        const msg=corrected?`✅ صُحِّح إلى: ${itemName} — ${lastNum} ر.س`:`✅ ${itemName} — ${lastNum} ر.س`;
+        iVMsg(msg,'ok');
         setTimeout(()=>{closeSheet('addItemVoiceOverlay');resetItemVoiceUI();},1400);
       }else{iVMsg('❌ جرب: "شامبو 25 ريال"','err');resetItemListenUI();}
     }else{iVMsg('لم أسمع شيئاً','');resetItemListenUI();}
