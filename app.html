@@ -2485,7 +2485,6 @@ async function switchToGroup(id, name){
 async function openGroupsPage(){
   toggleUserMenu();
   goPage('groups');
-  document.getElementById('groupsDateLabel').textContent = document.getElementById('dateLabel').textContent;
   await renderGroupsPage();
 }
 
