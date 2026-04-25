@@ -480,6 +480,12 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   <div class="log-list" id="logList">
     <div class="empty" id="emptyLog" style="padding:20px"><p style="font-size:13px">لا يوجد سجل بعد</p></div>
   </div>
+
+  <div id="expArchiveSection" style="display:none">
+    <div class="divider"></div>
+    <div class="sec-hd"><h2>📦 أرشيف المصروفات</h2></div>
+    <div id="expArchiveList" style="padding:0 16px 16px"></div>
+  </div>
 </div>
 
 <!-- ══════════ PAGE: CATEGORY DETAIL ══════════ -->
@@ -938,6 +944,17 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
+<!-- ══════════ OVERLAY: EXPENSE ARCHIVE DETAIL ══════════ -->
+<div class="overlay" id="expArchiveOverlay" onclick="bgClose(event,'expArchiveOverlay')">
+  <div class="sheet" style="max-height:85vh;overflow-y:auto">
+    <div class="sh-handle"></div>
+    <div class="sh-title" id="expArchiveOverlayTitle">📦 مصروفات الشهر</div>
+    <div id="expArchiveOverlayTotal" style="text-align:center;font-size:22px;font-weight:900;color:var(--accent);margin-bottom:16px"></div>
+    <div id="expArchiveOverlayCats"></div>
+    <button class="btn-muted" style="margin-top:8px" onclick="closeSheet('expArchiveOverlay')">إغلاق</button>
+  </div>
+</div>
+
 <!-- ══════════ OVERLAY: EDIT EXPENSE ══════════ -->
 <div class="overlay" id="editExpenseOverlay" onclick="bgClose(event,'editExpenseOverlay')">
   <div class="sheet">
@@ -1194,28 +1211,51 @@ function catColor(idx){ return COLORS[idx%COLORS.length]; }
 // ══════════════════════════════════════════
 //  RENDER HOME
 // ══════════════════════════════════════════
+// ── helpers: period key per log entry ──────
+function getLogPeriodKey(ts){
+  const d=new Date(ts);
+  if(DB.monthAuto||!DB.monthStart){
+    return `${d.getFullYear()}-${d.getMonth()}`;
+  }
+  const startDay=new Date(DB.monthStart).getDate();
+  const ps=_getPeriodStart(d,startDay);
+  return `custom-${ps.getTime()}`;
+}
+
+function computeCatsFromLogs(logs){
+  const cats={};
+  logs.forEach(l=>{
+    if(cats[l.name]){cats[l.name].amount+=l.amount;cats[l.name].count++;}
+    else cats[l.name]={amount:l.amount,count:1};
+  });
+  return cats;
+}
+
 function renderHome(){
-  const cats=DB.cats, logs=DB.logs;
-  const expTotal=Object.values(cats).reduce((s,c)=>s+c.amount,0);
+  const currentMK=getCurrentMonthKey();
+  const currentLogs=DB.logs.filter(l=>getLogPeriodKey(l.ts)===currentMK);
+  const currentCats=computeCatsFromLogs(currentLogs);
+
+  const expTotal=currentLogs.reduce((s,l)=>s+l.amount,0);
   const commitsTotal=getCommitsMonthTotal();
   const total=expTotal+commitsTotal;
   const today=new Date().toDateString();
-  const todayLogs=logs.filter(l=>new Date(l.ts).toDateString()===today&&l.src!=='fixed');
+  const todayLogs=currentLogs.filter(l=>new Date(l.ts).toDateString()===today);
   const todayAmt=todayLogs.reduce((s,l)=>s+l.amount,0);
   const todayN=todayLogs.length;
   document.getElementById('totalAmt').textContent=total.toFixed(2);
-  document.getElementById('catCnt').textContent=Object.keys(cats).length;
-  document.getElementById('entryCnt').textContent=logs.length;
+  document.getElementById('catCnt').textContent=Object.keys(currentCats).length;
+  document.getElementById('entryCnt').textContent=currentLogs.length;
   document.getElementById('todayCnt').textContent=todayN;
   const heAmt=document.getElementById('heroExpAmt');if(heAmt)heAmt.textContent=expTotal.toFixed(2);
   const hcAmt=document.getElementById('heroCommitAmt');if(hcAmt)hcAmt.textContent=commitsTotal.toFixed(2);
   const htAmt=document.getElementById('heroTodayAmt');if(htAmt)htAmt.textContent=todayAmt.toFixed(2);
   renderBudget();updateMonthBar();
 
-  // cats list
+  // cats list (current period only)
   const list=document.getElementById('expList');
   [...list.querySelectorAll('.exp-card')].forEach(e=>e.remove());
-  const sorted=Object.entries(cats).sort((a,b)=>b[1].amount-a[1].amount);
+  const sorted=Object.entries(currentCats).sort((a,b)=>b[1].amount-a[1].amount);
   document.getElementById('emptyExp').style.display=sorted.length?'none':'block';
   sorted.forEach(([name,data],i)=>{
     const pct=total>0?((data.amount/total)*100).toFixed(1):0;
@@ -1239,11 +1279,11 @@ function renderHome(){
     list.appendChild(card);
   });
 
-  // logs
+  // recent logs (current period)
   const logList=document.getElementById('logList');
   [...logList.querySelectorAll('.log-item')].forEach(e=>e.remove());
-  const recentLogs=[...logs].reverse().slice(0,15);
-  document.getElementById('logBadge').textContent=logs.length;
+  const recentLogs=[...currentLogs].reverse().slice(0,15);
+  document.getElementById('logBadge').textContent=currentLogs.length;
   document.getElementById('emptyLog').style.display=recentLogs.length?'none':'block';
   recentLogs.forEach(log=>{
     const d=new Date(log.ts);
@@ -1251,7 +1291,7 @@ function renderHome(){
     const dateStr=d.toLocaleDateString('ar-SA-u-ca-gregory',{weekday:'short',month:'short',day:'numeric'});
     const li=document.createElement('div'); li.className='log-item';
     li.innerHTML=`
-      <div class="log-dot" style="background:${catColor(Object.keys(cats).indexOf(log.name))}"></div>
+      <div class="log-dot" style="background:${catColor(Object.keys(currentCats).indexOf(log.name))}"></div>
       <div class="log-body">
         <div class="log-name">${getIcon(log.name)} ${log.name}</div>
         <div class="log-time">${dateStr} — ${timeStr} ${log.src==='voice'?'🎙️':''}</div>
@@ -1259,17 +1299,83 @@ function renderHome(){
       <div class="log-amt">${log.amount.toFixed(2)} ر.س</div>`;
     logList.appendChild(li);
   });
+
+  renderExpArchive(currentMK);
+}
+
+// ── expense archive ─────────────────────────
+function renderExpArchive(currentMK){
+  const oldLogs=DB.logs.filter(l=>getLogPeriodKey(l.ts)!==currentMK);
+  const section=document.getElementById('expArchiveSection');
+  const list=document.getElementById('expArchiveList');
+  if(!oldLogs.length){section.style.display='none';return;}
+  section.style.display='block';
+  // group by period key, newest first
+  const periods={};
+  oldLogs.forEach(l=>{
+    const mk=getLogPeriodKey(l.ts);
+    if(!periods[mk]) periods[mk]=[];
+    periods[mk].push(l);
+  });
+  const sorted=Object.entries(periods).sort((a,b)=>{
+    const tsA=a[0].startsWith('custom-')?parseInt(a[0].replace('custom-','')):(()=>{const p=a[0].split('-');return new Date(+p[0],+p[1],1).getTime();})();
+    const tsB=b[0].startsWith('custom-')?parseInt(b[0].replace('custom-','')):(()=>{const p=b[0].split('-');return new Date(+p[0],+p[1],1).getTime();})();
+    return tsB-tsA;
+  });
+  list.innerHTML=sorted.map(([mk,logs])=>{
+    const total=logs.reduce((s,l)=>s+l.amount,0);
+    const label=getMonthLabel(mk);
+    const safeMk=encodeURIComponent(mk);
+    return `<div onclick="openExpArchivePeriod('${safeMk}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-weight:700;font-size:14px">مصروفات ${label}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px">${logs.length} إدخال</div>
+      </div>
+      <div style="text-align:left">
+        <div style="font-size:17px;font-weight:900;color:var(--accent)">${total.toFixed(2)}</div>
+        <div style="font-size:10px;color:var(--text2)">ر.س</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openExpArchivePeriod(safeMk){
+  const mk=decodeURIComponent(safeMk);
+  const logs=DB.logs.filter(l=>getLogPeriodKey(l.ts)===mk);
+  const cats=computeCatsFromLogs(logs);
+  const total=logs.reduce((s,l)=>s+l.amount,0);
+  const label=getMonthLabel(mk);
+  document.getElementById('expArchiveOverlayTitle').textContent=`📦 مصروفات ${label}`;
+  document.getElementById('expArchiveOverlayTotal').textContent=`${total.toFixed(2)} ر.س`;
+  const sorted=Object.entries(cats).sort((a,b)=>b[1].amount-a[1].amount);
+  document.getElementById('expArchiveOverlayCats').innerHTML=sorted.map(([name,data],i)=>{
+    const pct=total>0?((data.amount/total)*100).toFixed(1):0;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:20px">${getIcon(name)}</div>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:13px">${name}</div>
+        <div style="font-size:11px;color:var(--text2)">${data.count} إدخال — ${pct}%</div>
+        <div style="height:4px;background:var(--surface3);border-radius:2px;margin-top:4px">
+          <div style="height:4px;width:${pct}%;background:${catColor(i)};border-radius:2px"></div>
+        </div>
+      </div>
+      <div style="font-weight:800;font-size:14px;color:${catColor(i)}">${data.amount.toFixed(2)}<small style="font-size:10px;color:var(--text2)"> ر.س</small></div>
+    </div>`;
+  }).join('');
+  document.getElementById('expArchiveOverlay').classList.add('open');
 }
 
 // ══════════════════════════════════════════
 //  CATEGORY DETAIL PAGE
 // ══════════════════════════════════════════
 function openCatDetail(name){
-  const logs=DB.logs.filter(l=>l.name===name).reverse();
-  const data=DB.cats[name];
+  const currentMK=getCurrentMonthKey();
+  const logs=DB.logs.filter(l=>l.name===name&&getLogPeriodKey(l.ts)===currentMK).reverse();
+  const allCats=computeCatsFromLogs(DB.logs.filter(l=>getLogPeriodKey(l.ts)===currentMK));
+  const data=allCats[name];
   if(!data) return;
 
-  const colorIdx=Object.keys(DB.cats).sort((a,b)=>DB.cats[b].amount-DB.cats[a].amount).indexOf(name);
+  const colorIdx=Object.entries(allCats).sort((a,b)=>b[1].amount-a[1].amount).findIndex(([k])=>k===name);
   const color=catColor(colorIdx);
 
   // hero
