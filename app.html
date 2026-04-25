@@ -547,7 +547,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     </div>
   </div>
 
-  <div class="sec-hd"><h2>الأصناف</h2><span class="badge" id="commitItemsBadge">0</span></div>
+  <div class="sec-hd" style="justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:8px"><h2>الأصناف</h2><span class="badge" id="commitItemsBadge">0</span></div>
+    <button onclick="exportCommitToPDF()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:6px 12px;color:var(--text2);font-family:'Tajawal',sans-serif;font-size:12px;font-weight:700;cursor:pointer">📄 تصدير PDF</button>
+  </div>
   <div class="action-row">
     <button class="action-btn" onclick="openAddItemManual()"><span class="ab-i">✏️</span>يدوي</button>
     <button class="action-btn ab-voice" onclick="openAddItemVoice()"><span class="ab-i">🎙️</span>صوتي</button>
@@ -1924,6 +1927,92 @@ function renderCommitCatReport(){
         <div class="pct-mini-bar" style="width:${pct}%;background:${color}"></div></td>`;
     tbody.appendChild(tr);
   });
+}
+
+function exportCommitToPDF(){
+  const items=_commitItemsCache;
+  if(!items.length){toast('لا توجد أصناف للتصدير','bad');return;}
+  const commitName=document.getElementById('commitDetailLabel').textContent;
+  const periodLabel=document.getElementById('commitDetailDate').textContent;
+  const total=items.reduce((s,i)=>s+i.price*i.qty,0);
+  const stockMap={full:'كامل',half:'النصف',quarter:'الربع',empty:'نفذ'};
+  const catMap={};
+  items.forEach(i=>{
+    if(!catMap[i.category])catMap[i.category]={count:0,total:0};
+    catMap[i.category].count++;catMap[i.category].total+=i.price*i.qty;
+  });
+  const itemRows=items.map((item,idx)=>{
+    const rowTotal=(item.price*item.qty).toFixed(2);
+    const stock=stockMap[item.stock]||item.stock||'—';
+    return `<tr>
+      <td>${idx+1}</td>
+      <td>${item.name}</td>
+      <td>${item.category||'—'}</td>
+      <td style="text-align:center">${item.qty}</td>
+      <td style="text-align:center">${item.price.toFixed(2)}</td>
+      <td style="text-align:center;font-weight:700">${rowTotal}</td>
+      <td style="text-align:center">${stock}</td>
+    </tr>`;
+  }).join('');
+  const catRows=Object.entries(catMap).sort((a,b)=>b[1].total-a[1].total).map(([cat,d])=>{
+    const pct=total>0?(d.total/total*100).toFixed(1):0;
+    return `<tr><td>${cat}</td><td style="text-align:center">${d.count}</td><td style="text-align:center;font-weight:700">${d.total.toFixed(2)}</td><td style="text-align:center">${pct}%</td></tr>`;
+  }).join('');
+  const groupName=currentGroupName||'';
+  const printDate=new Date().toLocaleDateString('ar-SA-u-ca-gregory',{year:'numeric',month:'long',day:'numeric'});
+  const html=`<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>${commitName}</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Tajawal',sans-serif;direction:rtl;color:#1a1a2e;background:#fff;padding:32px;font-size:13px}
+  .header{text-align:center;margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid #6366f1}
+  .header h1{font-size:22px;font-weight:800;color:#6366f1;margin-bottom:4px}
+  .header .meta{font-size:12px;color:#666;display:flex;justify-content:center;gap:24px;margin-top:8px}
+  .section-title{font-size:14px;font-weight:800;color:#6366f1;margin:20px 0 10px;padding-right:8px;border-right:3px solid #6366f1}
+  table{width:100%;border-collapse:collapse;margin-bottom:16px}
+  th{background:#6366f1;color:#fff;padding:8px 10px;font-size:12px;font-weight:700;text-align:right}
+  td{padding:7px 10px;border-bottom:1px solid #eee;text-align:right}
+  tr:nth-child(even) td{background:#f8f8ff}
+  .total-row{background:#f0f0ff!important;font-weight:800;font-size:14px}
+  .total-row td{color:#6366f1;border-top:2px solid #6366f1}
+  .footer{margin-top:24px;text-align:center;font-size:11px;color:#999;border-top:1px solid #eee;padding-top:12px}
+  @media print{body{padding:16px}@page{margin:1cm;size:A4}}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>${commitName}</h1>
+  ${groupName?`<div style="font-size:14px;color:#444;margin-top:4px">${groupName}</div>`:''}
+  <div class="meta">
+    <span>📅 الفترة: ${periodLabel}</span>
+    <span>📆 تاريخ التصدير: ${printDate}</span>
+    <span>📦 عدد الأصناف: ${items.length}</span>
+  </div>
+</div>
+<div class="section-title">قائمة الأصناف</div>
+<table>
+  <thead><tr><th>#</th><th>اسم الصنف</th><th>الفئة</th><th>الكمية</th><th>سعر الوحدة (ر.س)</th><th>الإجمالي (ر.س)</th><th>المخزون</th></tr></thead>
+  <tbody>
+    ${itemRows}
+    <tr class="total-row"><td colspan="5">الإجمالي الكلي</td><td>${total.toFixed(2)}</td><td></td></tr>
+  </tbody>
+</table>
+<div class="section-title">تقرير الفئات</div>
+<table>
+  <thead><tr><th>الفئة</th><th>عدد الأصناف</th><th>الإجمالي (ر.س)</th><th>النسبة %</th></tr></thead>
+  <tbody>${catRows}</tbody>
+</table>
+<div class="footer">مصروفاتي — masrofati.vercel.app</div>
+<script>window.onload=()=>{window.print();}<\/script>
+</body></html>`;
+  const w=window.open('','_blank');
+  if(!w){toast('السماح بالنوافذ المنبثقة لتصدير PDF','bad');return;}
+  w.document.write(html);
+  w.document.close();
 }
 
 async function delCommitItem(itemId){
