@@ -95,8 +95,10 @@ input:checked+.slider:before{transform:translateX(20px);background:var(--success
 /* CAT GRID */
 .cat-grid{display:flex;flex-wrap:wrap;gap:8px;padding:16px 18px}
 .cat-chip{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:7px 12px;font-size:13px;font-weight:700}
+.cat-chip .color-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 .cat-chip .rm{background:none;border:none;color:var(--text2);cursor:pointer;font-size:14px;margin-right:2px;transition:color .2s}
 .cat-chip .rm:hover{color:var(--danger)}
+input[type=color]{width:44px;height:38px;padding:2px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);cursor:pointer;flex-shrink:0}
 
 /* TOAST */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface);border:1px solid var(--border);padding:10px 20px;border-radius:20px;font-size:13px;font-weight:700;opacity:0;transition:all .3s;z-index:999;pointer-events:none;white-space:nowrap}
@@ -182,20 +184,30 @@ input:checked+.slider:before{transform:translateX(20px);background:var(--success
     <!-- CATEGORIES TAB -->
     <div id="tab-categories" class="tab-content" style="display:none">
       <div class="page-hd">🏷️ الفئات العالمية</div>
-      <div class="page-sub">فئات تظهر كاقتراحات لجميع المستخدمين عند إضافة مصروف</div>
+      <div class="page-sub">فئات أصناف الالتزامات — تظهر في قوائم الفئة لجميع المستخدمين</div>
       <div class="add-form">
-        <div class="inp-grp">
+        <div class="inp-grp" style="flex:0">
           <div class="inp-lbl">أيقونة</div>
-          <input class="inp" id="catIcon" type="text" placeholder="📦" maxlength="2" style="width:70px;text-align:center;font-size:20px">
+          <input class="inp" id="catIcon" type="text" placeholder="📦" maxlength="2" style="width:64px;text-align:center;font-size:20px;margin-bottom:0">
         </div>
         <div class="inp-grp">
           <div class="inp-lbl">اسم الفئة</div>
-          <input class="inp" id="catName" type="text" placeholder="مثال: مطاعم، وقود، صحة...">
+          <input class="inp" id="catName" type="text" placeholder="مثال: مطاعم، وقود، صحة..." style="margin-bottom:0" onkeydown="if(event.key==='Enter')addCategory()">
         </div>
-        <button class="btn btn-primary" style="padding:12px 20px;width:auto" onclick="addCategory()">➕ إضافة</button>
+        <div class="inp-grp" style="flex:0">
+          <div class="inp-lbl">اللون</div>
+          <input type="color" id="catColor" value="#6366f1">
+        </div>
+        <button class="btn btn-primary" style="padding:12px 20px;width:auto;align-self:flex-end" onclick="addCategory()">➕ إضافة</button>
       </div>
       <div class="tbl-wrap">
-        <div class="tbl-hd"><h2>الفئات المضافة</h2><span class="badge" id="catsBadge">0</span></div>
+        <div class="tbl-hd">
+          <h2>الفئات المضافة</h2>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="badge" id="catsBadge">0</span>
+            <button class="act-btn" onclick="seedDefaultCats()" style="font-size:11px">↺ إضافة الافتراضية</button>
+          </div>
+        </div>
         <div class="cat-grid" id="catsGrid"><div class="loading">جار التحميل...</div></div>
       </div>
     </div>
@@ -363,14 +375,32 @@ async function deleteGroup(id,name){
 }
 
 // ── CATEGORIES ──
+const DEFAULT_CATS=[
+  {name:'مواد غذائية',icon:'🛒',color:'#22c55e'},
+  {name:'منظفات',icon:'🧴',color:'#3ecfcf'},
+  {name:'مشروبات',icon:'🥤',color:'#f5a623'},
+  {name:'خضروات وفاكهة',icon:'🥦',color:'#84cc16'},
+  {name:'ألبان وبيض',icon:'🥛',color:'#94d8f0'},
+  {name:'لحوم وأسماك',icon:'🥩',color:'#e8441a'},
+  {name:'مخبوزات',icon:'🍞',color:'#f59e0b'},
+  {name:'أجهزة',icon:'📱',color:'#a259ff'},
+  {name:'ملابس',icon:'👕',color:'#ec4899'},
+  {name:'أدوية',icon:'💊',color:'#ef4444'},
+  {name:'أخرى',icon:'📦',color:'#6366f1'}
+];
+
 async function loadCategories(){
   const {data}=await sb.from('global_categories').select('*').order('created_at');
   const cats=data||[];
   document.getElementById('catsBadge').textContent=cats.length;
-  if(!cats.length){document.getElementById('catsGrid').innerHTML='<div style="padding:16px 0;color:var(--text2);font-size:13px">لا توجد فئات — أضف الأولى</div>';return;}
+  if(!cats.length){
+    document.getElementById('catsGrid').innerHTML='<div style="padding:16px;color:var(--text2);font-size:13px">لا توجد فئات — اضغط "إضافة الافتراضية" أو أضف يدوياً</div>';
+    return;
+  }
   document.getElementById('catsGrid').innerHTML=cats.map(c=>`
-    <div class="cat-chip">
-      <span>${c.icon}</span>
+    <div class="cat-chip" style="border-color:${c.color||'var(--border)'}33">
+      <div class="color-dot" style="background:${c.color||'#6366f1'}"></div>
+      <span>${c.icon||'📦'}</span>
       <span>${c.name}</span>
       <button class="rm" onclick="deleteCategory('${c.id}')">✕</button>
     </div>`).join('');
@@ -379,18 +409,30 @@ async function loadCategories(){
 async function addCategory(){
   const icon=document.getElementById('catIcon').value.trim()||'📦';
   const name=document.getElementById('catName').value.trim();
+  const color=document.getElementById('catColor').value||'#6366f1';
   if(!name){toast('أدخل اسم الفئة','err');return;}
-  const {error}=await sb.from('global_categories').insert({icon,name});
+  const {error}=await sb.from('global_categories').insert({icon,name,color});
   if(error){toast('خطأ: '+(error.code==='23505'?'الفئة موجودة مسبقاً':error.message),'err');return;}
   document.getElementById('catIcon').value='';
   document.getElementById('catName').value='';
+  document.getElementById('catColor').value='#6366f1';
   toast('✅ تم إضافة الفئة');
   loadCategories();
 }
 
 async function deleteCategory(id){
+  if(!confirm('حذف هذه الفئة؟')) return;
   await sb.from('global_categories').delete().eq('id',id);
   toast('تم حذف الفئة');
+  loadCategories();
+}
+
+async function seedDefaultCats(){
+  if(!confirm('إضافة الفئات الافتراضية؟ الموجودة منها لن تتكرر.')) return;
+  const toInsert=DEFAULT_CATS.map(c=>({...c}));
+  const {error}=await sb.from('global_categories').upsert(toInsert,{onConflict:'name',ignoreDuplicates:true});
+  if(error){toast('خطأ: '+error.message,'err');return;}
+  toast('✅ تم إضافة الفئات الافتراضية');
   loadCategories();
 }
 

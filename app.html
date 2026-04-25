@@ -1523,25 +1523,33 @@ document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementB
 // ══════════════════════════════════════════
 //  ITEM CATEGORIES
 // ══════════════════════════════════════════
-const ITEM_CATS=[
-  {name:'مواد غذائية',color:'#22c55e'},
-  {name:'منظفات',color:'#3ecfcf'},
-  {name:'مشروبات',color:'#f5a623'},
-  {name:'خضروات وفاكهة',color:'#84cc16'},
-  {name:'ألبان وبيض',color:'#94d8f0'},
-  {name:'لحوم وأسماك',color:'#e8441a'},
-  {name:'مخبوزات',color:'#f59e0b'},
-  {name:'أجهزة',color:'#a259ff'},
-  {name:'ملابس',color:'#ec4899'},
-  {name:'أدوية',color:'#ef4444'},
-  {name:'أخرى',color:'#6366f1'}
+const ITEM_CATS_DEFAULT=[
+  {name:'مواد غذائية',color:'#22c55e',icon:'🛒'},
+  {name:'منظفات',color:'#3ecfcf',icon:'🧴'},
+  {name:'مشروبات',color:'#f5a623',icon:'🥤'},
+  {name:'خضروات وفاكهة',color:'#84cc16',icon:'🥦'},
+  {name:'ألبان وبيض',color:'#94d8f0',icon:'🥛'},
+  {name:'لحوم وأسماك',color:'#e8441a',icon:'🥩'},
+  {name:'مخبوزات',color:'#f59e0b',icon:'🍞'},
+  {name:'أجهزة',color:'#a259ff',icon:'📱'},
+  {name:'ملابس',color:'#ec4899',icon:'👕'},
+  {name:'أدوية',color:'#ef4444',icon:'💊'},
+  {name:'أخرى',color:'#6366f1',icon:'📦'}
 ];
-function itemCatColor(n){const c=ITEM_CATS.find(c=>c.name===n);return c?c.color:'#6366f1';}
+let _globalCats=[...ITEM_CATS_DEFAULT];
+
+async function loadGlobalCats(){
+  const {data}=await sb.from('global_categories').select('name,color,icon').order('created_at');
+  if(data&&data.length>0) _globalCats=data;
+  else _globalCats=[...ITEM_CATS_DEFAULT];
+}
+
+function itemCatColor(n){const c=_globalCats.find(c=>c.name===n);return c?.color||'#6366f1';}
 function populateCatSelects(){
   ['addItemCatSel','iVCatSel','editItemCatSel'].forEach(id=>{
     const sel=document.getElementById(id);
     if(!sel) return;
-    sel.innerHTML=ITEM_CATS.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+    sel.innerHTML=_globalCats.map(c=>`<option value="${c.name}">${c.icon||''} ${c.name}</option>`).join('');
   });
 }
 
@@ -1679,6 +1687,8 @@ function getCommitsMonthTotal(){
 
 async function loadGroupCommitmentsData(){
   if(!currentGroupId) return;
+  await loadGlobalCats();
+  populateCatSelects();
   // حمّل مفتاح Claude من إعدادات المجموعة (للأعضاء غير المالكين)
   const {data:gs}=await sb.from('group_settings').select('claude_api_key').eq('group_id',currentGroupId).single();
   _groupApiKey = gs?.claude_api_key || '';
