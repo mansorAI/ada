@@ -193,6 +193,27 @@
     .detail-table tr:last-child td{border-bottom:none;}
     .detail-total-row{display:flex;justify-content:space-between;padding:14px 0 0;font-size:1rem;font-weight:700;border-top:1px solid var(--border);}
 
+    /* ── Purchase Items Table ── */
+    .item-table{width:100%;border-collapse:collapse;}
+    .item-table th{font-size:0.7rem;color:var(--text2);padding:7px 4px;text-align:right;border-bottom:1px solid var(--border);}
+    .item-table td{font-size:0.83rem;padding:9px 4px;border-bottom:1px solid var(--border);vertical-align:middle;}
+    .item-table tr:last-child td{border-bottom:none;}
+    .item-table tr{cursor:pointer;transition:background 0.15s;}
+    .item-table tr:hover{background:var(--surface2);}
+    .item-num{color:var(--text2);font-size:0.7rem;text-align:center;}
+    .item-name-cell{font-weight:700;}
+    .item-cat-badge{font-size:0.68rem;padding:2px 7px;border-radius:20px;border:1px solid;display:inline-block;}
+    .item-total-cell{font-weight:800;color:var(--orange);white-space:nowrap;}
+    .item-del-btn{background:none;border:none;color:var(--danger);cursor:pointer;font-size:1rem;padding:2px 4px;opacity:0.55;}
+    .item-del-btn:hover{opacity:1;}
+    .stock-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:3px 7px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .2s;}
+    .stock-full{border-color:rgba(67,233,123,.4);color:var(--green);}
+    .stock-half{border-color:rgba(245,166,35,.4);color:var(--orange);}
+    .stock-quarter{border-color:rgba(234,88,12,.4);color:#ea580c;}
+    .stock-out{border-color:rgba(255,77,109,.4);color:var(--danger);}
+    .action-row-biz{display:flex;gap:8px;margin-bottom:14px;}
+    .action-btn-biz{flex:1;padding:11px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Tajawal',sans-serif;font-size:0.88rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
+
     /* ── Purchases (Commitments style) ── */
     .commit-card{
       background:var(--surface);border:1px solid var(--border);
@@ -360,9 +381,14 @@
 
 <!-- ══ PURCHASES DETAIL ══ -->
 <div class="page" id="pg-purchase-detail">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
     <button onclick="goPage('purchases')" style="background:none;border:none;color:var(--text2);font-size:1.3rem;cursor:pointer">←</button>
-    <div style="font-weight:700;font-size:1rem" id="purchaseDetailTitle">تفاصيل المشتريات</div>
+    <div style="flex:1;font-weight:700;font-size:1rem" id="purchaseDetailTitle">تفاصيل المشتريات</div>
+    <div style="font-size:0.82rem;color:var(--orange)" id="purchaseDetailCount"></div>
+  </div>
+  <div class="action-row-biz" id="purchaseItemActionsRow">
+    <button class="action-btn-biz" onclick="openAddPurchaseItemManual()">✏️ إضافة يدوي</button>
+    <button class="action-btn-biz" onclick="openAddPurchaseItemVoice()">🎙️ إضافة صوتي</button>
   </div>
   <div id="purchaseDetailContent"></div>
 </div>
@@ -550,6 +576,122 @@
     </div>
     <button class="btn-primary" style="background:var(--orange)" onclick="doAddPurchase()">✅ إضافة</button>
     <button class="btn-secondary" onclick="closeSheet('addPurchaseOverlay')">إلغاء</button>
+  </div>
+</div>
+
+<!-- Add Purchase Item Manual -->
+<div class="overlay" id="addPurchaseItemOverlay" onclick="bgClose(event,'addPurchaseItemOverlay')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">✏️ إضافة صنف</div>
+    <div class="inp-wrap">
+      <div class="inp-label">اسم الصنف</div>
+      <input class="inp" id="piName" type="text" placeholder="مثال: أرز، شامبو، زيت...">
+    </div>
+    <div class="inp-row">
+      <div class="inp-wrap">
+        <div class="inp-label">السعر (ر.س)</div>
+        <input class="inp" id="piPrice" type="number" inputmode="decimal" placeholder="0.00" min="0" step="any">
+      </div>
+      <div class="inp-wrap" style="width:90px">
+        <div class="inp-label">الكمية</div>
+        <input class="inp" id="piQty" type="number" inputmode="numeric" placeholder="1" value="1" min="0.001" step="any">
+      </div>
+    </div>
+    <div class="inp-wrap">
+      <div class="inp-label">الفئة</div>
+      <select class="inp" id="piCat">
+        <option value="">— بدون فئة —</option>
+        <option value="مواد خام">مواد خام</option>
+        <option value="مستلزمات">مستلزمات</option>
+        <option value="تشغيل">تشغيل</option>
+        <option value="إدارة">إدارة</option>
+        <option value="أخرى">أخرى</option>
+      </select>
+    </div>
+    <button class="btn-primary" style="background:var(--orange)" onclick="doAddPurchaseItem()">إضافة الصنف</button>
+    <button class="btn-secondary" onclick="closeSheet('addPurchaseItemOverlay')">إلغاء</button>
+  </div>
+</div>
+
+<!-- Add Purchase Item Voice -->
+<div class="overlay" id="addPurchaseItemVoiceOverlay" onclick="bgClose(event,'addPurchaseItemVoiceOverlay')">
+  <div class="sheet" style="text-align:center">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" style="text-align:right">🎙️ إضافة صنف بالصوت</div>
+    <p style="font-size:0.82rem;color:var(--text2);margin-bottom:4px">قل مثلاً: <b style="color:var(--text)">"أرز 25 ريال"</b> · <b style="color:var(--text)">"شامبو 15"</b></p>
+    <div class="v-ring" id="piVRing">🎙️</div>
+    <div class="v-transcript" id="piVTranscript"></div>
+    <div class="v-msg" id="piVMsg">اضغط بدء وقل اسم الصنف والسعر</div>
+    <div class="inp-wrap" style="text-align:right;margin-top:10px">
+      <div class="inp-label">الفئة</div>
+      <select class="inp" id="piVCat">
+        <option value="">— بدون فئة —</option>
+        <option value="مواد خام">مواد خام</option>
+        <option value="مستلزمات">مستلزمات</option>
+        <option value="تشغيل">تشغيل</option>
+        <option value="إدارة">إدارة</option>
+        <option value="أخرى">أخرى</option>
+      </select>
+    </div>
+    <button class="btn-primary" id="piVStartBtn" style="background:var(--orange)" onclick="startPurchaseItemVoice()">▶ بدء الاستماع</button>
+    <button class="btn-secondary" id="piVStopBtn" style="display:none" onclick="stopPurchaseItemVoice()">⏹ إيقاف</button>
+    <button class="btn-secondary" onclick="closeSheet('addPurchaseItemVoiceOverlay')" style="color:var(--text2)">إغلاق</button>
+  </div>
+</div>
+
+<!-- Edit Purchase Item -->
+<div class="overlay" id="editPurchaseItemOverlay" onclick="bgClose(event,'editPurchaseItemOverlay')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">✏️ تعديل الصنف</div>
+    <div class="inp-wrap">
+      <div class="inp-label">اسم الصنف</div>
+      <input class="inp" id="editPiName" type="text">
+    </div>
+    <div class="inp-row">
+      <div class="inp-wrap">
+        <div class="inp-label">السعر (ر.س)</div>
+        <input class="inp" id="editPiPrice" type="number" inputmode="decimal" step="any">
+      </div>
+      <div class="inp-wrap" style="width:90px">
+        <div class="inp-label">الكمية</div>
+        <input class="inp" id="editPiQty" type="number" inputmode="numeric" step="any">
+      </div>
+    </div>
+    <div class="inp-wrap">
+      <div class="inp-label">الفئة</div>
+      <select class="inp" id="editPiCat">
+        <option value="">— بدون فئة —</option>
+        <option value="مواد خام">مواد خام</option>
+        <option value="مستلزمات">مستلزمات</option>
+        <option value="تشغيل">تشغيل</option>
+        <option value="إدارة">إدارة</option>
+        <option value="أخرى">أخرى</option>
+      </select>
+    </div>
+    <button class="btn-primary" style="background:var(--orange)" onclick="doEditPurchaseItem()">💾 حفظ</button>
+    <button class="btn-danger" onclick="doDelPurchaseItem()">🗑️ حذف الصنف</button>
+    <button class="btn-secondary" onclick="closeSheet('editPurchaseItemOverlay')">إلغاء</button>
+  </div>
+</div>
+
+<!-- Purchase Stock Picker -->
+<div class="overlay" id="purchaseStockOverlay" onclick="bgClose(event,'purchaseStockOverlay')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="purchaseStockTitle">🗃️ المخزون</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <button class="btn-secondary" style="padding:14px;border-color:rgba(67,233,123,.4);color:var(--green);border-radius:12px" onclick="applyPurchaseStock('full')">🟢<br><b>كامل</b></button>
+      <button class="btn-secondary" style="padding:14px;border-color:rgba(245,166,35,.4);color:var(--orange);border-radius:12px" onclick="applyPurchaseStock('half')">🟡<br><b>النصف</b></button>
+      <button class="btn-secondary" style="padding:14px;border-color:rgba(234,88,12,.4);color:#ea580c;border-radius:12px" onclick="applyPurchaseStock('quarter')">🟠<br><b>الربع</b></button>
+      <button class="btn-secondary" style="padding:14px;border-color:rgba(255,77,109,.4);color:var(--danger);border-radius:12px" onclick="applyPurchaseStock('out')">🔴<br><b>نفذ</b></button>
+    </div>
+    <div class="inp-wrap">
+      <div class="inp-label">عدد محدد (حبات / أيام...)</div>
+      <input class="inp" id="purchaseStockCustom" type="number" inputmode="numeric" placeholder="مثال: 3">
+    </div>
+    <button class="btn-primary" style="background:var(--orange)" onclick="applyPurchaseStockCustom()">✅ حفظ العدد</button>
   </div>
 </div>
 
@@ -1125,34 +1267,65 @@ async function openPurchaseDetail(id){
   const p = _groupPurchases.find(x=>x.id===id);
   if(!p) return;
   document.getElementById('purchaseDetailTitle').textContent = '📦 ' + p.name;
-
   const { data: items } = await sb.from('commitment_items').select('*').eq('commitment_id',id).order('created_at');
   _purchaseItemsCache = [...(_purchaseItemsCache.filter(i=>i.commitment_id!==id)), ...(items||[])];
-
-  const total = (items||[]).reduce((s,i)=>s+Number(i.price)*Number(i.qty),0);
-  const STOCK_ICON = {full:'🟢',half:'🟡',quarter:'🟠',empty:'🔴'};
-
-  document.getElementById('purchaseDetailContent').innerHTML = `
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div style="font-size:0.82rem;color:var(--text2)">${(items||[]).length} صنف</div>
-        <div style="font-size:1rem;font-weight:700;color:var(--orange)">${total.toFixed(2)} ر.س</div>
-      </div>
-      ${items&&items.length?`<table class="detail-table">
-        <thead><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>المخزون</th></tr></thead>
-        <tbody>
-          ${items.map(i=>`<tr onclick="openEditPurchaseItem('${i.id}')" style="cursor:pointer">
-            <td>${i.name}</td>
-            <td>${Number(i.qty)%1===0?Number(i.qty).toFixed(0):Number(i.qty)}</td>
-            <td>${Number(i.price).toFixed(2)}</td>
-            <td>${STOCK_ICON[i.stock]||'🟢'}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>`:'<div style="text-align:center;color:var(--text2);padding:20px">لا توجد أصناف بعد</div>'}
-    </div>
-    <button class="btn-primary" style="background:var(--orange)" onclick="openAddPurchaseItem()">+ إضافة صنف</button>`;
-
+  renderPurchaseItems(items||[]);
   goPage('purchase-detail');
+}
+
+function renderPurchaseItems(items){
+  const el = document.getElementById('purchaseDetailContent');
+  const count = document.getElementById('purchaseDetailCount');
+  if(count) count.textContent = items.length ? `${items.length} صنف` : '';
+  if(!items.length){
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📦</div><p>لا توجد أصناف بعد<br>اضغط إضافة يدوي أو صوتي</p></div>';
+    return;
+  }
+  const total = items.reduce((s,i)=>s+Number(i.price)*Number(i.qty),0);
+  const rows = items.map((item,idx)=>{
+    const rowTotal = (Number(item.price)*Number(item.qty)).toFixed(2);
+    const sl = piStockLabel(item.stock);
+    const sc = piStockClass(item.stock);
+    const cat = item.category||'';
+    return `<tr onclick="handlePurchaseItemClick(event,'${item.id}')">
+      <td class="item-num">${idx+1}</td>
+      <td class="item-name-cell">${item.name}</td>
+      <td>${cat?`<span class="item-cat-badge" style="border-color:rgba(245,166,35,.35);color:var(--orange)">${cat}</span>`:''}</td>
+      <td style="text-align:center;color:var(--text2);font-size:0.82rem">${Number(item.qty)%1===0?Number(item.qty).toFixed(0):Number(item.qty)}</td>
+      <td style="color:var(--text2);font-size:0.82rem">${Number(item.price).toFixed(2)}</td>
+      <td class="item-total-cell">${rowTotal}</td>
+      <td><button class="stock-btn ${sc}" onclick="openPurchaseStockPicker('${item.id}','${item.name.replace(/'/g,"\\'")}');event.stopPropagation()">${sl||'—'}</button></td>
+      <td><button class="item-del-btn" onclick="delPurchaseItem('${item.id}');event.stopPropagation()">🗑</button></td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<div class="card" style="padding:0;overflow:hidden">
+    <div style="overflow-x:auto">
+      <table class="item-table">
+        <thead><tr><th>#</th><th>الصنف</th><th>الفئة</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>المخزون</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:12px 16px;font-weight:700;border-top:1px solid var(--border)">
+      <span style="color:var(--text2);font-size:0.85rem">${items.length} صنف</span>
+      <span style="color:var(--orange)">${total.toFixed(2)} ر.س</span>
+    </div>
+  </div>`;
+}
+
+function handlePurchaseItemClick(e, id){
+  if(e.target.closest('.item-del-btn,.stock-btn')) return;
+  openEditPurchaseItemOverlay(id);
+}
+
+function piStockLabel(s){
+  const map = {full:'🟢 كامل', half:'🟡 النصف', quarter:'🟠 الربع', out:'🔴 نفذ'};
+  if(map[s]) return map[s];
+  if(s&&s!=='') return `📦 ${s}`;
+  return '—';
+}
+function piStockClass(s){
+  const map = {full:'stock-full', half:'stock-half', quarter:'stock-quarter', out:'stock-out'};
+  return map[s]||'';
 }
 
 function openAddPurchase(){
@@ -1177,36 +1350,171 @@ async function doAddPurchase(){
   toast('✅ تم إضافة الفئة','ok');
 }
 
-async function openAddPurchaseItem(){
-  const name = prompt('اسم الصنف:');
-  if(!name) return;
-  const price = parseFloat(prompt('السعر (ر.س):'));
-  if(!price||price<0) return;
-  const qty = parseFloat(prompt('الكمية (افتراضي 1):'))||1;
-  const { error } = await sb.from('commitment_items').insert({
-    commitment_id: _currentPurchaseId, name, price, qty, stock:'full'
-  });
-  if(error){ toast('خطأ: '+error.message,'bad'); return; }
-  toast('✅ تم إضافة الصنف','ok');
-  openPurchaseDetail(_currentPurchaseId);
+// ── ADD PURCHASE ITEM: MANUAL ──
+function openAddPurchaseItemManual(){
+  document.getElementById('piName').value='';
+  document.getElementById('piPrice').value='';
+  document.getElementById('piQty').value='1';
+  document.getElementById('piCat').value='';
+  document.getElementById('addPurchaseItemOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('piName').focus(),350);
 }
 
-async function openEditPurchaseItem(id){
+async function doAddPurchaseItem(){
+  const name  = document.getElementById('piName').value.trim();
+  const price = parseFloat(document.getElementById('piPrice').value);
+  const qty   = parseFloat(document.getElementById('piQty').value)||1;
+  const category = document.getElementById('piCat').value;
+  if(!name){ toast('أدخل اسم الصنف','bad'); return; }
+  if(!price||price<=0){ toast('أدخل سعراً صحيحاً','bad'); return; }
+  const { data, error } = await sb.from('commitment_items').insert({
+    commitment_id: _currentPurchaseId, name, price, qty, category, stock:'full', src:'manual'
+  }).select().single();
+  if(error){ toast('خطأ: '+error.message,'bad'); return; }
+  _purchaseItemsCache.push(data);
+  closeSheet('addPurchaseItemOverlay');
+  renderPurchaseItems(_purchaseItemsCache.filter(i=>i.commitment_id===_currentPurchaseId));
+  upsertVocab(name);
+  toast(`✅ ${name} — ${price.toFixed(2)} ر.س`,'ok');
+}
+
+// ── ADD PURCHASE ITEM: VOICE ──
+let _piVRec = null, _piVListening = false;
+
+function openAddPurchaseItemVoice(){
+  document.getElementById('addPurchaseItemVoiceOverlay').classList.add('open');
+  document.getElementById('piVTranscript').textContent='';
+  piVMsg('اضغط بدء وقل اسم الصنف والسعر','');
+  resetPiVoiceUI();
+}
+
+function startPurchaseItemVoice(){
+  const SR = window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ piVMsg('المتصفح لا يدعم الصوت — استخدم Chrome','err'); return; }
+  _piVRec = new SR();
+  _piVRec.lang='ar-SA'; _piVRec.interimResults=true; _piVRec.continuous=false;
+  _piVRec.onstart=()=>{
+    _piVListening=true;
+    document.getElementById('piVRing').classList.add('active');
+    document.getElementById('piVRing').textContent='🔴';
+    piVMsg('🔴 يستمع...','');
+    document.getElementById('piVStartBtn').style.display='none';
+    document.getElementById('piVStopBtn').style.display='block';
+  };
+  _piVRec.onresult=(e)=>{
+    const t=Array.from(e.results).map(r=>r[0].transcript).join('');
+    document.getElementById('piVTranscript').textContent=`"${t}"`;
+  };
+  _piVRec.onend=async()=>{
+    if(!_piVListening) return;
+    const tr=document.getElementById('piVTranscript').textContent;
+    const match=tr.match(/"(.+)"/);
+    if(match){
+      const raw=match[1].trim().replace(/ريال\s*$/,'').trim();
+      const parts=raw.split(/\s+/);
+      const lastPart=parts[parts.length-1];
+      const nm=lastPart.match(/\d+(?:\.\d+)?/);
+      const price=nm?parseFloat(nm[0]):null;
+      if(price&&parts.length>=2){
+        const rawName=parts.slice(0,-1).join(' ');
+        const {name:itemName}=fuzzyCorrect(rawName);
+        const category=document.getElementById('piVCat').value;
+        const { data, error } = await sb.from('commitment_items').insert({
+          commitment_id: _currentPurchaseId, name: itemName, price, qty:1, category, stock:'full', src:'voice'
+        }).select().single();
+        if(!error){
+          _purchaseItemsCache.push(data);
+          upsertVocab(itemName);
+          piVMsg(`✅ ${itemName} — ${price.toFixed(2)} ر.س`,'ok');
+          renderPurchaseItems(_purchaseItemsCache.filter(i=>i.commitment_id===_currentPurchaseId));
+          setTimeout(()=>{ closeSheet('addPurchaseItemVoiceOverlay'); resetPiVoiceUI(); },1400);
+        }
+      } else { piVMsg('❌ جرب: "شامبو 25 ريال"','err'); resetPiListenUI(); }
+    } else { piVMsg('لم أسمع شيئاً. اضغط بدء وتكلم',''); resetPiListenUI(); }
+  };
+  _piVRec.onerror=(e)=>{ piVMsg(`خطأ: ${e.error}`,'err'); resetPiListenUI(); };
+  _piVRec.start();
+}
+function stopPurchaseItemVoice(){ _piVListening=false; if(_piVRec){try{_piVRec.stop();}catch(e){}} resetPiListenUI(); }
+function resetPiListenUI(){ _piVListening=false; document.getElementById('piVRing').classList.remove('active'); document.getElementById('piVRing').textContent='🎙️'; document.getElementById('piVStartBtn').style.display='block'; document.getElementById('piVStopBtn').style.display='none'; }
+function resetPiVoiceUI(){ resetPiListenUI(); document.getElementById('piVTranscript').textContent=''; piVMsg('اضغط بدء وقل اسم الصنف والسعر',''); }
+function piVMsg(msg,cls){ const el=document.getElementById('piVMsg'); el.textContent=msg; el.className='v-msg'+(cls?' '+cls:''); }
+
+// ── EDIT PURCHASE ITEM ──
+let _editingPiId = null;
+
+function openEditPurchaseItemOverlay(id){
   const item = _purchaseItemsCache.find(i=>i.id===id);
   if(!item) return;
-  const STOCKS = ['full','half','quarter','empty'];
-  const STOCK_LABELS = {'full':'كامل 🟢','half':'النصف 🟡','quarter':'الربع 🟠','empty':'نفذ 🔴'};
-  const newName = prompt('اسم الصنف:', item.name);
-  if(newName===null) return;
-  const newPrice = parseFloat(prompt('السعر:', item.price));
-  if(isNaN(newPrice)) return;
-  const newQty = parseFloat(prompt('الكمية:', item.qty))||1;
-  const stockOpts = STOCKS.map((s,i)=>`${i+1}: ${STOCK_LABELS[s]}`).join('\n');
-  const stockChoice = parseInt(prompt(`المخزون:\n${stockOpts}\nاختر رقماً:`))||1;
-  const newStock = STOCKS[stockChoice-1]||'full';
-  await sb.from('commitment_items').update({ name:newName, price:newPrice, qty:newQty, stock:newStock }).eq('id',id);
+  _editingPiId = id;
+  document.getElementById('editPiName').value  = item.name;
+  document.getElementById('editPiPrice').value = item.price;
+  document.getElementById('editPiQty').value   = item.qty;
+  document.getElementById('editPiCat').value   = item.category||'';
+  document.getElementById('editPurchaseItemOverlay').classList.add('open');
+}
+
+async function doEditPurchaseItem(){
+  const name  = document.getElementById('editPiName').value.trim();
+  const price = parseFloat(document.getElementById('editPiPrice').value);
+  const qty   = parseFloat(document.getElementById('editPiQty').value)||1;
+  const category = document.getElementById('editPiCat').value;
+  if(!name){ toast('أدخل اسم الصنف','bad'); return; }
+  if(!price||price<=0){ toast('أدخل سعراً صحيحاً','bad'); return; }
+  const { error } = await sb.from('commitment_items').update({ name, price, qty, category }).eq('id',_editingPiId);
+  if(error){ toast('خطأ: '+error.message,'bad'); return; }
+  const idx = _purchaseItemsCache.findIndex(i=>i.id===_editingPiId);
+  if(idx>=0) _purchaseItemsCache[idx]={..._purchaseItemsCache[idx], name, price, qty, category};
+  closeSheet('editPurchaseItemOverlay');
+  renderPurchaseItems(_purchaseItemsCache.filter(i=>i.commitment_id===_currentPurchaseId));
   toast('✅ تم التعديل','ok');
-  openPurchaseDetail(_currentPurchaseId);
+}
+
+function doDelPurchaseItem(){
+  confirmDel('حذف هذا الصنف؟', async()=>{
+    const { error } = await sb.from('commitment_items').delete().eq('id',_editingPiId);
+    if(error){ toast('خطأ: '+error.message,'bad'); return; }
+    _purchaseItemsCache = _purchaseItemsCache.filter(i=>i.id!==_editingPiId);
+    closeSheet('editPurchaseItemOverlay');
+    renderPurchaseItems(_purchaseItemsCache.filter(i=>i.commitment_id===_currentPurchaseId));
+    toast('تم الحذف','bad');
+  });
+}
+
+function delPurchaseItem(id){
+  confirmDel('حذف هذا الصنف؟', async()=>{
+    const { error } = await sb.from('commitment_items').delete().eq('id',id);
+    if(error){ toast('خطأ: '+error.message,'bad'); return; }
+    _purchaseItemsCache = _purchaseItemsCache.filter(i=>i.id!==id);
+    renderPurchaseItems(_purchaseItemsCache.filter(i=>i.commitment_id===_currentPurchaseId));
+    toast('تم الحذف','bad');
+  });
+}
+
+// ── STOCK PICKER ──
+let _piStockId = null;
+
+function openPurchaseStockPicker(id, name){
+  _piStockId = id;
+  document.getElementById('purchaseStockTitle').textContent = `🗃️ مخزون: ${name}`;
+  document.getElementById('purchaseStockCustom').value = '';
+  document.getElementById('purchaseStockOverlay').classList.add('open');
+}
+
+async function applyPurchaseStock(val){
+  const { error } = await sb.from('commitment_items').update({ stock: val }).eq('id',_piStockId);
+  if(!error){
+    const idx = _purchaseItemsCache.findIndex(i=>i.id===_piStockId);
+    if(idx>=0) _purchaseItemsCache[idx].stock = val;
+    renderPurchaseItems(_purchaseItemsCache.filter(i=>i.commitment_id===_currentPurchaseId));
+  }
+  closeSheet('purchaseStockOverlay');
+  toast('✅ تم تحديث المخزون','ok');
+}
+
+function applyPurchaseStockCustom(){
+  const v = document.getElementById('purchaseStockCustom').value.trim();
+  applyPurchaseStock(v||'full');
 }
 
 // ══════════════════════════════════════════
