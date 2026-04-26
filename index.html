@@ -231,8 +231,10 @@
     // إذا المستخدم مسجل دخول — روّحه للتطبيق المناسب
     sb.auth.getSession().then(async ({ data }) => {
       if (!data.session) return;
-      const { data: prof } = await sb.from('profiles').select('account_type').eq('id', data.session.user.id).single();
-      window.location.href = (prof?.account_type === 'business') ? 'business.html' : 'app.html';
+      const uid = data.session.user.id;
+      const { data: prof } = await sb.from('profiles').select('account_type').eq('id', uid).single();
+      const accType = prof?.account_type || data.session.user.user_metadata?.account_type || 'personal';
+      window.location.href = (accType === 'business') ? 'business.html' : 'app.html';
     });
 
     function showTab(tab) {
@@ -284,7 +286,8 @@
         showMsg(error.message.includes('Invalid') ? 'البريد أو كلمة المرور غير صحيحة' : error.message);
       } else {
         const { data: prof } = await sb.from('profiles').select('account_type').eq('id', data.user.id).single();
-        window.location.href = (prof?.account_type === 'business') ? 'business.html' : 'app.html';
+        const accType = prof?.account_type || data.user.user_metadata?.account_type || 'personal';
+        window.location.href = (accType === 'business') ? 'business.html' : 'app.html';
       }
     }
 
@@ -307,10 +310,6 @@
       if (error) {
         showMsg(error.message);
       } else {
-        // حفظ account_type في profiles
-        if (data?.user) {
-          await sb.from('profiles').update({ account_type: _accType }).eq('id', data.user.id);
-        }
         showMsg('تم إنشاء الحساب! تحقق من بريدك الإلكتروني لتأكيد الحساب.', 'success');
       }
     }
