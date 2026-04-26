@@ -233,8 +233,8 @@
       if (!data.session) return;
       const uid = data.session.user.id;
       const { data: prof } = await sb.from('profiles').select('account_type').eq('id', uid).single();
-      const accType = prof?.account_type || data.session.user.user_metadata?.account_type || 'personal';
-      window.location.href = (accType === 'business') ? 'business.html' : 'app.html';
+      const isBiz = prof?.account_type === 'business' || data.session.user.user_metadata?.account_type === 'business';
+      window.location.href = isBiz ? 'business.html' : 'app.html';
     });
 
     function showTab(tab) {
@@ -286,8 +286,8 @@
         showMsg(error.message.includes('Invalid') ? 'البريد أو كلمة المرور غير صحيحة' : error.message);
       } else {
         const { data: prof } = await sb.from('profiles').select('account_type').eq('id', data.user.id).single();
-        const accType = prof?.account_type || data.user.user_metadata?.account_type || 'personal';
-        window.location.href = (accType === 'business') ? 'business.html' : 'app.html';
+        const isBiz = prof?.account_type === 'business' || data.user.user_metadata?.account_type === 'business';
+        window.location.href = isBiz ? 'business.html' : 'app.html';
       }
     }
 
