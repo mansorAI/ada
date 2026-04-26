@@ -350,8 +350,9 @@ async function toggleAdmin(userId,val){
 
 async function deleteUser(userId,email){
   if(!confirm(`حذف حساب ${email}؟\nسيتم حذف كل بياناته نهائياً.`)) return;
-  await sb.from('profiles').delete().eq('id',userId);
-  toast('تم حذف الحساب');
+  const { error } = await sb.rpc('admin_delete_user', { target_id: userId });
+  if(error){ alert('خطأ: ' + error.message); return; }
+  toast('تم حذف الحساب نهائياً');
   loadUsers();
 }
 
