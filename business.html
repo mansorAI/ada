@@ -309,6 +309,10 @@
     .treasury-btn{flex:1;padding:11px 6px;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;border:1px solid;}
     .treasury-btn.deposit{background:rgba(56,189,248,0.1);color:var(--blue);border-color:rgba(56,189,248,0.3);}
     .treasury-btn.withdrawal{background:rgba(255,77,109,0.08);color:var(--danger);border-color:rgba(255,77,109,0.25);}
+    .treasury-warn{margin-top:11px;background:rgba(255,77,109,0.09);border:1px solid rgba(255,77,109,0.3);border-radius:10px;padding:10px 13px;font-size:0.8rem;color:var(--danger);display:none;}
+    .wdr-type-btn{flex:1;padding:10px 8px;border-radius:10px;border:2px solid var(--border);background:var(--bg);color:var(--text2);font-family:'Tajawal',sans-serif;font-size:0.88rem;cursor:pointer;transition:all 0.2s;font-weight:500;}
+    .wdr-type-btn.sel-personal{border-color:var(--danger);color:var(--danger);background:rgba(255,77,109,0.08);}
+    .wdr-type-btn.sel-purchases{border-color:var(--orange);color:var(--orange);background:rgba(245,166,35,0.08);}
     /* ── Ledger ── */
     .ledger-entry{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border);}
     .ledger-entry:last-child{border-bottom:none;}
@@ -405,6 +409,7 @@
       <button class="treasury-btn deposit" onclick="openTreasuryAction('deposit')">➕ دعم الخزنة</button>
       <button class="treasury-btn withdrawal" onclick="openTreasuryAction('withdrawal')">💸 سحب</button>
     </div>
+    <div class="treasury-warn" id="purchaseWarnBanner">⚠️ <span id="purchaseWarnText"></span></div>
   </div>
 
   <!-- Today Sales List -->
@@ -886,6 +891,16 @@
       <div class="inp-label">المبلغ (ر.س)</div>
       <input class="inp" id="treasuryActionAmount" type="number" inputmode="decimal" placeholder="0.00" min="0.01" step="any">
     </div>
+    <div class="inp-wrap" id="withdrawalTypeGroup" style="display:none">
+      <div class="inp-label">نوع السحب</div>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button type="button" class="wdr-type-btn sel-personal" id="wdrTypePersonal" onclick="selectWdrType('personal',this)">👤 شخصي</button>
+        <button type="button" class="wdr-type-btn" id="wdrTypePurchases" onclick="selectWdrType('purchases',this)">📦 مشتريات</button>
+      </div>
+      <div id="wdrPurchasesHint" style="display:none;margin-top:8px;font-size:0.78rem;color:var(--orange);background:rgba(245,166,35,0.08);border-radius:8px;padding:8px 10px">
+        📌 لن يُخصم من الخزنة الآن — سيُخصم عند تسجيل المشتريات بنفس المبلغ
+      </div>
+    </div>
     <div class="inp-wrap">
       <div class="inp-label">ملاحظة — اختياري</div>
       <input class="inp" id="treasuryActionNote" type="text" placeholder="مثال: راتب، مبلغ دعم...">
@@ -938,6 +953,7 @@ let _recognition = null, _isListening = false;
 let _treasuryEntries = [];
 let _treasuryAllPurchasesTotal = 0;
 let _treasuryActionType = 'deposit';
+let _withdrawalType = 'personal';
 
 // Permissions
 let _bizIsOwner = false;
@@ -1168,11 +1184,14 @@ async function loadTreasury(){
 }
 
 function renderTreasury(){
-  const totalSales      = _groupSales.reduce((s,x) => s + Number(x.total), 0);
-  const totalDeposits   = _treasuryEntries.filter(e => e.type==='deposit').reduce((s,e) => s + Number(e.amount), 0);
-  const totalWithdraws  = _treasuryEntries.filter(e => e.type==='withdrawal').reduce((s,e) => s + Number(e.amount), 0);
-  const totalPurchases  = _treasuryAllPurchasesTotal;
-  const net = totalSales + totalDeposits - totalPurchases - totalWithdraws;
+  const totalSales    = _groupSales.reduce((s,x) => s + Number(x.total), 0);
+  const totalDeposits = _treasuryEntries.filter(e => e.type==='deposit').reduce((s,e) => s + Number(e.amount), 0);
+  // السحب الشخصي يُخصم من الخزنة — سحب المشتريات لا يُخصم (سيُخصم لاحقاً عند تسجيل المشتريات)
+  const personalWdr   = _treasuryEntries.filter(e => e.type==='withdrawal' && (e.withdrawal_type||'personal')==='personal').reduce((s,e) => s + Number(e.amount), 0);
+  const purchaseWdr   = _treasuryEntries.filter(e => e.type==='withdrawal' && e.withdrawal_type==='purchases').reduce((s,e) => s + Number(e.amount), 0);
+  const totalPurchases = _treasuryAllPurchasesTotal;
+
+  const net = totalSales + totalDeposits - totalPurchases - personalWdr;
 
   const netEl = document.getElementById('treasuryNet');
   if(netEl){
@@ -1184,15 +1203,45 @@ function renderTreasury(){
   set('tSales',      totalSales);
   set('tDeposits',   totalDeposits);
   set('tPurchases',  totalPurchases);
-  set('tWithdrawals',totalWithdraws);
+  set('tWithdrawals',personalWdr);
+
+  // تحذير: هل يوجد سحب مشتريات لم يُسجَّل بعد؟
+  const pending = Math.max(0, purchaseWdr - totalPurchases);
+  const warnEl  = document.getElementById('purchaseWarnBanner');
+  const warnTxt = document.getElementById('purchaseWarnText');
+  if(warnEl){
+    if(pending > 0.009){
+      warnEl.style.display = 'block';
+      if(warnTxt) warnTxt.textContent = `مسحوب ${purchaseWdr.toFixed(2)} ر.س للمشتريات — المتبقي غير مسجَّل: ${pending.toFixed(2)} ر.س`;
+    } else {
+      warnEl.style.display = 'none';
+    }
+  }
+}
+
+function selectWdrType(type, btn){
+  _withdrawalType = type;
+  document.getElementById('wdrTypePersonal')?.classList.toggle('sel-personal', type==='personal');
+  document.getElementById('wdrTypePersonal')?.classList.toggle('wdr-type-btn', true);
+  document.getElementById('wdrTypePurchases')?.classList.toggle('sel-purchases', type==='purchases');
+  document.getElementById('wdrPurchasesHint').style.display = type==='purchases' ? 'block' : 'none';
 }
 
 function openTreasuryAction(type){
   _treasuryActionType = type;
+  _withdrawalType = 'personal';
   const isDeposit = type === 'deposit';
   document.getElementById('treasuryActionTitle').textContent = isDeposit ? '➕ دعم الخزنة' : '💸 سحب من الخزنة';
   const btn = document.getElementById('treasuryActionSubmitBtn');
   if(btn){ btn.style.background = isDeposit ? '' : 'var(--danger)'; }
+  // نوع السحب
+  const wdrGroup = document.getElementById('withdrawalTypeGroup');
+  if(wdrGroup) wdrGroup.style.display = isDeposit ? 'none' : 'block';
+  if(!isDeposit){
+    document.getElementById('wdrTypePersonal')?.classList.add('sel-personal');
+    document.getElementById('wdrTypePurchases')?.classList.remove('sel-purchases');
+    document.getElementById('wdrPurchasesHint').style.display = 'none';
+  }
   document.getElementById('treasuryActionAmount').value = '';
   document.getElementById('treasuryActionNote').value = '';
   document.getElementById('treasuryActionOverlay').classList.add('open');
@@ -1203,16 +1252,22 @@ async function doTreasuryAction(){
   const amount = parseFloat(document.getElementById('treasuryActionAmount').value);
   const note   = document.getElementById('treasuryActionNote').value.trim();
   if(!amount || amount <= 0){ toast('أدخل مبلغاً صحيحاً','bad'); return; }
-  const { data, error } = await sb.from('biz_treasury').insert({
+  const row = {
     group_id: currentGroupId, added_by: currentUser.id,
     type: _treasuryActionType, amount, note
-  }).select().single();
+  };
+  if(_treasuryActionType === 'withdrawal') row.withdrawal_type = _withdrawalType;
+  const { data, error } = await sb.from('biz_treasury').insert(row).select().single();
   if(error){ toast('خطأ: '+error.message,'bad'); return; }
   _treasuryEntries.unshift(data);
   closeSheet('treasuryActionOverlay');
   renderTreasury();
   const isDeposit = _treasuryActionType === 'deposit';
-  toast(`✅ ${isDeposit ? 'تم دعم الخزنة' : 'تم تسجيل السحب'}: ${amount.toFixed(2)} ر.س`, isDeposit ? 'ok' : '');
+  const isPurWdr  = !isDeposit && _withdrawalType === 'purchases';
+  const msg = isDeposit    ? `✅ تم دعم الخزنة: ${amount.toFixed(2)} ر.س` :
+              isPurWdr     ? `📦 سحب ${amount.toFixed(2)} ر.س للمشتريات — تذكر تسجيلها` :
+                             `💸 تم تسجيل السحب: ${amount.toFixed(2)} ر.س`;
+  toast(msg, isDeposit ? 'ok' : '');
 }
 
 function openTreasuryDetails(){
@@ -1221,10 +1276,10 @@ function openTreasuryDetails(){
 }
 
 function renderTreasuryLedger(){
-  const totalSales     = _groupSales.reduce((s,x) => s + Number(x.total), 0);
-  const totalDeposits  = _treasuryEntries.filter(e => e.type==='deposit').reduce((s,e) => s + Number(e.amount), 0);
-  const totalWithdraws = _treasuryEntries.filter(e => e.type==='withdrawal').reduce((s,e) => s + Number(e.amount), 0);
-  const net = totalSales + totalDeposits - _treasuryAllPurchasesTotal - totalWithdraws;
+  const totalSales    = _groupSales.reduce((s,x) => s + Number(x.total), 0);
+  const totalDeposits = _treasuryEntries.filter(e => e.type==='deposit').reduce((s,e) => s + Number(e.amount), 0);
+  const personalWdr   = _treasuryEntries.filter(e => e.type==='withdrawal' && (e.withdrawal_type||'personal')==='personal').reduce((s,e) => s + Number(e.amount), 0);
+  const net = totalSales + totalDeposits - _treasuryAllPurchasesTotal - personalWdr;
 
   const netEl = document.getElementById('ledgerNet');
   if(netEl){ netEl.textContent = net.toFixed(2) + ' ر.س'; netEl.style.color = net >= 0 ? 'var(--blue)' : 'var(--danger)'; }
@@ -1246,7 +1301,7 @@ function renderTreasuryLedger(){
 
   // Treasury entries
   _treasuryEntries.forEach(e => {
-    entries.push({ kind: e.type, date: e.created_at, amount: Number(e.amount), note: e.note, id: e.id });
+    entries.push({ kind: e.type, date: e.created_at, amount: Number(e.amount), note: e.note, id: e.id, withdrawal_type: e.withdrawal_type });
   });
 
   // Purchases total (single summary line)
@@ -1291,13 +1346,14 @@ function renderTreasuryLedger(){
       </div>`;
     }
     if(e.kind === 'withdrawal'){
+      const isPur = e.withdrawal_type === 'purchases';
       return `<div class="ledger-entry">
-        <div class="ledger-icon">💸</div>
+        <div class="ledger-icon">${isPur ? '📦' : '💸'}</div>
         <div class="ledger-info">
-          <div class="ledger-name">سحب${e.note ? ' — '+e.note : ''}</div>
+          <div class="ledger-name">${isPur ? 'سحب للمشتريات' : 'سحب شخصي'}${e.note ? ' — '+e.note : ''}${isPur ? ' <span style="font-size:0.68rem;color:var(--orange);border:1px solid rgba(245,166,35,.4);border-radius:6px;padding:1px 5px">⏳ معلّق</span>' : ''}</div>
           <div class="ledger-date">${dayLabel(dateKey(e.date))} · ${timeLabel(e.date)}</div>
         </div>
-        <div class="ledger-amount wdr-amt">-${e.amount.toFixed(2)}</div>
+        <div class="ledger-amount ${isPur ? 'minus' : 'wdr-amt'}">${isPur ? '' : '-'}${e.amount.toFixed(2)}</div>
         <button class="ledger-del" onclick="delTreasuryEntry('${e.id}')">🗑</button>
       </div>`;
     }
