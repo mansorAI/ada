@@ -382,7 +382,7 @@
 <!-- ══ PURCHASES DETAIL ══ -->
 <div class="page" id="pg-purchase-detail">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-    <button onclick="goPage('purchases')" style="background:none;border:none;color:var(--text2);font-size:1.3rem;cursor:pointer">←</button>
+    <button onclick="openPurchasesPage()" style="background:none;border:none;color:var(--text2);font-size:1.3rem;cursor:pointer">←</button>
     <div style="flex:1;font-weight:700;font-size:1rem" id="purchaseDetailTitle">تفاصيل المشتريات</div>
     <div style="font-size:0.82rem;color:var(--orange)" id="purchaseDetailCount"></div>
   </div>
@@ -576,6 +576,25 @@
     </div>
     <button class="btn-primary" style="background:var(--orange)" onclick="doAddPurchase()">✅ إضافة</button>
     <button class="btn-secondary" onclick="closeSheet('addPurchaseOverlay')">إلغاء</button>
+  </div>
+</div>
+
+<!-- Edit Purchase Category -->
+<div class="overlay" id="editPurchaseOverlay" onclick="bgClose(event,'editPurchaseOverlay')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">⚙️ تعديل الفئة</div>
+    <div class="inp-wrap">
+      <div class="inp-label">اسم الفئة</div>
+      <input class="inp" id="editPurchaseNameInp" placeholder="اسم الفئة">
+    </div>
+    <div class="inp-wrap">
+      <div class="inp-label">الميزانية التقديرية (ر.س) — اختياري</div>
+      <input class="inp" id="editPurchaseBudgetInp" type="number" placeholder="0.00" min="0" step="any">
+    </div>
+    <button class="btn-primary" style="background:var(--orange)" onclick="doEditPurchase()">💾 حفظ التعديلات</button>
+    <button class="btn-danger" onclick="doDeletePurchase()">🗑️ حذف الفئة وكل أصنافها</button>
+    <button class="btn-secondary" onclick="closeSheet('editPurchaseOverlay')">إلغاء</button>
   </div>
 </div>
 
@@ -1228,6 +1247,13 @@ async function loadGroupPurchases(){
       _groupPurchases = reloaded || [];
     }
   }
+
+  // جلب أصناف جميع الفئات لحساب المصروف الفعلي
+  if(_groupPurchases.length > 0){
+    const ids = _groupPurchases.map(p=>p.id);
+    const { data: allItems } = await sb.from('commitment_items').select('*').in('commitment_id', ids);
+    _purchaseItemsCache = allItems || [];
+  }
 }
 
 function getCurrentMonthKey(){
@@ -1251,13 +1277,26 @@ function renderPurchases(){
     const spent = items.reduce((s,i)=>s+Number(i.price)*Number(i.qty),0);
     const budget = Number(p.budget)||0;
     const pct = budget>0 ? Math.min(100,Math.round(spent/budget*100)) : 0;
-    return `<div class="commit-card" onclick="openPurchaseDetail('${p.id}')">
+    const overBudget = budget>0 && spent>budget;
+    const barColor = overBudget ? 'var(--danger)' : 'var(--orange)';
+    return `<div class="commit-card" data-pid="${p.id}" onclick="openPurchaseDetail('${p.id}')">
       <div class="commit-card-hdr">
         <div class="commit-card-name">📦 ${p.name}</div>
-        <div class="commit-card-budget">${spent.toFixed(0)} ${budget>0?'/ '+budget.toFixed(0):''} ر.س</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="commit-card-budget" style="color:${overBudget?'var(--danger)':'var(--orange)'}">
+            ${spent.toFixed(0)}${budget>0?' / '+budget.toFixed(0):''} ر.س
+          </div>
+          <button onclick="openEditPurchase('${p.id}');event.stopPropagation()"
+            style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:1rem;padding:2px 4px;border-radius:6px;line-height:1">⚙️</button>
+        </div>
       </div>
-      ${budget>0?`<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-      <div class="progress-lbl"><span>${items.length} صنف</span><span>${pct}%</span></div>`:`<div style="font-size:0.72rem;color:var(--text2);margin-top:6px">${items.length} صنف</div>`}
+      <div class="progress-bar" style="margin:8px 0 4px">
+        <div class="progress-fill" style="width:${budget>0?pct:0}%;background:${barColor}"></div>
+      </div>
+      <div class="progress-lbl">
+        <span class="p-count" style="color:var(--text2)">${items.length} صنف</span>
+        <span class="p-pct" style="color:${overBudget?'var(--danger)':'var(--text2)'}">${budget>0?pct+'%':spent>0?spent.toFixed(0)+' ر.س':''}</span>
+      </div>
     </div>`;
   }).join('');
 }
@@ -1274,6 +1313,27 @@ async function openPurchaseDetail(id){
 }
 
 function renderPurchaseItems(items){
+  // تحديث كرت الفئة في صفحة المشتريات (في الخلفية)
+  const p = _groupPurchases.find(x=>x.id===_currentPurchaseId);
+  if(p){
+    const spent = items.reduce((s,i)=>s+Number(i.price)*Number(i.qty),0);
+    const budget = Number(p.budget)||0;
+    const pct = budget>0 ? Math.min(100,Math.round(spent/budget*100)) : 0;
+    const overBudget = budget>0 && spent>budget;
+    const barColor = overBudget ? 'var(--danger)' : 'var(--orange)';
+    const cardEl = document.querySelector(`[data-pid="${p.id}"]`);
+    if(cardEl){
+      const budgetEl = cardEl.querySelector('.commit-card-budget');
+      const barFill   = cardEl.querySelector('.progress-fill');
+      const countEl   = cardEl.querySelector('.p-count');
+      const pctEl     = cardEl.querySelector('.p-pct');
+      if(budgetEl) budgetEl.textContent = `${spent.toFixed(0)}${budget>0?' / '+budget.toFixed(0):''} ر.س`;
+      if(barFill)  { barFill.style.width=`${budget>0?pct:0}%`; barFill.style.background=barColor; }
+      if(countEl)  countEl.textContent = `${items.length} صنف`;
+      if(pctEl)    pctEl.textContent   = budget>0 ? pct+'%' : (spent>0?spent.toFixed(0)+' ر.س':'');
+    }
+  }
+
   const el = document.getElementById('purchaseDetailContent');
   const count = document.getElementById('purchaseDetailCount');
   if(count) count.textContent = items.length ? `${items.length} صنف` : '';
@@ -1333,6 +1393,44 @@ function openAddPurchase(){
   document.getElementById('purchaseBudget').value='';
   document.getElementById('addPurchaseOverlay').classList.add('open');
   setTimeout(()=>document.getElementById('purchaseName').focus(),350);
+}
+
+// ── EDIT / DELETE PURCHASE CATEGORY ──
+let _editingPurchaseId = null;
+
+function openEditPurchase(id){
+  const p = _groupPurchases.find(x=>x.id===id);
+  if(!p) return;
+  _editingPurchaseId = id;
+  document.getElementById('editPurchaseNameInp').value   = p.name;
+  document.getElementById('editPurchaseBudgetInp').value = p.budget||'';
+  document.getElementById('editPurchaseOverlay').classList.add('open');
+}
+
+async function doEditPurchase(){
+  const name   = document.getElementById('editPurchaseNameInp').value.trim();
+  const budget = parseFloat(document.getElementById('editPurchaseBudgetInp').value)||0;
+  if(!name){ toast('أدخل اسم الفئة','bad'); return; }
+  const { error } = await sb.from('commitments').update({ name, budget }).eq('id',_editingPurchaseId);
+  if(error){ toast('خطأ: '+error.message,'bad'); return; }
+  const idx = _groupPurchases.findIndex(x=>x.id===_editingPurchaseId);
+  if(idx>=0) _groupPurchases[idx] = {..._groupPurchases[idx], name, budget};
+  closeSheet('editPurchaseOverlay');
+  renderPurchases();
+  toast('✅ تم التعديل','ok');
+}
+
+function doDeletePurchase(){
+  const p = _groupPurchases.find(x=>x.id===_editingPurchaseId);
+  confirmDel(`حذف فئة "${p?.name||''}" وكل أصنافها؟`, async()=>{
+    const { error } = await sb.from('commitments').delete().eq('id',_editingPurchaseId);
+    if(error){ toast('خطأ: '+error.message,'bad'); return; }
+    _groupPurchases = _groupPurchases.filter(x=>x.id!==_editingPurchaseId);
+    _purchaseItemsCache = _purchaseItemsCache.filter(i=>i.commitment_id!==_editingPurchaseId);
+    closeSheet('editPurchaseOverlay');
+    renderPurchases();
+    toast('تم الحذف','bad');
+  });
 }
 
 async function doAddPurchase(){
