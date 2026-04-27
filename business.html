@@ -617,8 +617,8 @@
     <div class="inp-wrap">
       <div class="inp-label">طريقة الدفع</div>
       <div style="display:flex;gap:8px;margin-top:6px">
-        <button type="button" class="pay-btn sel" id="salePayCash" onclick="setSalePayMethod('cash')">💵 نقدي</button>
-        <button type="button" class="pay-btn" id="salePayCard" onclick="setSalePayMethod('card')">💳 شبكة</button>
+        <button type="button" class="pay-btn" id="salePayCash" onclick="setSalePayMethod('cash')">💵 نقدي</button>
+        <button type="button" class="pay-btn sel" id="salePayCard" onclick="setSalePayMethod('card')">💳 شبكة</button>
       </div>
     </div>
     <div class="inp-wrap" id="saleTotalPreview" style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center;display:none">
@@ -951,8 +951,8 @@
     <div class="inp-wrap">
       <div class="inp-label">طريقة الدفع</div>
       <div style="display:flex;gap:8px;margin-top:6px">
-        <button type="button" class="pay-btn sel" id="tPayCash" onclick="setTreasuryPayMethod('cash')">💵 نقدي</button>
-        <button type="button" class="pay-btn" id="tPayCard" onclick="setTreasuryPayMethod('card')">💳 شبكة</button>
+        <button type="button" class="pay-btn" id="tPayCash" onclick="setTreasuryPayMethod('cash')">💵 نقدي</button>
+        <button type="button" class="pay-btn sel" id="tPayCard" onclick="setTreasuryPayMethod('card')">💳 شبكة</button>
       </div>
     </div>
     <div class="inp-wrap">
@@ -1028,8 +1028,8 @@ let _treasuryAllPurchasesTotal = 0;
 let _treasuryPurchaseItems = []; // items with created_at for session linking
 let _treasuryActionType = 'deposit';
 let _withdrawalType = 'personal';
-let _salePayMethod = 'cash';
-let _treasuryPayMethod = 'cash';
+let _salePayMethod = 'card';
+let _treasuryPayMethod = 'card';
 
 // Permissions
 let _bizIsOwner = false;
@@ -1414,7 +1414,7 @@ function openTreasuryAction(type){
   }
   document.getElementById('treasuryActionAmount').value = '';
   document.getElementById('treasuryActionNote').value = '';
-  setTreasuryPayMethod('cash');
+  setTreasuryPayMethod('card');
   document.getElementById('treasuryActionOverlay').classList.add('open');
   setTimeout(() => document.getElementById('treasuryActionAmount').focus(), 350);
 }
@@ -1754,7 +1754,7 @@ function openAddSale(){
   document.getElementById('saleQty').value='1';
   document.getElementById('salePrice').value='';
   document.getElementById('saleTotalPreview').style.display='none';
-  setSalePayMethod('cash');
+  setSalePayMethod('card');
   document.getElementById('addSaleOverlay').classList.add('open');
   setTimeout(()=>document.getElementById('saleProduct').focus(),350);
 }
@@ -1907,7 +1907,7 @@ function startVoiceSale(){
         const total = res.qty * res.price;
         const { data, error } = await sb.from('sales').insert({
           group_id: currentGroupId, added_by: currentUser.id,
-          product: corrProduct, qty: res.qty, price: res.price, total, src: 'voice', payment_method: 'cash'
+          product: corrProduct, qty: res.qty, price: res.price, total, src: 'voice', payment_method: 'card'
         }).select().single();
         if(!error){
           data.profiles = { name: currentUser.user_metadata?.name || '', email: currentUser.email };
