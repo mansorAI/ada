@@ -228,13 +228,32 @@
     const SUPABASE_KEY = 'sb_publishable_nUDdwuF5r5KdA78CYm2hGA_R5gvLzha';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    // تحديد الصفحة المناسبة: حساب أعمال أو عضو في مجموعة أعمال → business.html
+    async function getRedirectUrl(userId) {
+      const { data: prof } = await sb.from('profiles').select('account_type').eq('id', userId).single();
+      if (prof?.account_type === 'business') return 'business.html';
+      // تحقق هل الموظف عضو في مجموعة أعمال
+      const { data: memberships } = await sb
+        .from('group_members')
+        .select('groups(owner_id)')
+        .eq('user_id', userId);
+      const ownerIds = [...new Set((memberships||[]).map(m => m.groups?.owner_id).filter(Boolean))];
+      if (ownerIds.length > 0) {
+        const { data: bizOwners } = await sb
+          .from('profiles')
+          .select('id')
+          .in('id', ownerIds)
+          .eq('account_type', 'business')
+          .limit(1);
+        if (bizOwners && bizOwners.length > 0) return 'business.html';
+      }
+      return 'app.html';
+    }
+
     // إذا المستخدم مسجل دخول — روّحه للتطبيق المناسب
     sb.auth.getSession().then(async ({ data }) => {
       if (!data.session) return;
-      const uid = data.session.user.id;
-      const { data: prof } = await sb.from('profiles').select('account_type').eq('id', uid).single();
-      const isBiz = prof?.account_type === 'business' || data.session.user.user_metadata?.account_type === 'business';
-      window.location.href = isBiz ? 'business.html' : 'app.html';
+      window.location.href = await getRedirectUrl(data.session.user.id);
     });
 
     function showTab(tab) {
@@ -285,9 +304,7 @@
       if (error) {
         showMsg(error.message.includes('Invalid') ? 'البريد أو كلمة المرور غير صحيحة' : error.message);
       } else {
-        const { data: prof } = await sb.from('profiles').select('account_type').eq('id', data.user.id).single();
-        const isBiz = prof?.account_type === 'business' || data.user.user_metadata?.account_type === 'business';
-        window.location.href = isBiz ? 'business.html' : 'app.html';
+        window.location.href = await getRedirectUrl(data.user.id);
       }
     }
 
