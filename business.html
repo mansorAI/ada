@@ -1078,9 +1078,7 @@ async function initAuth(){
   await autoSelectBizGroup();
   await loadBizPerms();
   applyBizPerms();
-  await loadGroupSales();
-  await loadGroupPurchases();
-  await loadTreasury();
+  await Promise.all([loadGroupSales(), loadGroupPurchases(), loadTreasury()]);
   loadVocab().then(attachAllAutocompletes);
   renderSales();
 }
@@ -1185,9 +1183,7 @@ async function switchToBizGroup(id, name){
   _treasuryEntries = []; _treasuryAllPurchasesTotal = 0;
   await loadBizPerms();
   applyBizPerms();
-  await loadGroupSales();
-  await loadGroupPurchases();
-  await loadTreasury();
+  await Promise.all([loadGroupSales(), loadGroupPurchases(), loadTreasury()]);
   renderSales();
   goPage('treasury');
   toast('✅ تم التبديل إلى: ' + name, 'ok');
