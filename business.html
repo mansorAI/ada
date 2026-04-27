@@ -537,7 +537,7 @@
 <!-- ══ TEAM ══ -->
 <div class="page" id="pg-team">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-    <button onclick="goPage('treasury')" style="background:none;border:none;color:var(--text2);font-size:1.3rem;cursor:pointer">←</button>
+    <button onclick="goPage('treasury')" style="background:var(--surface2);border:none;color:var(--text);font-size:1.2rem;cursor:pointer;border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center">←</button>
     <div style="font-weight:700;font-size:1rem">👥 إدارة الفريق</div>
   </div>
   <div id="teamMembersList"></div>
@@ -547,7 +547,7 @@
 <!-- ══ BRANCHES ══ -->
 <div class="page" id="pg-branches">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-    <button onclick="goPage('treasury')" style="background:none;border:none;color:var(--text2);font-size:1.3rem;cursor:pointer">←</button>
+    <button onclick="goPage('treasury')" style="background:var(--surface2);border:none;color:var(--text);font-size:1.2rem;cursor:pointer;border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center">←</button>
     <div style="font-weight:700;font-size:1rem">🏢 الفروع</div>
   </div>
   <div id="branchesList"></div>
@@ -684,6 +684,20 @@
     </div>
     <button class="btn-primary" style="background:var(--accent)" onclick="doCreateBranch()">✅ إنشاء الفرع</button>
     <button class="btn-secondary" onclick="closeSheet('createBranchOverlay')">إلغاء</button>
+  </div>
+</div>
+
+<!-- Rename Branch -->
+<div class="overlay" id="renameBranchOverlay" onclick="bgClose(event,'renameBranchOverlay')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">✏️ تعديل اسم الفرع</div>
+    <div class="inp-wrap">
+      <div class="inp-label">الاسم الجديد</div>
+      <input class="inp" id="renameBranchInput" placeholder="اسم الفرع">
+    </div>
+    <button class="btn-primary" style="background:var(--accent)" onclick="doRenameBranch()">✅ حفظ</button>
+    <button class="btn-secondary" onclick="closeSheet('renameBranchOverlay')">إلغاء</button>
   </div>
 </div>
 
@@ -1137,6 +1151,10 @@ async function renderBranches(){
         ? `<button class="member-edit-btn" style="color:var(--green);font-size:0.8rem;border:1px solid var(--green);border-radius:10px;padding:5px 10px;font-family:'Tajawal',sans-serif;font-weight:700" onclick="switchToBizGroup('${g.id}','${g.name.replace(/'/g,"\\'")}')">تبديل</button>`
         : `<span style="font-size:0.75rem;color:var(--green);font-weight:700">نشط</span>`
       }
+      ${isOwner
+        ? `<button class="item-del-btn" style="color:var(--text2)" onclick="openRenameBranch('${g.id}','${g.name.replace(/'/g,"\\'")}')">✏️</button>`
+        : ''
+      }
       ${isOwner && !isActive
         ? `<button class="item-del-btn" onclick="deleteBranch('${g.id}','${g.name.replace(/'/g,"\\'")}')">🗑</button>`
         : ''
@@ -1191,6 +1209,29 @@ function deleteBranch(id, name){
     toast('تم حذف الفرع','bad');
     await renderBranches();
   });
+}
+
+let _renameBranchId = null;
+
+function openRenameBranch(id, name){
+  _renameBranchId = id;
+  document.getElementById('renameBranchInput').value = name;
+  document.getElementById('renameBranchOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('renameBranchInput').focus(), 350);
+}
+
+async function doRenameBranch(){
+  const name = document.getElementById('renameBranchInput').value.trim();
+  if(!name) return;
+  const { error } = await sb.from('groups').update({ name }).eq('id', _renameBranchId);
+  if(error){ toast('خطأ: '+error.message,'bad'); return; }
+  if(_renameBranchId === currentGroupId){
+    currentGroupName = name;
+    _updateGroupUI();
+  }
+  closeSheet('renameBranchOverlay');
+  toast('✅ تم تعديل اسم الفرع', 'ok');
+  await renderBranches();
 }
 
 // ══════════════════════════════════════════
