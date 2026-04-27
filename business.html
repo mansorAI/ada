@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
@@ -411,6 +411,7 @@
   <div class="summary-card" id="salesSummaryCard">
     <div class="summary-label">💰 مبيعات اليوم</div>
     <div class="summary-amount" id="todayTotal">0.00</div>
+    <div id="todayVatSummary" style="display:none;font-size:0.75rem;color:var(--orange);margin:-4px 0 4px"></div>
     <div class="summary-sub" id="todaySub">لا توجد مبيعات بعد</div>
     <div class="summary-row">
       <div class="summary-stat">
@@ -624,6 +625,9 @@
     <div class="inp-wrap" id="saleTotalPreview" style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center;display:none">
       <span style="color:var(--text2);font-size:0.85rem">الإجمالي: </span>
       <span id="saleTotalVal" style="color:var(--green);font-weight:700;font-size:1.1rem"></span>
+      <div id="saleVatBreakdown" style="display:none;margin-top:6px;font-size:0.78rem;color:var(--text2);line-height:1.8">
+        <span id="saleVatNet"></span> · <span id="saleVatAmt" style="color:var(--orange)"></span>
+      </div>
     </div>
     <button class="btn-primary" onclick="doAddSale()">✅ إضافة</button>
     <button class="btn-secondary" onclick="closeSheet('addSaleOverlay')">إلغاء</button>
@@ -913,6 +917,10 @@
   <div class="menu-group" id="menuBizGroup">🏪 ...</div>
   <div class="menu-item" onclick="openBranchesPage()">🏢 الفروع</div>
   <div class="menu-item" id="menuTeamItem" onclick="openTeamPage()">👥 إدارة الفريق</div>
+  <div class="menu-item" onclick="toggleVAT()" style="justify-content:space-between;display:flex;align-items:center">
+    <span>🧾 ضريبة القيمة المضافة 15%</span>
+    <span id="vatToggleState" style="font-size:0.78rem;color:var(--text2)">إيقاف</span>
+  </div>
   <div class="menu-item" onclick="doLogout()" style="color:var(--danger);margin-top:auto">🚪 تسجيل الخروج</div>
 </div>
 
@@ -1029,6 +1037,8 @@ let _treasuryActionType = 'deposit';
 let _withdrawalType = 'personal';
 let _salePayMethod = 'card';
 let _treasuryPayMethod = 'card';
+let _vatEnabled = false;
+const VAT_RATE = 0.15;
 
 // Permissions
 let _bizIsOwner = false;
@@ -1100,7 +1110,7 @@ async function initAuth(){
   document.getElementById('bizDateLabel').textContent = `${DAY[n.getDay()]} ${n.getDate()} ${MON[n.getMonth()]}`;
 
   await autoSelectBizGroup();
-  await loadBizPerms();
+  await Promise.all([loadBizPerms(), loadGroupSettings()]);
   applyBizPerms();
   await Promise.all([loadGroupSales(), loadGroupPurchases(), loadTreasury()]);
   loadVocab().then(attachAllAutocompletes);
@@ -1205,7 +1215,7 @@ async function switchToBizGroup(id, name){
   // إعادة تعيين الكاش
   _groupSales = []; _groupPurchases = []; _purchaseItemsCache = [];
   _treasuryEntries = []; _treasuryAllPurchasesTotal = 0; _treasuryPurchaseItems = [];
-  await loadBizPerms();
+  await Promise.all([loadBizPerms(), loadGroupSettings()]);
   applyBizPerms();
   await Promise.all([loadGroupSales(), loadGroupPurchases(), loadTreasury()]);
   renderSales();
@@ -1635,6 +1645,14 @@ function renderSales(){
   document.getElementById('todayTotal').textContent = todayTotal.toFixed(2);
   document.getElementById('todayCount').textContent = todayCount;
   document.getElementById('todayAvg').textContent = todayCount ? (todayTotal/todayCount).toFixed(0) : '0';
+  const vatSummEl = document.getElementById('todayVatSummary');
+  if(vatSummEl){
+    if(_vatEnabled && todayTotal > 0){
+      const vatTotal = todayTotal * VAT_RATE / (1 + VAT_RATE);
+      vatSummEl.style.display = 'block';
+      vatSummEl.textContent = `شامل ضريبة ${vatTotal.toFixed(2)} ر.س (قبل الضريبة: ${(todayTotal - vatTotal).toFixed(2)} ر.س)`;
+    } else { vatSummEl.style.display = 'none'; }
+  }
 
   // Top product today
   const prodMap = {};
@@ -1656,6 +1674,7 @@ function renderSales(){
             <div class="sale-item-name">${s.product}</div>
             <div class="sale-item-meta">${Number(s.qty)%1===0?Number(s.qty).toFixed(0):Number(s.qty)} × ${Number(s.price).toFixed(2)} ر.س</div>
             ${memberName(s.profiles) ? `<div class="sale-item-meta" style="color:var(--text2)">${memberName(s.profiles)}</div>` : ''}
+            ${_vatEnabled ? `<div class="sale-item-meta" style="color:var(--orange);font-size:0.7rem">ضريبة: ${(Number(s.total)*VAT_RATE/(1+VAT_RATE)).toFixed(2)} ر.س</div>` : ''}
           </div>
           <div class="sale-item-right">
             <div class="sale-item-total">${Number(s.total).toFixed(2)} ر.س</div>
@@ -1734,13 +1753,15 @@ function openDayDetail(dk){
   document.getElementById('dayDetailTitle').textContent = dayLabel(dk);
   document.getElementById('dayDetailDate').textContent = `${sales.length} عملية بيع`;
   document.getElementById('dayDetailTotal').textContent = total.toFixed(2) + ' ر.س';
-  document.getElementById('dayDetailBody').innerHTML = sales.map(s => `
-    <tr>
+  document.getElementById('dayDetailBody').innerHTML = sales.map(s => {
+    const vatAmt = _vatEnabled ? Number(s.total)*VAT_RATE/(1+VAT_RATE) : 0;
+    return `<tr>
       <td>${s.product}${memberName(s.profiles) ? `<div style="font-size:0.72rem;color:var(--text2)">${memberName(s.profiles)}</div>` : ''}</td>
       <td>${Number(s.qty)%1===0?Number(s.qty).toFixed(0):Number(s.qty)}</td>
       <td>${Number(s.price).toFixed(2)}</td>
-      <td style="color:var(--green);font-weight:700">${Number(s.total).toFixed(2)}<div style="font-size:0.7rem;color:var(--text2);font-weight:400">${timeLabel(s.created_at)}</div></td>
-    </tr>`).join('');
+      <td style="color:var(--green);font-weight:700">${Number(s.total).toFixed(2)}${_vatEnabled?`<div style="font-size:0.68rem;color:var(--orange);font-weight:400">ض: ${vatAmt.toFixed(2)}</div>`:''}<div style="font-size:0.7rem;color:var(--text2);font-weight:400">${timeLabel(s.created_at)}</div></td>
+    </tr>`;
+  }).join('');
   goPage('day-detail');
 }
 
@@ -1765,8 +1786,17 @@ function openAddSale(){
     const price=parseFloat(document.getElementById('salePrice').value)||0;
     const prev=document.getElementById('saleTotalPreview');
     if(qty>0&&price>0){
-      document.getElementById('saleTotalVal').textContent=(qty*price).toFixed(2)+' ر.س';
+      const total=qty*price;
+      document.getElementById('saleTotalVal').textContent=total.toFixed(2)+' ر.س';
       prev.style.display='block';
+      const vbd=document.getElementById('saleVatBreakdown');
+      if(_vatEnabled){
+        const vatAmt=total*VAT_RATE/(1+VAT_RATE);
+        const net=total-vatAmt;
+        document.getElementById('saleVatNet').textContent=`قبل الضريبة: ${net.toFixed(2)} ر.س`;
+        document.getElementById('saleVatAmt').textContent=`ضريبة 15%: ${vatAmt.toFixed(2)} ر.س`;
+        vbd.style.display='block';
+      } else { vbd.style.display='none'; }
     } else { prev.style.display='none'; }
   });
 });
@@ -2579,6 +2609,26 @@ async function loadBizPerms(){
       can_edit_treasury:    data.can_edit_treasury === true
     };
   }
+}
+
+async function loadGroupSettings(){
+  if(!currentGroupId) return;
+  const { data } = await sb.from('group_settings').select('vat_enabled').eq('group_id', currentGroupId).single();
+  _vatEnabled = data?.vat_enabled === true;
+  _updateVATUI();
+}
+
+function _updateVATUI(){
+  const el = document.getElementById('vatToggleState');
+  if(el) el.textContent = _vatEnabled ? '✅ مفعّل' : 'إيقاف';
+}
+
+async function toggleVAT(){
+  _vatEnabled = !_vatEnabled;
+  await sb.from('group_settings').upsert({ group_id: currentGroupId, vat_enabled: _vatEnabled });
+  _updateVATUI();
+  renderSales();
+  toast(_vatEnabled ? '✅ الضريبة 15% مفعّلة' : 'تم إيقاف الضريبة', _vatEnabled ? 'ok' : '');
 }
 
 function applyBizPerms(){
