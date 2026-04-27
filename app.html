@@ -329,6 +329,12 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 #iVRing{width:80px;height:80px;border-radius:50%;background:rgba(232,68,26,.1);border:2px solid rgba(232,68,26,.3);display:flex;align-items:center;justify-content:center;margin:8px auto 12px;font-size:32px;transition:all .3s}
 #iVRing.active{background:rgba(255,45,85,.15);border-color:#ff2d55;animation:ringP 1s infinite}
 
+/* ── INVENTORY ── */
+.inv-item-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border)}
+.inv-item-row:last-child{border-bottom:none}
+.inv-item-name{font-size:14px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.inv-stock-btn{background:none;border:1px solid var(--border);border-radius:9px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .2s;font-family:'Tajawal',sans-serif;flex-shrink:0}
+.inv-stock-btn:active{opacity:.7}
 /* ── STOCK BADGE ── */
 .stock-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:3px 7px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .2s}
 .stock-btn:active{opacity:.7}
@@ -534,7 +540,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
   <div class="sec-hd">
     <h2>الفئات الثابتة</h2>
-    <button class="btn-ghost" style="padding:5px 10px;font-size:11px" onclick="openAddFixed()">+ إضافة التزام</button>
+    <div style="display:flex;gap:6px">
+      <button class="btn-ghost" style="padding:5px 10px;font-size:11px" onclick="goPage('inventory')">🗃️ المخزون</button>
+      <button class="btn-ghost" style="padding:5px 10px;font-size:11px" onclick="openAddFixed()">+ إضافة التزام</button>
+    </div>
   </div>
   <div class="fixed-list" id="fixedList">
     <div class="empty" id="emptyFixed"><div class="ei">📌</div><p>لا توجد التزامات<br>أضف أول التزاماتك!</p></div>
@@ -542,6 +551,18 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
   <div id="commitCompareSection"></div>
   <div id="archiveSection"></div>
+</div>
+
+<!-- ══════════ PAGE: INVENTORY ══════════ -->
+<div id="pg-inventory" class="page">
+  <div class="topbar">
+    <div class="topbar-row">
+      <button class="back-btn" onclick="goPage('fixed')">← رجوع</button>
+      <div class="page-title" style="font-size:16px">🗃️ المخزون</div>
+      <div style="width:60px"></div>
+    </div>
+  </div>
+  <div id="inventoryList" style="padding:0 18px"></div>
 </div>
 
 <!-- ══════════ PAGE: COMMITMENT DETAIL ══════════ -->
@@ -1790,7 +1811,8 @@ function goPage(p){
   if(navEl) navEl.classList.add('active');
   if(p==='stats'){renderStats();renderComprehensiveReport();}
   if(p==='fixed'){renderFixed().then(()=>_renderFixedExtras());}
-  const subPages=['catdetail','commit-detail'];
+  if(p==='inventory'){loadAndRenderInventory();}
+  const subPages=['catdetail','commit-detail','inventory'];
   document.getElementById('mainNav').style.display=subPages.includes(p)?'none':'flex';
   if(p==='tasks'){const tl=document.getElementById('tasksDateLabel');if(tl)tl.textContent=document.getElementById('dateLabel').textContent;}
   window.scrollTo(0,0);
@@ -3314,8 +3336,11 @@ function doDelItemFromEdit(){
 //  STOCK
 // ══════════════════════════════════════════
 let stockItemId = null;
+let _invStockMode = false;
+let _invStockItemName = null;
+let _inventoryItems = [];
 
-const STOCK_LABELS = {full:'🟢 كامل', half:'🟡 النصف', quarter:'🟠 الربع', out:'🔴 نفذ'};
+const STOCK_LABELS ={full:'🟢 كامل', half:'🟡 النصف', quarter:'🟠 الربع', out:'🔴 نفذ'};
 const STOCK_CLASS  = {full:'stock-full', half:'stock-half', quarter:'stock-quarter', out:'stock-out'};
 
 function stockLabel(s){
@@ -3330,7 +3355,16 @@ function stockClass(s){
 }
 
 function openStockPicker(itemId, itemName){
+  _invStockMode=false;
   stockItemId=itemId;
+  document.getElementById('stockOverlayTitle').textContent=`🗃️ مخزون: ${itemName}`;
+  document.getElementById('stockCustomInp').value='';
+  document.getElementById('stockOverlay').classList.add('open');
+}
+
+function openInvStockPicker(itemName){
+  _invStockMode=true;
+  _invStockItemName=itemName;
   document.getElementById('stockOverlayTitle').textContent=`🗃️ مخزون: ${itemName}`;
   document.getElementById('stockCustomInp').value='';
   document.getElementById('stockOverlay').classList.add('open');
@@ -3347,12 +3381,72 @@ function setStockCustom(){
 }
 
 async function applyStock(val){
-  const {error}=await sb.from('commitment_items').update({stock:val}).eq('id',stockItemId);
-  if(!error) await renderCommitItems();
+  if(_invStockMode){
+    const {error}=await sb.from('inventory_items')
+      .update({stock:val,updated_at:new Date().toISOString()})
+      .eq('group_id',currentGroupId).eq('item_name',_invStockItemName);
+    if(!error){
+      const item=_inventoryItems.find(i=>i.item_name===_invStockItemName);
+      if(item) item.stock=val;
+      renderInventory();
+    }
+    _invStockMode=false;
+  } else {
+    const {error}=await sb.from('commitment_items').update({stock:val}).eq('id',stockItemId);
+    if(!error) await renderCommitItems();
+  }
   closeSheet('stockOverlay');
   toast('✅ تم تحديث المخزون','ok');
 }
 
+
+// ══════════════════════════════════════════
+//  INVENTORY
+// ══════════════════════════════════════════
+async function loadAndRenderInventory(){
+  if(!currentGroupId) return;
+  document.getElementById('inventoryList').innerHTML='<div style="text-align:center;padding:30px;color:var(--text2)">جارٍ التحميل...</div>';
+
+  // جمع أسماء فريدة من أصناف فئات نوع "قائمة" عبر كل الأشهر
+  const listIds=_allGroupCommits.filter(c=>(c.type||'list')==='list').map(c=>c.id);
+  let uniqueNames=[];
+  if(listIds.length){
+    const {data:items}=await sb.from('commitment_items').select('name').in('commitment_id',listIds);
+    uniqueNames=[...new Set((items||[]).map(i=>i.name.trim()))].sort((a,b)=>a.localeCompare(b,'ar'));
+  }
+
+  // تحميل المخزون المحفوظ
+  const {data:inv}=await sb.from('inventory_items').select('*').eq('group_id',currentGroupId);
+  _inventoryItems=inv||[];
+
+  // إضافة أصناف جديدة غير موجودة في المخزون
+  const existingNames=new Set(_inventoryItems.map(i=>i.item_name));
+  const toInsert=uniqueNames.filter(n=>!existingNames.has(n)).map(n=>({group_id:currentGroupId,item_name:n}));
+  if(toInsert.length){
+    const {data:newItems}=await sb.from('inventory_items').insert(toInsert).select('*');
+    _inventoryItems=[..._inventoryItems,...(newItems||[])];
+  }
+  _inventoryItems.sort((a,b)=>a.item_name.localeCompare(b.item_name,'ar'));
+  renderInventory();
+}
+
+function renderInventory(){
+  const el=document.getElementById('inventoryList');
+  if(!el) return;
+  if(!_inventoryItems.length){
+    el.innerHTML='<div class="empty"><div class="ei">🗃️</div><p>لا توجد أصناف بعد<br>أضف أصنافاً في الفئات أولاً</p></div>';
+    return;
+  }
+  el.innerHTML=_inventoryItems.map(item=>{
+    const sc=stockClass(item.stock);
+    const sl=stockLabel(item.stock);
+    const nameEsc=item.item_name.replace(/'/g,"\\'");
+    return `<div class="inv-item-row">
+      <div class="inv-item-name">${item.item_name}</div>
+      <button class="inv-stock-btn ${sc}" onclick="openInvStockPicker('${nameEsc}')">${sl||'— تحديد'}</button>
+    </div>`;
+  }).join('');
+}
 
 // ══════════════════════════════════════════
 //  BUDGET ENTRIES LIST
