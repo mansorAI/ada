@@ -490,7 +490,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       </div>
       <div style="display:flex;gap:6px">
         <button class="budget-add-btn" onclick="openBudgetAdd()" style="padding:7px 10px">+ إضافة</button>
-        <button class="budget-add-btn" onclick="openBudgetTransfer()" style="background:rgba(56,189,248,.15);border-color:rgba(56,189,248,.35);color:var(--blue);padding:7px 10px">↗️ تحويل</button>
+        <button class="budget-add-btn" onclick="openBudgetTransfer()" style="background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35);color:var(--danger);padding:7px 10px">↗️ تحويل</button>
       </div>
     </div>
     <div class="remaining-row">
@@ -1153,7 +1153,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <div id="budgetEntriesList" style="max-height:50vh;overflow-y:auto"></div>
     <div style="display:flex;gap:8px;margin-top:12px">
       <button class="btn-primary" style="flex:1" onclick="closeSheet('budgetEntriesOverlay');openBudgetAdd()">+ إضافة مبلغ</button>
-      <button class="btn-primary" style="flex:1;background:rgba(56,189,248,.2);color:var(--blue);border:1px solid rgba(56,189,248,.4)" onclick="closeSheet('budgetEntriesOverlay');openBudgetTransfer()">↗️ تحويل</button>
+      <button class="btn-primary" style="flex:1;background:rgba(239,68,68,.15);color:var(--danger);border:1px solid rgba(239,68,68,.4)" onclick="closeSheet('budgetEntriesOverlay');openBudgetTransfer()">↗️ تحويل</button>
     </div>
   </div>
 </div>
@@ -2208,7 +2208,7 @@ function openBudgetTransfer(){
   _editingBudgetId=null;
   document.getElementById('budgetInpAmt').value='';
   document.getElementById('budgetInpNote').value='';
-  document.getElementById('budgetAddTitle').textContent='↗️ تحويل للميزانية';
+  document.getElementById('budgetAddTitle').textContent='↗️ تحويل من الميزانية';
   document.getElementById('budgetNoteLbl').textContent='تفاصيل التحويل';
   document.getElementById('budgetInpNote').placeholder='مثال: تحويل من حساب الراجحي إلى...';
   document.getElementById('budgetAddBtn').textContent='✅ تسجيل التحويل';
@@ -2246,7 +2246,7 @@ async function doAddBudget(){
     });
     if(error) return toast('خطأ: '+error.message,'err');
     await loadGroupBudgetData(); closeSheet('budgetAddOverlay'); renderBudget();
-    toast(_budgetIsTransfer?`↗️ تم تسجيل تحويل ${amt} ر.س`:`✅ أُضيف ${amt} ر.س للميزانية`,'ok');
+    toast(_budgetIsTransfer?`↗️ خُصم ${amt} ر.س من الميزانية`:`✅ أُضيف ${amt} ر.س للميزانية`,'ok');
   }
 }
 
@@ -2359,7 +2359,7 @@ async function checkAndCarryoverBudget(){
 }
 
 function getGroupBudgetTotal(){
-  return _groupBudgetEntries.reduce((s,e)=>s+Number(e.amount),0);
+  return _groupBudgetEntries.reduce((s,e)=>e.is_transfer?s-Number(e.amount):s+Number(e.amount),0);
 }
 
 async function updateCommitPaidAmountIfPaid(){
@@ -3738,12 +3738,13 @@ async function openBudgetEntries(){
       const noteEsc=(e.note||'').replace(/'/g,"\\'");
       const isSpecial=e.is_carryover||e.is_transfer;
       const rowBg=e.is_carryover?'background:rgba(34,197,94,0.07);border-radius:9px;padding:6px 8px;margin-bottom:4px'
-                 :e.is_transfer?'background:rgba(56,189,248,0.07);border-radius:9px;padding:6px 8px;margin-bottom:4px':'';
-      const amtStyle=e.is_carryover?'color:var(--success)':e.is_transfer?'color:var(--blue)':'';
+                 :e.is_transfer?'background:rgba(239,68,68,0.07);border-radius:9px;padding:6px 8px;margin-bottom:4px':'';
+      const amtStyle=e.is_carryover?'color:var(--success)':e.is_transfer?'color:var(--danger)':'';
       const prefix=e.is_carryover?'↩️ ':e.is_transfer?'↗️ ':'';
+      const amtDisplay=e.is_transfer?`-${Number(e.amount).toFixed(2)}`:Number(e.amount).toFixed(2);
       html+=`<div class="budget-entry-row" style="align-items:flex-start;${rowBg}">
         <div style="flex:1">
-          <div class="budget-entry-amt" style="${amtStyle}">${prefix}${Number(e.amount).toFixed(2)} ر.س</div>
+          <div class="budget-entry-amt" style="${amtStyle}">${prefix}${amtDisplay} ر.س</div>
           ${e.note?`<div class="budget-entry-note">${e.note}</div>`:''}
           <div style="font-size:11px;color:var(--text2);margin-top:4px">👤 ${name} · ${dateStr} ${timeStr}</div>
         </div>
@@ -3753,7 +3754,7 @@ async function openBudgetEntries(){
         </div>
       </div>`;
     });
-    const total=entries.reduce((s,e)=>s+Number(e.amount),0);
+    const total=entries.reduce((s,e)=>e.is_transfer?s-Number(e.amount):s+Number(e.amount),0);
     html+=`<div class="budget-total-row">
       <span style="font-size:12px;color:var(--text2);font-weight:700">الإجمالي</span>
       <span style="font-size:16px;font-weight:900;color:var(--success)">${total.toFixed(2)} ر.س</span>
