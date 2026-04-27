@@ -366,6 +366,40 @@
     .confirm-btns button{flex:1;padding:12px;border-radius:10px;border:none;font-family:'Tajawal',sans-serif;font-size:0.95rem;font-weight:700;cursor:pointer;}
     .confirm-ok{background:var(--danger);color:#fff;}
     .confirm-cancel{background:var(--surface2);color:var(--text);border:1px solid var(--border) !important;}
+
+    /* ── Invoice Print ── */
+    .inv-print-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:600;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 0 40px;}
+    .inv-print-overlay.open{display:flex;}
+    .inv-print-sheet{background:#fff;color:#111;width:320px;padding:24px;border-radius:8px;font-family:'Tajawal',sans-serif;direction:rtl;}
+    .inv-biz-name{font-size:1.25rem;font-weight:700;text-align:center;margin-bottom:2px;color:#111;}
+    .inv-vat-num{font-size:0.72rem;text-align:center;color:#555;margin-bottom:6px;}
+    .inv-divider{border:none;border-top:1px dashed #bbb;margin:10px 0;}
+    .inv-meta-row{display:flex;justify-content:space-between;font-size:0.78rem;margin-bottom:4px;color:#333;}
+    .inv-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:0.8rem;color:#111;}
+    .inv-table th{background:#f4f4f4;padding:5px 6px;text-align:right;font-weight:700;border-bottom:1px solid #ddd;}
+    .inv-table td{padding:5px 6px;border-bottom:1px solid #f0f0f0;}
+    .inv-totals-row{display:flex;justify-content:space-between;font-size:0.82rem;padding:3px 0;color:#333;}
+    .inv-totals-row.grand{font-weight:700;font-size:0.95rem;border-top:2px solid #111;padding-top:6px;margin-top:4px;color:#111;}
+    .inv-qr-wrap{text-align:center;margin:12px 0 6px;}
+    .inv-footer{text-align:center;font-size:0.68rem;color:#999;margin-top:8px;}
+    .inv-print-actions{display:flex;gap:8px;margin-top:14px;width:320px;}
+    .inv-print-actions button{flex:1;padding:10px;border-radius:10px;border:none;font-family:'Tajawal',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;}
+    .inv-btn-print{background:#111;color:#fff;}
+    .inv-btn-close{background:#e0e0e0;color:#333;}
+
+    /* ── Purchase Invoice Attachment ── */
+    .inv-attach-lbl{display:inline-flex;align-items:center;gap:5px;background:rgba(245,166,35,.1);border:1px dashed rgba(245,166,35,.4);color:var(--orange);border-radius:8px;padding:8px 12px;font-size:0.82rem;font-family:'Tajawal',sans-serif;cursor:pointer;width:100%;justify-content:center;}
+    .inv-attach-preview{display:flex;align-items:center;gap:6px;background:rgba(67,233,123,.07);border:1px solid rgba(67,233,123,.2);border-radius:8px;padding:7px 10px;font-size:0.78rem;color:var(--green);margin-top:6px;}
+    .inv-attach-preview a{color:var(--green);text-decoration:underline;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .purch-supplier{font-size:0.72rem;color:var(--text2);margin-top:3px;}
+    .purch-inv-link{font-size:0.72rem;color:var(--orange);text-decoration:underline;cursor:pointer;}
+
+    @media print {
+      body > *:not(.inv-print-overlay){display:none !important;}
+      .inv-print-overlay{position:static !important;background:white !important;padding:0 !important;display:block !important;}
+      .inv-print-sheet{box-shadow:none !important;border:none !important;width:100% !important;}
+      .inv-print-actions{display:none !important;}
+    }
   </style>
 </head>
 <body>
@@ -710,6 +744,19 @@
       <div class="inp-label">الميزانية التقديرية (ر.س) — اختياري</div>
       <input class="inp" id="purchaseBudget" type="number" placeholder="0.00" min="0" step="any">
     </div>
+    <div class="inp-wrap">
+      <div class="inp-label">اسم المورد — اختياري</div>
+      <input class="inp" id="purchaseSupplier" placeholder="مثال: شركة الغذاء العربي...">
+    </div>
+    <div class="inp-wrap">
+      <div class="inp-label">فاتورة المورد — اختياري</div>
+      <label class="inv-attach-lbl" for="purchaseInvoiceFile">📎 إرفاق فاتورة (صورة أو PDF)</label>
+      <input type="file" id="purchaseInvoiceFile" accept="image/*,.pdf" style="display:none" onchange="handlePurchaseInvoiceFile(this,'add')">
+      <div id="purchaseInvoicePreview" style="display:none" class="inv-attach-preview">
+        <span id="purchaseInvoiceFileName" style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></span>
+        <button onclick="clearPurchaseInvoice('add')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.9rem;flex-shrink:0">✕</button>
+      </div>
+    </div>
     <button class="btn-primary" style="background:var(--orange)" onclick="doAddPurchase()">✅ إضافة</button>
     <button class="btn-secondary" onclick="closeSheet('addPurchaseOverlay')">إلغاء</button>
   </div>
@@ -755,6 +802,19 @@
     <div class="inp-wrap">
       <div class="inp-label">الميزانية التقديرية (ر.س) — اختياري</div>
       <input class="inp" id="editPurchaseBudgetInp" type="number" placeholder="0.00" min="0" step="any">
+    </div>
+    <div class="inp-wrap">
+      <div class="inp-label">اسم المورد — اختياري</div>
+      <input class="inp" id="editPurchaseSupplierInp" placeholder="مثال: شركة الغذاء العربي...">
+    </div>
+    <div class="inp-wrap">
+      <div class="inp-label">فاتورة المورد — اختياري</div>
+      <label class="inv-attach-lbl" for="editPurchaseInvoiceFile">📎 استبدال الفاتورة (صورة أو PDF)</label>
+      <input type="file" id="editPurchaseInvoiceFile" accept="image/*,.pdf" style="display:none" onchange="handlePurchaseInvoiceFile(this,'edit')">
+      <div id="editPurchaseInvoicePreview" class="inv-attach-preview" style="display:none">
+        <a id="editPurchaseInvoiceLink" href="#" target="_blank">📄 فاتورة موجودة — عرض</a>
+        <button onclick="clearPurchaseInvoice('edit')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.9rem;flex-shrink:0">✕</button>
+      </div>
     </div>
     <button class="btn-primary" style="background:var(--orange)" onclick="doEditPurchase()">💾 حفظ التعديلات</button>
     <button class="btn-danger" onclick="doDeletePurchase()">🗑️ حذف الفئة وكل أصنافها</button>
@@ -944,6 +1004,7 @@
     <span>🧾 ضريبة القيمة المضافة 15%</span>
     <span id="vatToggleState" style="font-size:0.78rem;color:var(--text2)">إيقاف</span>
   </div>
+  <div class="menu-item" onclick="openInvoiceSettings()">📋 إعدادات الفاتورة (ZATCA)</div>
   <div class="menu-item" onclick="doLogout()" style="color:var(--danger);margin-top:auto">🚪 تسجيل الخروج</div>
 </div>
 
@@ -1027,9 +1088,60 @@
   </div>
 </div>
 
+<!-- Invoice Settings -->
+<div class="overlay" id="invoiceSettingsOverlay" onclick="bgClose(event,'invoiceSettingsOverlay')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">📋 إعدادات الفاتورة (ZATCA)</div>
+    <p style="font-size:0.78rem;color:var(--text2);margin-bottom:14px;line-height:1.6">تُطبع هذه البيانات على كل فاتورة ضريبية مبسطة وتُضمَّن في رمز QR وفق متطلبات هيئة الزكاة.</p>
+    <div class="inp-wrap">
+      <div class="inp-label">اسم المنشأة / الفرع</div>
+      <input class="inp" id="bizNameInp" placeholder="مثال: مطعم الأصيل - فرع الرياض">
+    </div>
+    <div class="inp-wrap">
+      <div class="inp-label">رقم التسجيل الضريبي (15 رقماً) — اختياري</div>
+      <input class="inp" id="vatNumberInp" placeholder="300000000000000" maxlength="15" inputmode="numeric" style="direction:ltr;letter-spacing:2px">
+    </div>
+    <button class="btn-primary" onclick="saveInvoiceSettings()">💾 حفظ</button>
+    <button class="btn-secondary" onclick="closeSheet('invoiceSettingsOverlay')">إلغاء</button>
+  </div>
+</div>
+
+<!-- Invoice Print -->
+<div class="inv-print-overlay" id="invPrintOverlay">
+  <div>
+    <div class="inv-print-sheet" id="invPrintSheet">
+      <div class="inv-biz-name" id="invBizName"></div>
+      <div class="inv-vat-num" id="invVatNum"></div>
+      <hr class="inv-divider">
+      <div class="inv-meta-row"><span>رقم الفاتورة</span><span id="invNum" style="font-weight:700"></span></div>
+      <div class="inv-meta-row"><span>التاريخ والوقت</span><span id="invDateTime"></span></div>
+      <div class="inv-meta-row"><span>طريقة الدفع</span><span id="invPayMethod"></span></div>
+      <hr class="inv-divider">
+      <table class="inv-table">
+        <thead><tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr></thead>
+        <tbody id="invItems"></tbody>
+      </table>
+      <hr class="inv-divider">
+      <div id="invTotals"></div>
+      <div class="inv-qr-wrap">
+        <div id="invQRCode" style="display:inline-block"></div>
+        <div style="font-size:0.65rem;color:#888;margin-top:4px">امسح للتحقق • ZATCA Phase 1</div>
+      </div>
+      <hr class="inv-divider">
+      <div class="inv-footer">فاتورة ضريبية مبسطة — مصروفاتي</div>
+    </div>
+    <div class="inv-print-actions">
+      <button class="inv-btn-print" onclick="window.print()">🖨️ طباعة / PDF</button>
+      <button class="inv-btn-close" onclick="closeInvoice()">✖ إغلاق</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ══════════════════════════════════════════
@@ -1062,6 +1174,11 @@ let _salePayMethod = 'card';
 let _treasuryPayMethod = 'card';
 let _vatEnabled = false;
 const VAT_RATE = 0.15;
+let _bizName = '';
+let _vatNumber = '';
+let _purchaseInvoiceFile = null;
+let _editPurchaseInvoiceUrl = null;
+let _editPurchaseInvoiceCleared = false;
 
 // Permissions
 let _bizIsOwner = false;
@@ -1884,7 +2001,11 @@ function renderSales(){
           </div>
           <div class="sale-item-right">
             <div class="sale-item-total">${Number(s.total).toFixed(2)} ر.س</div>
-            <div class="sale-item-time">${s.payment_method==='card'?'💳':'💵'} ${dateTimeLabel(s.created_at)}</div>
+            <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
+              <div class="sale-item-time">${s.payment_method==='card'?'💳':'💵'} ${dateTimeLabel(s.created_at)}</div>
+              <button onclick="event.stopPropagation();openPrintInvoice('${s.id}')" title="طباعة فاتورة"
+                style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:var(--text2);border-radius:6px;font-size:0.75rem;padding:2px 5px;cursor:pointer;line-height:1.4">🧾</button>
+            </div>
           </div>
         </div>`).join('') +
     '</div>';
@@ -1966,6 +2087,7 @@ function openDayDetail(dk){
       <td>${Number(s.qty)%1===0?Number(s.qty).toFixed(0):Number(s.qty)}</td>
       <td>${Number(s.price).toFixed(2)}</td>
       <td style="color:var(--green);font-weight:700">${Number(s.total).toFixed(2)}${_vatEnabled?`<div style="font-size:0.68rem;color:var(--orange);font-weight:400">ض: ${vatAmt.toFixed(2)}</div>`:''}<div style="font-size:0.7rem;color:var(--text2);font-weight:400">${timeLabel(s.created_at)}</div></td>
+      <td><button onclick="openPrintInvoice('${s.id}')" title="فاتورة" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:0.85rem;padding:2px 4px">🧾</button></td>
     </tr>`;
   }).join('');
   goPage('day-detail');
@@ -2226,9 +2348,14 @@ function renderPurchases(){
     const pct = budget>0 ? Math.min(100,Math.round(spent/budget*100)) : 0;
     const overBudget = budget>0 && spent>budget;
     const barColor = overBudget ? 'var(--danger)' : 'var(--orange)';
+    const supplierHtml = p.supplier_name ? `<span class="purch-supplier">🏭 ${p.supplier_name}</span>` : '';
+    const invLinkHtml = p.invoice_url ? `<a class="purch-inv-link" href="${p.invoice_url}" target="_blank" onclick="event.stopPropagation()">📄 فاتورة المورد</a>` : '';
     return `<div class="commit-card" data-pid="${p.id}" onclick="openPurchaseDetail('${p.id}')">
       <div class="commit-card-hdr">
-        <div class="commit-card-name">📦 ${p.name}</div>
+        <div>
+          <div class="commit-card-name">📦 ${p.name}</div>
+          ${supplierHtml}
+        </div>
         <div style="display:flex;align-items:center;gap:6px">
           <div class="commit-card-budget" style="color:${overBudget?'var(--danger)':'var(--orange)'}">
             ${spent.toFixed(0)}${budget>0?' / '+budget.toFixed(0):''} ر.س
@@ -2242,7 +2369,10 @@ function renderPurchases(){
       </div>
       <div class="progress-lbl">
         <span class="p-count" style="color:var(--text2)">${items.length} صنف</span>
-        <span class="p-pct" style="color:${overBudget?'var(--danger)':'var(--text2)'}">${budget>0?pct+'%':spent>0?spent.toFixed(0)+' ر.س':''}</span>
+        <span style="display:flex;align-items:center;gap:8px">
+          ${invLinkHtml}
+          <span class="p-pct" style="color:${overBudget?'var(--danger)':'var(--text2)'}">${budget>0?pct+'%':spent>0?spent.toFixed(0)+' ر.س':''}</span>
+        </span>
       </div>
     </div>`;
   }).join('');
@@ -2338,6 +2468,10 @@ function piStockClass(s){
 function openAddPurchase(){
   document.getElementById('purchaseName').value='';
   document.getElementById('purchaseBudget').value='';
+  document.getElementById('purchaseSupplier').value='';
+  document.getElementById('purchaseInvoiceFile').value='';
+  document.getElementById('purchaseInvoicePreview').style.display='none';
+  _purchaseInvoiceFile=null;
   document.getElementById('addPurchaseOverlay').classList.add('open');
   setTimeout(()=>document.getElementById('purchaseName').focus(),350);
 }
@@ -2349,19 +2483,40 @@ function openEditPurchase(id){
   const p = _groupPurchases.find(x=>x.id===id);
   if(!p) return;
   _editingPurchaseId = id;
+  _purchaseInvoiceFile = null;
+  _editPurchaseInvoiceUrl = p.invoice_url || null;
+  _editPurchaseInvoiceCleared = false;
   document.getElementById('editPurchaseNameInp').value   = p.name;
   document.getElementById('editPurchaseBudgetInp').value = p.budget||'';
+  document.getElementById('editPurchaseSupplierInp').value = p.supplier_name||'';
+  document.getElementById('editPurchaseInvoiceFile').value = '';
+  const prevEl = document.getElementById('editPurchaseInvoicePreview');
+  const linkEl = document.getElementById('editPurchaseInvoiceLink');
+  if(p.invoice_url){
+    linkEl.href = p.invoice_url;
+    linkEl.textContent = '📄 فاتورة موجودة — عرض';
+    prevEl.style.display = 'flex';
+  } else {
+    prevEl.style.display = 'none';
+  }
   document.getElementById('editPurchaseOverlay').classList.add('open');
 }
 
 async function doEditPurchase(){
   const name   = document.getElementById('editPurchaseNameInp').value.trim();
   const budget = parseFloat(document.getElementById('editPurchaseBudgetInp').value)||0;
+  const supplier_name = document.getElementById('editPurchaseSupplierInp').value.trim() || null;
   if(!name){ toast('أدخل اسم الفئة','bad'); return; }
-  const { error } = await sb.from('commitments').update({ name, budget }).eq('id',_editingPurchaseId);
+  let invoice_url = _editPurchaseInvoiceCleared ? null : _editPurchaseInvoiceUrl;
+  if(_purchaseInvoiceFile){
+    const uploaded = await uploadInvoiceFile(_purchaseInvoiceFile);
+    if(uploaded) invoice_url = uploaded;
+  }
+  const { error } = await sb.from('commitments').update({ name, budget, supplier_name, invoice_url }).eq('id',_editingPurchaseId);
   if(error){ toast('خطأ: '+error.message,'bad'); return; }
   const idx = _groupPurchases.findIndex(x=>x.id===_editingPurchaseId);
-  if(idx>=0) _groupPurchases[idx] = {..._groupPurchases[idx], name, budget};
+  if(idx>=0) _groupPurchases[idx] = {..._groupPurchases[idx], name, budget, supplier_name, invoice_url};
+  _purchaseInvoiceFile = null;
   closeSheet('editPurchaseOverlay');
   renderPurchases();
   toast('✅ تم التعديل','ok');
@@ -2383,13 +2538,23 @@ function doDeletePurchase(){
 async function doAddPurchase(){
   const name = document.getElementById('purchaseName').value.trim();
   const budget = parseFloat(document.getElementById('purchaseBudget').value)||0;
+  const supplier_name = document.getElementById('purchaseSupplier').value.trim() || null;
   if(!name){ toast('أدخل اسم الفئة','bad'); return; }
   const mk = getCurrentMonthKey();
   const { data, error } = await sb.from('commitments').insert({
-    group_id: currentGroupId, name, budget, type:'list', month_key: mk
+    group_id: currentGroupId, name, budget, type:'list', month_key: mk, supplier_name
   }).select().single();
   if(error){ toast('خطأ: '+error.message,'bad'); return; }
+  if(_purchaseInvoiceFile && data){
+    const url = await uploadInvoiceFile(_purchaseInvoiceFile);
+    if(url){
+      await sb.from('commitments').update({invoice_url:url}).eq('id',data.id);
+      data.invoice_url = url;
+    }
+  }
+  data.supplier_name = supplier_name;
   _groupPurchases.push(data);
+  _purchaseInvoiceFile = null;
   closeSheet('addPurchaseOverlay');
   renderPurchases();
   toast('✅ تم إضافة الفئة','ok');
@@ -2819,8 +2984,10 @@ async function loadBizPerms(){
 
 async function loadGroupSettings(){
   if(!currentGroupId) return;
-  const { data } = await sb.from('group_settings').select('vat_enabled').eq('group_id', currentGroupId).single();
+  const { data } = await sb.from('group_settings').select('vat_enabled,biz_name,vat_number').eq('group_id', currentGroupId).single();
   _vatEnabled = data?.vat_enabled === true;
+  _bizName = data?.biz_name || '';
+  _vatNumber = data?.vat_number || '';
   _updateVATUI();
 }
 
@@ -2835,6 +3002,138 @@ async function toggleVAT(){
   _updateVATUI();
   renderSales();
   toast(_vatEnabled ? '✅ الضريبة 15% مفعّلة' : 'تم إيقاف الضريبة', _vatEnabled ? 'ok' : '');
+}
+
+// ══════════════════════════════════════════
+//  INVOICE SETTINGS (ZATCA)
+// ══════════════════════════════════════════
+function openInvoiceSettings(){
+  document.getElementById('bizNameInp').value = _bizName;
+  document.getElementById('vatNumberInp').value = _vatNumber;
+  toggleUserMenu();
+  document.getElementById('invoiceSettingsOverlay').classList.add('open');
+}
+
+async function saveInvoiceSettings(){
+  _bizName = document.getElementById('bizNameInp').value.trim();
+  _vatNumber = document.getElementById('vatNumberInp').value.trim();
+  if(_vatNumber && _vatNumber.length !== 15){ toast('رقم الضريبي يجب أن يكون 15 رقماً','bad'); return; }
+  await sb.from('group_settings').upsert({ group_id: currentGroupId, biz_name: _bizName, vat_number: _vatNumber });
+  closeSheet('invoiceSettingsOverlay');
+  toast('✅ تم حفظ إعدادات الفاتورة','ok');
+}
+
+// TLV Base64 — ZATCA Phase 1 (5 tags)
+function generateZATCAQR(sellerName, vatNumber, timestamp, totalWithVAT, vatAmount){
+  const enc = new TextEncoder();
+  function tlv(tag, val){
+    const bytes = enc.encode(String(val));
+    const arr = new Uint8Array(2 + bytes.length);
+    arr[0] = tag; arr[1] = bytes.length; arr.set(bytes, 2);
+    return arr;
+  }
+  const ts = (timestamp instanceof Date ? timestamp : new Date(timestamp))
+    .toISOString().replace('.000Z','Z');
+  const parts = [
+    tlv(1, sellerName || ''),
+    tlv(2, vatNumber || ''),
+    tlv(3, ts),
+    tlv(4, Number(totalWithVAT).toFixed(2)),
+    tlv(5, Number(vatAmount).toFixed(2))
+  ];
+  const len = parts.reduce((s,p)=>s+p.length,0);
+  const combined = new Uint8Array(len);
+  let off = 0;
+  parts.forEach(p=>{ combined.set(p,off); off+=p.length; });
+  let binary = '';
+  combined.forEach(b => binary += String.fromCharCode(b));
+  return btoa(binary);
+}
+
+function openPrintInvoice(saleId){
+  const s = _groupSales.find(x=>x.id===saleId);
+  if(!s) return;
+  const sorted = [..._groupSales].sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+  const idx = sorted.findIndex(x=>x.id===saleId);
+  const year = new Date(s.created_at).getFullYear();
+  const invNumStr = `INV-${year}-${String(idx+1).padStart(4,'0')}`;
+  const bizName = _bizName || currentGroupName || 'المنشأة';
+  document.getElementById('invBizName').textContent = bizName;
+  document.getElementById('invVatNum').textContent = _vatNumber ? `الرقم الضريبي: ${_vatNumber}` : '';
+  document.getElementById('invNum').textContent = invNumStr;
+  const d = new Date(s.created_at);
+  document.getElementById('invDateTime').textContent =
+    d.toLocaleDateString('ar-SA-u-ca-gregory',{day:'numeric',month:'long',year:'numeric'}) + ' ' +
+    d.toLocaleTimeString('ar-SA-u-ca-gregory',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('invPayMethod').textContent = s.payment_method==='card' ? '💳 شبكة' : '💵 نقدي';
+  document.getElementById('invItems').innerHTML = `<tr>
+    <td>${s.product}</td>
+    <td style="text-align:center">${Number(s.qty)%1===0?Number(s.qty).toFixed(0):Number(s.qty)}</td>
+    <td style="text-align:center">${Number(s.price).toFixed(2)}</td>
+    <td style="text-align:center;font-weight:700">${Number(s.total).toFixed(2)}</td>
+  </tr>`;
+  const total = Number(s.total);
+  let totalsHtml = '';
+  let vatAmt = 0;
+  if(_vatEnabled){
+    vatAmt = total * VAT_RATE / (1+VAT_RATE);
+    const net = total - vatAmt;
+    totalsHtml = `<div class="inv-totals-row"><span>المجموع قبل الضريبة</span><span>${net.toFixed(2)} ر.س</span></div>
+      <div class="inv-totals-row"><span>ضريبة القيمة المضافة 15%</span><span>${vatAmt.toFixed(2)} ر.س</span></div>
+      <div class="inv-totals-row grand"><span>الإجمالي الكلي</span><span>${total.toFixed(2)} ر.س</span></div>`;
+  } else {
+    totalsHtml = `<div class="inv-totals-row grand"><span>الإجمالي</span><span>${total.toFixed(2)} ر.س</span></div>`;
+  }
+  document.getElementById('invTotals').innerHTML = totalsHtml;
+  const qrData = generateZATCAQR(bizName, _vatNumber, new Date(s.created_at), total, vatAmt);
+  const qrEl = document.getElementById('invQRCode');
+  qrEl.innerHTML = '';
+  new QRCode(qrEl, { text: qrData, width: 110, height: 110, colorDark:'#000', colorLight:'#fff', correctLevel: QRCode.CorrectLevel.M });
+  document.getElementById('invPrintOverlay').classList.add('open');
+}
+
+function closeInvoice(){
+  document.getElementById('invPrintOverlay').classList.remove('open');
+}
+
+// ══════════════════════════════════════════
+//  PURCHASE INVOICE FILE
+// ══════════════════════════════════════════
+async function uploadInvoiceFile(file){
+  if(!file) return null;
+  const ext = file.name.split('.').pop().toLowerCase();
+  const path = `${currentGroupId}/${Date.now()}.${ext}`;
+  const { error } = await sb.storage.from('purchase-invoices').upload(path, file, { upsert:true });
+  if(error){ toast('خطأ في رفع الملف: '+error.message,'bad'); return null; }
+  const { data } = sb.storage.from('purchase-invoices').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+function handlePurchaseInvoiceFile(input, mode){
+  const file = input.files[0];
+  if(!file) return;
+  _purchaseInvoiceFile = file;
+  if(mode==='add'){
+    document.getElementById('purchaseInvoiceFileName').textContent = file.name;
+    document.getElementById('purchaseInvoicePreview').style.display = 'flex';
+  } else {
+    document.getElementById('editPurchaseInvoiceLink').textContent = '📄 ' + file.name + ' (جديد)';
+    document.getElementById('editPurchaseInvoiceLink').href = '#';
+    document.getElementById('editPurchaseInvoicePreview').style.display = 'flex';
+  }
+}
+
+function clearPurchaseInvoice(mode){
+  _purchaseInvoiceFile = null;
+  if(mode==='add'){
+    document.getElementById('purchaseInvoiceFile').value = '';
+    document.getElementById('purchaseInvoicePreview').style.display = 'none';
+  } else {
+    _editPurchaseInvoiceUrl = null;
+    _editPurchaseInvoiceCleared = true;
+    document.getElementById('editPurchaseInvoiceFile').value = '';
+    document.getElementById('editPurchaseInvoicePreview').style.display = 'none';
+  }
 }
 
 function applyBizPerms(){
