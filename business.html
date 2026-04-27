@@ -309,7 +309,9 @@
     .treasury-btn{flex:1;padding:11px 6px;border-radius:10px;font-family:'Tajawal',sans-serif;font-size:0.88rem;font-weight:700;cursor:pointer;border:1px solid;}
     .treasury-btn.deposit{background:rgba(56,189,248,0.1);color:var(--blue);border-color:rgba(56,189,248,0.3);}
     .treasury-btn.withdrawal{background:rgba(255,77,109,0.08);color:var(--danger);border-color:rgba(255,77,109,0.25);}
-    .treasury-warn{margin-top:11px;background:rgba(255,77,109,0.09);border:1px solid rgba(255,77,109,0.3);border-radius:10px;padding:10px 13px;font-size:0.8rem;color:var(--danger);display:none;}
+    .treasury-warn{margin-top:11px;background:rgba(255,77,109,0.09);border:1px solid rgba(255,77,109,0.3);border-radius:10px;padding:10px 13px;font-size:0.8rem;color:var(--danger);display:none;align-items:center;gap:8px;}
+    .treasury-return-btn{background:rgba(255,255,255,0.07);border:1px solid rgba(255,77,109,0.35);border-radius:8px;color:var(--danger);font-family:'Tajawal',sans-serif;font-size:0.78rem;padding:5px 10px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+    .treasury-return-btn:hover{background:rgba(255,77,109,0.13);}
     .wdr-type-btn{flex:1;padding:10px 8px;border-radius:10px;border:2px solid var(--border);background:var(--bg);color:var(--text2);font-family:'Tajawal',sans-serif;font-size:0.88rem;cursor:pointer;transition:all 0.2s;font-weight:500;}
     .wdr-type-btn.sel-personal{border-color:var(--danger);color:var(--danger);background:rgba(255,77,109,0.08);}
     .wdr-type-btn.sel-purchases{border-color:var(--orange);color:var(--orange);background:rgba(245,166,35,0.08);}
@@ -409,7 +411,10 @@
       <button class="treasury-btn deposit" onclick="openTreasuryAction('deposit')">➕ دعم الخزنة</button>
       <button class="treasury-btn withdrawal" onclick="openTreasuryAction('withdrawal')">💸 سحب</button>
     </div>
-    <div class="treasury-warn" id="purchaseWarnBanner">⚠️ <span id="purchaseWarnText"></span></div>
+    <div class="treasury-warn" id="purchaseWarnBanner">
+      <span style="flex:1">⚠️ <span id="purchaseWarnText"></span></span>
+      <button class="treasury-return-btn" onclick="openPurchaseReturn()">↩️ راجع</button>
+    </div>
   </div>
 
   <!-- Today Sales List -->
@@ -898,7 +903,7 @@
         <button type="button" class="wdr-type-btn" id="wdrTypePurchases" onclick="selectWdrType('purchases',this)">📦 مشتريات</button>
       </div>
       <div id="wdrPurchasesHint" style="display:none;margin-top:8px;font-size:0.78rem;color:var(--orange);background:rgba(245,166,35,0.08);border-radius:8px;padding:8px 10px">
-        📌 لن يُخصم من الخزنة الآن — سيُخصم عند تسجيل المشتريات بنفس المبلغ
+        📌 كل مشتريات تُسجَّل ستُخصم مباشرةً من الخزنة — والمتبقي يمكن إرجاعه لاحقاً
       </div>
     </div>
     <div class="inp-wrap">
@@ -907,6 +912,25 @@
     </div>
     <button class="btn-primary" id="treasuryActionSubmitBtn" onclick="doTreasuryAction()">✅ حفظ</button>
     <button class="btn-secondary" onclick="closeSheet('treasuryActionOverlay')">إلغاء</button>
+  </div>
+</div>
+
+<!-- Purchase Return -->
+<div class="overlay" id="purchaseReturnOverlay" onclick="bgClose(event,'purchaseReturnOverlay')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">↩️ إرجاع متبقي المشتريات</div>
+    <div id="purchaseReturnInfo" style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.25);border-radius:10px;padding:10px 13px;font-size:0.82rem;color:var(--orange);margin-bottom:14px"></div>
+    <div class="inp-wrap">
+      <div class="inp-label">المبلغ المُرجَع (ر.س)</div>
+      <input class="inp" id="purchaseReturnAmount" type="number" inputmode="decimal" placeholder="0.00" min="0.01" step="any">
+    </div>
+    <div class="inp-wrap">
+      <div class="inp-label">السبب</div>
+      <input class="inp" id="purchaseReturnNote" type="text" placeholder="مثال: المتبقي من المشتريات...">
+    </div>
+    <button class="btn-primary" onclick="doPurchaseReturn()">✅ إرجاع للخزنة</button>
+    <button class="btn-secondary" onclick="closeSheet('purchaseReturnOverlay')">إلغاء</button>
   </div>
 </div>
 
@@ -1184,11 +1208,12 @@ async function loadTreasury(){
 }
 
 function renderTreasury(){
-  const totalSales    = _groupSales.reduce((s,x) => s + Number(x.total), 0);
-  const totalDeposits = _treasuryEntries.filter(e => e.type==='deposit').reduce((s,e) => s + Number(e.amount), 0);
-  // السحب الشخصي يُخصم من الخزنة — سحب المشتريات لا يُخصم (سيُخصم لاحقاً عند تسجيل المشتريات)
-  const personalWdr   = _treasuryEntries.filter(e => e.type==='withdrawal' && (e.withdrawal_type||'personal')==='personal').reduce((s,e) => s + Number(e.amount), 0);
-  const purchaseWdr   = _treasuryEntries.filter(e => e.type==='withdrawal' && e.withdrawal_type==='purchases').reduce((s,e) => s + Number(e.amount), 0);
+  const totalSales     = _groupSales.reduce((s,x) => s + Number(x.total), 0);
+  const regularDep     = _treasuryEntries.filter(e => e.type==='deposit' && e.withdrawal_type!=='purchase_return').reduce((s,e) => s + Number(e.amount), 0);
+  const purchaseReturn = _treasuryEntries.filter(e => e.type==='deposit' && e.withdrawal_type==='purchase_return').reduce((s,e) => s + Number(e.amount), 0);
+  const totalDeposits  = regularDep + purchaseReturn;
+  const personalWdr    = _treasuryEntries.filter(e => e.type==='withdrawal' && (e.withdrawal_type||'personal')==='personal').reduce((s,e) => s + Number(e.amount), 0);
+  const purchaseWdr    = _treasuryEntries.filter(e => e.type==='withdrawal' && e.withdrawal_type==='purchases').reduce((s,e) => s + Number(e.amount), 0);
   const totalPurchases = _treasuryAllPurchasesTotal;
 
   const net = totalSales + totalDeposits - totalPurchases - personalWdr;
@@ -1201,18 +1226,18 @@ function renderTreasury(){
   const fmtStat = n => Math.abs(n) >= 10000 ? (n/1000).toFixed(1)+'k' : n.toFixed(0);
   const set = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=fmtStat(v); };
   set('tSales',      totalSales);
-  set('tDeposits',   totalDeposits);
+  set('tDeposits',   regularDep);
   set('tPurchases',  totalPurchases);
   set('tWithdrawals',personalWdr);
 
-  // تحذير: هل يوجد سحب مشتريات لم يُسجَّل بعد؟
-  const pending = Math.max(0, purchaseWdr - totalPurchases);
+  // تحذير: مسحوب للمشتريات ولم يُسجَّل / يُرجَع بالكامل بعد
+  const pending = Math.max(0, purchaseWdr - totalPurchases - purchaseReturn);
   const warnEl  = document.getElementById('purchaseWarnBanner');
   const warnTxt = document.getElementById('purchaseWarnText');
   if(warnEl){
     if(pending > 0.009){
-      warnEl.style.display = 'block';
-      if(warnTxt) warnTxt.textContent = `مسحوب ${purchaseWdr.toFixed(2)} ر.س للمشتريات — المتبقي غير مسجَّل: ${pending.toFixed(2)} ر.س`;
+      warnEl.style.display = 'flex';
+      if(warnTxt) warnTxt.textContent = `مسحوب ${purchaseWdr.toFixed(2)} ر.س للمشتريات — متبقي غير مُسوَّى: ${pending.toFixed(2)} ر.س`;
     } else {
       warnEl.style.display = 'none';
     }
@@ -1276,9 +1301,9 @@ function openTreasuryDetails(){
 }
 
 function renderTreasuryLedger(){
-  const totalSales    = _groupSales.reduce((s,x) => s + Number(x.total), 0);
-  const totalDeposits = _treasuryEntries.filter(e => e.type==='deposit').reduce((s,e) => s + Number(e.amount), 0);
-  const personalWdr   = _treasuryEntries.filter(e => e.type==='withdrawal' && (e.withdrawal_type||'personal')==='personal').reduce((s,e) => s + Number(e.amount), 0);
+  const totalSales     = _groupSales.reduce((s,x) => s + Number(x.total), 0);
+  const totalDeposits  = _treasuryEntries.filter(e => e.type==='deposit').reduce((s,e) => s + Number(e.amount), 0);
+  const personalWdr    = _treasuryEntries.filter(e => e.type==='withdrawal' && (e.withdrawal_type||'personal')==='personal').reduce((s,e) => s + Number(e.amount), 0);
   const net = totalSales + totalDeposits - _treasuryAllPurchasesTotal - personalWdr;
 
   const netEl = document.getElementById('ledgerNet');
@@ -1334,6 +1359,17 @@ function renderTreasuryLedger(){
         <div class="ledger-amount plus">+${e.amount.toFixed(2)}</div>
       </div>`;
     }
+    if(e.kind === 'deposit' && e.withdrawal_type === 'purchase_return'){
+      return `<div class="ledger-entry">
+        <div class="ledger-icon">↩️</div>
+        <div class="ledger-info">
+          <div class="ledger-name">إرجاع متبقي مشتريات${e.note ? ' — '+e.note : ''}</div>
+          <div class="ledger-date">${dayLabel(dateKey(e.date))} · ${timeLabel(e.date)}</div>
+        </div>
+        <div class="ledger-amount dep-amt">+${e.amount.toFixed(2)}</div>
+        <button class="ledger-del" onclick="delTreasuryEntry('${e.id}')">🗑</button>
+      </div>`;
+    }
     if(e.kind === 'deposit'){
       return `<div class="ledger-entry">
         <div class="ledger-icon">💵</div>
@@ -1369,6 +1405,33 @@ function renderTreasuryLedger(){
     }
     return '';
   }).join('');
+}
+
+function openPurchaseReturn(){
+  const purchaseWdr    = _treasuryEntries.filter(e => e.type==='withdrawal' && e.withdrawal_type==='purchases').reduce((s,e) => s + Number(e.amount), 0);
+  const purchaseReturn = _treasuryEntries.filter(e => e.type==='deposit' && e.withdrawal_type==='purchase_return').reduce((s,e) => s + Number(e.amount), 0);
+  const pending = Math.max(0, purchaseWdr - _treasuryAllPurchasesTotal - purchaseReturn);
+  const infoEl = document.getElementById('purchaseReturnInfo');
+  if(infoEl) infoEl.textContent = `إجمالي المسحوب للمشتريات: ${purchaseWdr.toFixed(2)} ر.س  |  المتبقي غير مُسوَّى: ${pending.toFixed(2)} ر.س`;
+  document.getElementById('purchaseReturnAmount').value = pending > 0.009 ? pending.toFixed(2) : '';
+  document.getElementById('purchaseReturnNote').value = 'المتبقي من المشتريات';
+  document.getElementById('purchaseReturnOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('purchaseReturnAmount').focus(), 350);
+}
+
+async function doPurchaseReturn(){
+  const amount = parseFloat(document.getElementById('purchaseReturnAmount').value);
+  const note   = document.getElementById('purchaseReturnNote').value.trim();
+  if(!amount || amount <= 0){ toast('أدخل مبلغاً صحيحاً','bad'); return; }
+  const { data, error } = await sb.from('biz_treasury').insert({
+    group_id: currentGroupId, added_by: currentUser.id,
+    type: 'deposit', amount, note, withdrawal_type: 'purchase_return'
+  }).select().single();
+  if(error){ toast('خطأ: '+error.message,'bad'); return; }
+  _treasuryEntries.unshift(data);
+  closeSheet('purchaseReturnOverlay');
+  renderTreasury();
+  toast(`✅ تم إرجاع ${amount.toFixed(2)} ر.س للخزنة`, 'ok');
 }
 
 function delTreasuryEntry(id){
