@@ -2186,6 +2186,7 @@ async function loadGroupCommitmentsData(){
   const {data:all}=await sb.from('commitments').select('*').eq('group_id',currentGroupId).order('created_at');
   _allGroupCommits=all||[];
   await loadGroupBudgetData();
+  await checkAndCarryoverBudget();
 }
 
 async function loadGroupBudgetData(){
@@ -2197,6 +2198,53 @@ async function loadGroupBudgetData(){
     .eq('month_key',mk)
     .order('created_at',{ascending:false});
   _groupBudgetEntries=data||[];
+}
+
+function getPrevMonthKey(mk){
+  if(!mk) return null;
+  if(mk.startsWith('custom-')){
+    const ts=parseInt(mk.replace('custom-',''));
+    const startDay=DB.monthStart?new Date(DB.monthStart).getDate():1;
+    const prev=_getPeriodStart(new Date(ts-1),startDay);
+    return `custom-${prev.getTime()}`;
+  }
+  const [y,m]=mk.split('-').map(Number);
+  return m===0?`${y-1}-11`:`${y}-${m-1}`;
+}
+
+async function calcMonthBudgetRemaining(mk){
+  const {data:entries}=await sb.from('budget_entries')
+    .select('amount').eq('group_id',currentGroupId).eq('month_key',mk);
+  const budget=(entries||[]).reduce((s,e)=>s+Number(e.amount),0);
+  if(budget<=0) return 0;
+  const expTotal=_groupExpenses.filter(l=>getLogPeriodKey(l.ts)===mk).reduce((s,l)=>s+l.amount,0);
+  const commitsTotal=_allGroupCommits.filter(c=>c.is_paid&&c.month_key===mk).reduce((s,c)=>s+(c.paid_amount||0),0);
+  return Math.max(0, budget-expTotal-commitsTotal);
+}
+
+async function checkAndCarryoverBudget(){
+  if(!currentGroupId) return;
+  const currentMK=getCurrentMonthKey();
+  const prevMK=getPrevMonthKey(currentMK);
+  if(!prevMK) return;
+  const alreadyCarried=_groupBudgetEntries.some(e=>e.is_carryover&&e.source_month===prevMK);
+  if(alreadyCarried) return;
+  const remaining=await calcMonthBudgetRemaining(prevMK);
+  if(remaining<0.01) return;
+  const {data,error}=await sb.from('budget_entries').insert({
+    group_id:currentGroupId,
+    added_by:currentUser.id,
+    amount:remaining,
+    note:`ترحيل من ${getMonthLabel(prevMK)}`,
+    month_key:currentMK,
+    is_carryover:true,
+    source_month:prevMK
+  }).select('*, profiles(name,email)').single();
+  if(!error&&data){
+    _groupBudgetEntries.push(data);
+    renderBudget();
+    toast(`↩️ تم ترحيل ${remaining.toFixed(2)} ر.س من الشهر الماضي`,'ok');
+  }
 }
 
 function getGroupBudgetTotal(){
@@ -3324,11 +3372,13 @@ async function openBudgetEntries(){
       const timeStr=d.toLocaleTimeString('ar-SA-u-ca-gregory',{hour:'2-digit',minute:'2-digit'});
       const name=e.profiles?.name||e.profiles?.email||'غير معروف';
       const isMyEntry=e.added_by===currentUser.id;
-      const canEdit=isOwner||isMyEntry;
+      const canEdit=(isOwner||isMyEntry)&&!e.is_carryover;
       const noteEsc=(e.note||'').replace(/'/g,"\\'");
-      html+=`<div class="budget-entry-row" style="align-items:flex-start">
+      const carryoverStyle=e.is_carryover?'background:rgba(34,197,94,0.07);border-radius:9px;padding:6px 8px;margin-bottom:4px':'';
+      const amtStyle=e.is_carryover?'color:var(--success)':'';
+      html+=`<div class="budget-entry-row" style="align-items:flex-start;${carryoverStyle}">
         <div style="flex:1">
-          <div class="budget-entry-amt">${Number(e.amount).toFixed(2)} ر.س</div>
+          <div class="budget-entry-amt" style="${amtStyle}">${e.is_carryover?'↩️ ':''} ${Number(e.amount).toFixed(2)} ر.س</div>
           ${e.note?`<div class="budget-entry-note">${e.note}</div>`:''}
           <div style="font-size:11px;color:var(--text2);margin-top:4px">👤 ${name} · ${dateStr} ${timeStr}</div>
         </div>
