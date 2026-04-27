@@ -319,6 +319,28 @@
     .pay-btn.sel{border-color:var(--accent);color:var(--accent);background:rgba(108,99,255,0.1);}
     .treasury-breakdown{display:none;justify-content:center;gap:20px;margin-top:10px;padding:9px 12px;background:rgba(255,255,255,0.03);border-radius:10px;font-size:0.8rem;color:var(--text2);}
     .treasury-breakdown b{color:var(--text);font-weight:700;}
+    /* ── Treasury Reports ── */
+    #treasuryReports{margin-top:14px;display:flex;flex-direction:column;gap:8px;}
+    .rpt-bar{border-radius:13px;overflow:hidden;border:1px solid var(--border);background:var(--card);}
+    .rpt-bar-hdr{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;cursor:pointer;user-select:none;gap:8px;}
+    .rpt-bar-hdr:hover{background:rgba(255,255,255,0.03);}
+    .rpt-bar-title{font-size:0.88rem;font-weight:700;color:var(--text);}
+    .rpt-bar-meta{font-size:0.75rem;color:var(--text2);display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+    .rpt-bar-meta .pos{color:var(--green);}
+    .rpt-bar-meta .neg{color:var(--danger);}
+    .rpt-bar-chevron{font-size:0.75rem;color:var(--text2);transition:transform 0.2s;flex-shrink:0;}
+    .rpt-bar.open .rpt-bar-chevron{transform:rotate(180deg);}
+    .rpt-bar-body{display:none;padding:0 10px 10px;}
+    .rpt-bar.open .rpt-bar-body{display:block;}
+    .rpt-day-row{display:flex;justify-content:space-between;align-items:center;padding:7px 6px;border-radius:8px;font-size:0.78rem;gap:6px;}
+    .rpt-day-row:nth-child(even){background:rgba(255,255,255,0.025);}
+    .rpt-day-label{color:var(--text2);min-width:80px;flex-shrink:0;}
+    .rpt-day-stats{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+    .rpt-chip{background:rgba(255,255,255,0.06);border-radius:6px;padding:2px 7px;font-size:0.72rem;white-space:nowrap;}
+    .rpt-chip.green{color:var(--green);}
+    .rpt-chip.red{color:var(--danger);}
+    .rpt-chip.blue{color:var(--blue);}
+    .rpt-chip.orange{color:var(--orange);}
     /* ── Ledger ── */
     .ledger-entry{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border);}
     .ledger-entry:last-child{border-bottom:none;}
@@ -403,6 +425,7 @@
       <button class="treasury-return-btn" onclick="openPurchaseReturn()">↩️ راجع</button>
     </div>
   </div>
+  <div id="treasuryReports"></div>
 </div>
 
 <!-- ══ SALES ══ -->
@@ -1383,6 +1406,189 @@ function renderTreasury(){
       warnEl.style.display = 'none';
     }
   }
+  renderTreasuryReports();
+}
+
+// ── Treasury Reports ──────────────────────────────────────────────
+const DAYS_AR = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+
+function _isoDay(d){ return d.toISOString().slice(0,10); }
+function _dayStart(iso){ const d=new Date(iso); d.setHours(0,0,0,0); return d; }
+function _dayEnd(iso){ const d=new Date(iso); d.setHours(23,59,59,999); return d; }
+
+function _statsForRange(from, to){
+  // from/to are Date objects (inclusive)
+  const sales   = _groupSales.filter(s=>{ const d=new Date(s.created_at); return d>=from && d<=to; });
+  const entries = _treasuryEntries.filter(e=>{ const d=new Date(e.created_at); return d>=from && d<=to; });
+  const salesTotal = sales.reduce((s,x)=>s+Number(x.total),0);
+  const cashSales  = sales.filter(s=>(s.payment_method||'cash')==='cash').reduce((s,x)=>s+Number(x.total),0);
+  const cardSales  = sales.filter(s=>s.payment_method==='card').reduce((s,x)=>s+Number(x.total),0);
+  const deposits   = entries.filter(e=>e.type==='deposit'&&e.withdrawal_type!=='purchase_return').reduce((s,e)=>s+Number(e.amount),0);
+  const withdrawals= entries.filter(e=>e.type==='withdrawal'&&(e.withdrawal_type||'personal')==='personal').reduce((s,e)=>s+Number(e.amount),0);
+  const purchWdr   = entries.filter(e=>e.type==='withdrawal'&&e.withdrawal_type==='purchases').reduce((s,e)=>s+Number(e.amount),0);
+  const net = salesTotal + deposits - withdrawals - purchWdr;
+  return { salesTotal, cashSales, cardSales, deposits, withdrawals, purchWdr, net, hasSales: sales.length>0 || entries.length>0 };
+}
+
+function _renderDayRow(isoDate, label){
+  const from = _dayStart(isoDate);
+  const to   = _dayEnd(isoDate);
+  const s = _statsForRange(from, to);
+  if(!s.hasSales) return '';
+  const chips = [];
+  if(s.salesTotal>0){
+    chips.push(`<span class="rpt-chip green">مبيعات ${s.salesTotal.toFixed(0)}</span>`);
+    if(s.cashSales>0)  chips.push(`<span class="rpt-chip">💵 ${s.cashSales.toFixed(0)}</span>`);
+    if(s.cardSales>0)  chips.push(`<span class="rpt-chip blue">💳 ${s.cardSales.toFixed(0)}</span>`);
+  }
+  if(s.deposits>0)    chips.push(`<span class="rpt-chip blue">دعم ${s.deposits.toFixed(0)}</span>`);
+  if(s.withdrawals>0) chips.push(`<span class="rpt-chip red">سحب ${s.withdrawals.toFixed(0)}</span>`);
+  if(s.purchWdr>0)    chips.push(`<span class="rpt-chip orange">مشتريات ${s.purchWdr.toFixed(0)}</span>`);
+  const netCls = s.net>=0 ? 'green' : 'red';
+  chips.push(`<span class="rpt-chip ${netCls}">صافي ${s.net.toFixed(0)}</span>`);
+  return `<div class="rpt-day-row">
+    <span class="rpt-day-label">${label}</span>
+    <div class="rpt-day-stats">${chips.join('')}</div>
+  </div>`;
+}
+
+function _buildBar(id, title, metaHtml, bodyHtml, openByDefault){
+  const openCls = openByDefault ? ' open' : '';
+  return `<div class="rpt-bar${openCls}" id="${id}">
+    <div class="rpt-bar-hdr" onclick="this.parentElement.classList.toggle('open')">
+      <span class="rpt-bar-title">${title}</span>
+      <span class="rpt-bar-meta">${metaHtml}</span>
+      <span class="rpt-bar-chevron">▼</span>
+    </div>
+    <div class="rpt-bar-body">${bodyHtml}</div>
+  </div>`;
+}
+
+function renderTreasuryReports(){
+  const el = document.getElementById('treasuryReports');
+  if(!el) return;
+  if(!_groupSales.length && !_treasuryEntries.length){ el.innerHTML=''; return; }
+
+  const now    = new Date();
+  const todayIso = _isoDay(now);
+  // Week starts on Sunday
+  const weekDay = now.getDay(); // 0=Sun
+  const weekStart = new Date(now); weekStart.setDate(now.getDate()-weekDay); weekStart.setHours(0,0,0,0);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const bars = [];
+
+  // ── Current week: one bar per day (only days with activity) ──
+  const weekDays = [];
+  for(let i=0; i<=weekDay; i++){
+    const d = new Date(weekStart); d.setDate(weekStart.getDate()+i);
+    weekDays.push(d);
+  }
+  const weekDayRows = weekDays.map(d=>{
+    const iso = _isoDay(d);
+    const label = iso===todayIso ? 'اليوم' : DAYS_AR[d.getDay()];
+    return _renderDayRow(iso, label);
+  }).filter(Boolean);
+  if(weekDayRows.length){
+    const wkFrom = weekStart;
+    const wkTo   = _dayEnd(todayIso);
+    const wkS    = _statsForRange(wkFrom, wkTo);
+    const metaNet = wkS.net>=0
+      ? `<span class="pos">صافي الأسبوع: ${wkS.net.toFixed(0)} ر.س</span>`
+      : `<span class="neg">صافي الأسبوع: ${wkS.net.toFixed(0)} ر.س</span>`;
+    bars.push(_buildBar('rptWeekCurrent','📅 هذا الأسبوع', metaNet, weekDayRows.join(''), true));
+  }
+
+  // ── Completed weeks in current month (before current week) ──
+  // Find all completed weeks: Sun–Sat whose Saturday is before weekStart and whose Sunday is >= monthStart
+  const completedWeeks = [];
+  let ws = new Date(monthStart);
+  // align to Sunday
+  const msDay = monthStart.getDay();
+  if(msDay!==0) ws.setDate(monthStart.getDate() - msDay);
+  while(true){
+    const we = new Date(ws); we.setDate(ws.getDate()+6); we.setHours(23,59,59,999);
+    if(we >= weekStart) break; // don't include current week
+    // Only include if week overlaps with current month
+    const visStart = ws < monthStart ? monthStart : new Date(ws);
+    if(visStart <= now) completedWeeks.push({ ws: new Date(ws), we });
+    ws.setDate(ws.getDate()+7);
+  }
+  for(let wi=completedWeeks.length-1; wi>=0; wi--){
+    const { ws: wfrom, we: wto } = completedWeeks[wi];
+    const rows = [];
+    let cur = new Date(wfrom);
+    while(cur <= wto && cur <= now){
+      const iso = _isoDay(cur);
+      if(new Date(iso) >= monthStart){
+        const row = _renderDayRow(iso, DAYS_AR[cur.getDay()]);
+        if(row) rows.push(row);
+      }
+      cur.setDate(cur.getDate()+1);
+    }
+    if(!rows.length){ ws.setDate(ws.getDate()+7); continue; }
+    const wkS = _statsForRange(wfrom, wto);
+    const d1 = wfrom.getDate(), d2 = Math.min(wto.getDate(), new Date(now.getFullYear(), now.getMonth()+1,0).getDate());
+    const weekLabel = `أسبوع ${d1}–${d2} ${MON[now.getMonth()]}`;
+    const metaNet = wkS.net>=0
+      ? `<span class="pos">صافي: ${wkS.net.toFixed(0)} ر.س</span>`
+      : `<span class="neg">صافي: ${wkS.net.toFixed(0)} ر.س</span>`;
+    bars.push(_buildBar(`rptWeek_${wi}`, '📅 '+weekLabel, metaNet, rows.join(''), false));
+  }
+
+  // ── Past months ──
+  // Collect all unique year-months from data, excluding current month
+  const allDates = [
+    ..._groupSales.map(s=>s.created_at),
+    ..._treasuryEntries.map(e=>e.created_at)
+  ].map(iso=>{ const d=new Date(iso); return {y:d.getFullYear(),m:d.getMonth()}; });
+  const monthKeys = [...new Set(allDates.map(x=>`${x.y}-${x.m}`))].filter(k=>{
+    const [y,m]=k.split('-').map(Number);
+    return !(y===now.getFullYear()&&m===now.getMonth());
+  }).sort().reverse();
+
+  for(const key of monthKeys){
+    const [y,m] = key.split('-').map(Number);
+    const mStart = new Date(y,m,1,0,0,0,0);
+    const mEnd   = new Date(y,m+1,0,23,59,59,999);
+    const mS     = _statsForRange(mStart, mEnd);
+    if(!mS.hasSales) continue;
+    // weeks inside this month
+    const mWeeks = [];
+    let mws = new Date(mStart);
+    const mwsDay = mws.getDay();
+    if(mwsDay!==0) mws.setDate(mws.getDate()-mwsDay);
+    while(mws <= mEnd){
+      const mwe = new Date(mws); mwe.setDate(mws.getDate()+6); mwe.setHours(23,59,59,999);
+      const visFrom = mws<mStart?mStart:new Date(mws);
+      const visTo   = mwe>mEnd?mEnd:new Date(mwe);
+      mWeeks.push({from:visFrom,to:visTo});
+      mws.setDate(mws.getDate()+7);
+    }
+    let monthBody = '';
+    for(let wi=0;wi<mWeeks.length;wi++){
+      const {from:wf,to:wt}=mWeeks[wi];
+      const wRows=[];
+      let cur=new Date(wf);
+      while(cur<=wt){
+        const iso=_isoDay(cur);
+        const row=_renderDayRow(iso, DAYS_AR[cur.getDay()]);
+        if(row) wRows.push(row);
+        cur.setDate(cur.getDate()+1);
+      }
+      if(!wRows.length) continue;
+      const wkStat=_statsForRange(wf,wt);
+      const d1=wf.getDate(),d2=wt.getDate();
+      const wLabel=`أسبوع ${d1}–${d2}`;
+      const wMeta=wkStat.net>=0?`<span class="pos">صافي: ${wkStat.net.toFixed(0)} ر.س</span>`:`<span class="neg">صافي: ${wkStat.net.toFixed(0)} ر.س</span>`;
+      monthBody+=_buildBar(`rptM${key}_w${wi}`,'📅 '+wLabel,wMeta,wRows.join(''),false);
+    }
+    if(!monthBody) continue;
+    const moNet=mS.net>=0?`<span class="pos">صافي: ${mS.net.toFixed(0)} ر.س</span>`:`<span class="neg">صافي: ${mS.net.toFixed(0)} ر.س</span>`;
+    bars.push(_buildBar(`rptMonth_${key}`,`📆 ${MON[m]} ${y}`,moNet,monthBody,false));
+  }
+
+  el.innerHTML = bars.join('');
 }
 
 function selectWdrType(type, btn){
