@@ -330,11 +330,15 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 #iVRing.active{background:rgba(255,45,85,.15);border-color:#ff2d55;animation:ringP 1s infinite}
 
 /* ── INVENTORY ── */
-.inv-item-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border)}
+.inv-item-row{display:flex;align-items:center;gap:8px;padding:11px 0;border-bottom:1px solid var(--border)}
 .inv-item-row:last-child{border-bottom:none}
+.inv-item-row.inv-new{background:rgba(99,102,241,0.05);border-radius:10px;padding:10px 8px;margin-bottom:2px}
 .inv-item-name{font-size:14px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.inv-new-badge{font-size:10px;background:rgba(99,102,241,0.15);color:var(--accent);border:1px solid rgba(99,102,241,0.3);border-radius:6px;padding:2px 7px;white-space:nowrap;flex-shrink:0}
 .inv-stock-btn{background:none;border:1px solid var(--border);border-radius:9px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .2s;font-family:'Tajawal',sans-serif;flex-shrink:0}
 .inv-stock-btn:active{opacity:.7}
+.inv-del-btn{background:none;border:none;color:var(--danger);cursor:pointer;font-size:15px;padding:2px 4px;opacity:0.5;flex-shrink:0;line-height:1}
+.inv-del-btn:hover{opacity:1}
 /* ── STOCK BADGE ── */
 .stock-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:3px 7px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .2s}
 .stock-btn:active{opacity:.7}
@@ -558,7 +562,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   <div class="topbar">
     <div class="topbar-row">
       <button class="back-btn" onclick="goPage('fixed')">← رجوع</button>
-      <div class="page-title" style="font-size:16px">🗃️ المخزون</div>
+      <div class="page-title" style="font-size:16px">🗃️ المخزون <span id="invCount" style="font-size:12px;color:var(--text2);font-weight:500"></span></div>
       <div style="width:60px"></div>
     </div>
   </div>
@@ -3387,24 +3391,50 @@ async function loadAndRenderInventory(){
   if(!currentGroupId) return;
   document.getElementById('inventoryList').innerHTML='<div style="text-align:center;padding:30px;color:var(--text2)">جارٍ التحميل...</div>';
 
-  // جمع أسماء فريدة من أصناف فئات نوع "قائمة" عبر كل الأشهر
+  // جمع أسماء + تواريخ من أصناف فئات نوع "قائمة" عبر كل الأشهر
   const listIds=_allGroupCommits.filter(c=>(c.type||'list')==='list').map(c=>c.id);
-  let uniqueNames=[];
+  let commitItemsData=[];
   if(listIds.length){
-    const {data:items}=await sb.from('commitment_items').select('name').in('commitment_id',listIds);
-    uniqueNames=[...new Set((items||[]).map(i=>i.name.trim()))].sort((a,b)=>a.localeCompare(b,'ar'));
+    const {data:items}=await sb.from('commitment_items').select('name,created_at').in('commitment_id',listIds);
+    commitItemsData=items||[];
+  }
+  const uniqueNames=[...new Set(commitItemsData.map(i=>i.name.trim()))].sort((a,b)=>a.localeCompare(b,'ar'));
+
+  // تحميل كل سجلات المخزون (بما فيها المحذوفة ناعماً)
+  const {data:inv}=await sb.from('inventory_items').select('*').eq('group_id',currentGroupId);
+  const allInv=inv||[];
+
+  // الأصناف النشطة فقط (غير محذوفة)
+  _inventoryItems=allInv.filter(i=>!i.deleted_at);
+  const activeNames=new Set(_inventoryItems.map(i=>i.item_name));
+  const allNames=new Map(allInv.map(i=>[i.item_name,i]));
+
+  const toInsert=[];
+  const toReactivate=[];
+
+  for(const name of uniqueNames){
+    if(activeNames.has(name)) continue;
+    const existing=allNames.get(name);
+    if(!existing){
+      // لم يُسجَّل أبداً → أضفه
+      toInsert.push({group_id:currentGroupId,item_name:name});
+    } else if(existing.deleted_at){
+      // محذوف ناعماً → أعد الإضافة فقط إذا ظهر بشهر جديد بعد تاريخ الحذف
+      const hasNew=commitItemsData.some(ci=>
+        ci.name.trim()===name && new Date(ci.created_at)>new Date(existing.deleted_at)
+      );
+      if(hasNew) toReactivate.push(existing.id);
+    }
   }
 
-  // تحميل المخزون المحفوظ
-  const {data:inv}=await sb.from('inventory_items').select('*').eq('group_id',currentGroupId);
-  _inventoryItems=inv||[];
-
-  // إضافة أصناف جديدة غير موجودة في المخزون
-  const existingNames=new Set(_inventoryItems.map(i=>i.item_name));
-  const toInsert=uniqueNames.filter(n=>!existingNames.has(n)).map(n=>({group_id:currentGroupId,item_name:n}));
   if(toInsert.length){
     const {data:newItems}=await sb.from('inventory_items').insert(toInsert).select('*');
     _inventoryItems=[..._inventoryItems,...(newItems||[])];
+  }
+  if(toReactivate.length){
+    await sb.from('inventory_items').update({deleted_at:null}).in('id',toReactivate);
+    const {data:reloaded}=await sb.from('inventory_items').select('*').eq('group_id',currentGroupId).is('deleted_at',null);
+    _inventoryItems=reloaded||[];
   }
   _inventoryItems.sort((a,b)=>a.item_name.localeCompare(b.item_name,'ar'));
   renderInventory();
@@ -3413,19 +3443,38 @@ async function loadAndRenderInventory(){
 function renderInventory(){
   const el=document.getElementById('inventoryList');
   if(!el) return;
+  const countEl=document.getElementById('invCount');
+  if(countEl) countEl.textContent=_inventoryItems.length?`(${_inventoryItems.length})`:'';
   if(!_inventoryItems.length){
     el.innerHTML='<div class="empty"><div class="ei">🗃️</div><p>لا توجد أصناف بعد<br>أضف أصنافاً في الفئات أولاً</p></div>';
     return;
   }
+  const currentMK=getCurrentMonthKey();
   el.innerHTML=_inventoryItems.map(item=>{
     const sc=stockClass(item.stock);
     const sl=stockLabel(item.stock);
     const nameEsc=item.item_name.replace(/'/g,"\\'");
-    return `<div class="inv-item-row">
+    const isNew=item.created_at && getLogPeriodKey(item.created_at)===currentMK;
+    const newBadge=isNew?'<span class="inv-new-badge">✨ مضاف مؤخراً</span>':'';
+    const rowCls=isNew?' inv-new':'';
+    return `<div class="inv-item-row${rowCls}">
       <div class="inv-item-name">${item.item_name}</div>
+      ${newBadge}
       <button class="inv-stock-btn ${sc}" onclick="openInvStockPicker('${nameEsc}')">${sl||'— تحديد'}</button>
+      <button class="inv-del-btn" onclick="deleteInventoryItem('${item.id}','${nameEsc}')">🗑</button>
     </div>`;
   }).join('');
+}
+
+async function deleteInventoryItem(id, name){
+  if(!confirm(`حذف «${name}» من المخزون؟\nسيُعاد إضافته تلقائياً إذا سُجِّل في شهر جديد.`)) return;
+  const {error}=await sb.from('inventory_items')
+    .update({deleted_at:new Date().toISOString()})
+    .eq('id',id);
+  if(error){toast('خطأ: '+error.message,'err');return;}
+  _inventoryItems=_inventoryItems.filter(i=>i.id!==id);
+  renderInventory();
+  toast('تم الحذف','bad');
 }
 
 // ══════════════════════════════════════════
