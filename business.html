@@ -1043,6 +1043,15 @@ function timeLabel(iso){
   const d = new Date(iso);
   return d.toLocaleTimeString('ar-SA-u-ca-gregory',{hour:'2-digit',minute:'2-digit'});
 }
+function dateTimeLabel(iso){
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString('ar-SA-u-ca-gregory',{hour:'2-digit',minute:'2-digit'});
+  return `${d.getDate()} ${MON[d.getMonth()]} · ${time}`;
+}
+function memberName(profiles){
+  if(!profiles) return '';
+  return profiles.name || profiles.email?.split('@')[0] || '';
+}
 
 // ══════════════════════════════════════════
 //  AUTH
@@ -1246,7 +1255,7 @@ async function loadTreasury(){
   if(!currentGroupId) return;
   // Load deposits + withdrawals
   const { data: entries } = await sb.from('biz_treasury')
-    .select('*').eq('group_id', currentGroupId)
+    .select('*, profiles(name, email)').eq('group_id', currentGroupId)
     .order('created_at', { ascending: false });
   _treasuryEntries = entries || [];
 
@@ -1340,6 +1349,7 @@ async function doTreasuryAction(){
   if(_treasuryActionType === 'withdrawal') row.withdrawal_type = _withdrawalType;
   const { data, error } = await sb.from('biz_treasury').insert(row).select().single();
   if(error){ toast('خطأ: '+error.message,'bad'); return; }
+  data.profiles = { name: currentUser.user_metadata?.name || '', email: currentUser.email };
   _treasuryEntries.unshift(data);
   closeSheet('treasuryActionOverlay');
   renderTreasury();
@@ -1382,7 +1392,7 @@ function renderTreasuryLedger(){
 
   // Treasury entries
   _treasuryEntries.forEach(e => {
-    entries.push({ kind: e.type, date: e.created_at, amount: Number(e.amount), note: e.note, id: e.id, withdrawal_type: e.withdrawal_type });
+    entries.push({ kind: e.type, date: e.created_at, amount: Number(e.amount), note: e.note, id: e.id, withdrawal_type: e.withdrawal_type, profiles: e.profiles });
   });
 
   // Purchases total (single summary line)
@@ -1420,7 +1430,7 @@ function renderTreasuryLedger(){
         <div class="ledger-icon">↩️</div>
         <div class="ledger-info">
           <div class="ledger-name">إرجاع متبقي مشتريات${e.note ? ' — '+e.note : ''}</div>
-          <div class="ledger-date">${dayLabel(dateKey(e.date))} · ${timeLabel(e.date)}</div>
+          <div class="ledger-date">${dateTimeLabel(e.date)}${memberName(e.profiles) ? ' · '+memberName(e.profiles) : ''}</div>
         </div>
         <div class="ledger-amount dep-amt">+${e.amount.toFixed(2)}</div>
         <button class="ledger-del" onclick="delTreasuryEntry('${e.id}')">🗑</button>
@@ -1431,7 +1441,7 @@ function renderTreasuryLedger(){
         <div class="ledger-icon">💵</div>
         <div class="ledger-info">
           <div class="ledger-name">دعم الخزنة${e.note ? ' — '+e.note : ''}</div>
-          <div class="ledger-date">${dayLabel(dateKey(e.date))} · ${timeLabel(e.date)}</div>
+          <div class="ledger-date">${dateTimeLabel(e.date)}${memberName(e.profiles) ? ' · '+memberName(e.profiles) : ''}</div>
         </div>
         <div class="ledger-amount dep-amt">+${e.amount.toFixed(2)}</div>
         <button class="ledger-del" onclick="delTreasuryEntry('${e.id}')">🗑</button>
@@ -1443,7 +1453,7 @@ function renderTreasuryLedger(){
         <div class="ledger-icon">${isPur ? '📦' : '💸'}</div>
         <div class="ledger-info">
           <div class="ledger-name">${isPur ? 'سحب للمشتريات' : 'سحب شخصي'}${e.note ? ' — '+e.note : ''}${isPur ? ' <span style="font-size:0.68rem;color:var(--orange);border:1px solid rgba(245,166,35,.4);border-radius:6px;padding:1px 5px">⏳ معلّق</span>' : ''}</div>
-          <div class="ledger-date">${dayLabel(dateKey(e.date))} · ${timeLabel(e.date)}</div>
+          <div class="ledger-date">${dateTimeLabel(e.date)}${memberName(e.profiles) ? ' · '+memberName(e.profiles) : ''}</div>
         </div>
         <div class="ledger-amount ${isPur ? 'minus' : 'wdr-amt'}">${isPur ? '' : '-'}${e.amount.toFixed(2)}</div>
         <button class="ledger-del" onclick="delTreasuryEntry('${e.id}')">🗑</button>
@@ -1507,7 +1517,7 @@ function delTreasuryEntry(id){
 async function loadGroupSales(){
   if(!currentGroupId) return;
   const { data } = await sb.from('sales')
-    .select('*').eq('group_id', currentGroupId)
+    .select('*, profiles(name, email)').eq('group_id', currentGroupId)
     .order('created_at', { ascending: false });
   _groupSales = data || [];
 }
@@ -1542,10 +1552,11 @@ function renderSales(){
           <div class="sale-item-info">
             <div class="sale-item-name">${s.product}</div>
             <div class="sale-item-meta">${Number(s.qty)%1===0?Number(s.qty).toFixed(0):Number(s.qty)} × ${Number(s.price).toFixed(2)} ر.س</div>
+            ${memberName(s.profiles) ? `<div class="sale-item-meta" style="color:var(--text2)">${memberName(s.profiles)}</div>` : ''}
           </div>
           <div class="sale-item-right">
             <div class="sale-item-total">${Number(s.total).toFixed(2)} ر.س</div>
-            <div class="sale-item-time">${timeLabel(s.created_at)}</div>
+            <div class="sale-item-time">${dateTimeLabel(s.created_at)}</div>
           </div>
         </div>`).join('') +
     '</div>';
@@ -1581,7 +1592,7 @@ function renderSalesArchive(todayDk){
         <div class="archive-month">
           <div class="archive-month-hdr" onclick="toggleMonth('m-${mk}')">
             <div>
-              <div class="archive-month-name">📅 ${monthLabel(mk)}</div>
+              <div class="archive-month-name">${monthLabel(mk)}</div>
               <div style="font-size:0.72rem;color:var(--text2)">${txCount} عملية</div>
             </div>
             <div class="archive-month-right">
@@ -1622,10 +1633,10 @@ function openDayDetail(dk){
   document.getElementById('dayDetailTotal').textContent = total.toFixed(2) + ' ر.س';
   document.getElementById('dayDetailBody').innerHTML = sales.map(s => `
     <tr>
-      <td>${s.product}</td>
+      <td>${s.product}${memberName(s.profiles) ? `<div style="font-size:0.72rem;color:var(--text2)">${memberName(s.profiles)}</div>` : ''}</td>
       <td>${Number(s.qty)%1===0?Number(s.qty).toFixed(0):Number(s.qty)}</td>
       <td>${Number(s.price).toFixed(2)}</td>
-      <td style="color:var(--green);font-weight:700">${Number(s.total).toFixed(2)}</td>
+      <td style="color:var(--green);font-weight:700">${Number(s.total).toFixed(2)}<div style="font-size:0.7rem;color:var(--text2);font-weight:400">${timeLabel(s.created_at)}</div></td>
     </tr>`).join('');
   goPage('day-detail');
 }
@@ -1668,6 +1679,7 @@ async function doAddSale(){
     product, qty, price, total, src: 'manual'
   }).select().single();
   if(error){ toast('خطأ: '+error.message,'bad'); return; }
+  data.profiles = { name: currentUser.user_metadata?.name || '', email: currentUser.email };
   _groupSales.unshift(data);
   closeSheet('addSaleOverlay');
   renderSales();
@@ -1792,6 +1804,7 @@ function startVoiceSale(){
           product: corrProduct, qty: res.qty, price: res.price, total, src: 'voice'
         }).select().single();
         if(!error){
+          data.profiles = { name: currentUser.user_metadata?.name || '', email: currentUser.email };
           _groupSales.unshift(data);
           upsertVocab(corrProduct);
           vSaleMsg(`✅ ${corrProduct} × ${res.qty} = ${total.toFixed(2)} ر.س`,'ok');
