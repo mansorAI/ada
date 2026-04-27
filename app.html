@@ -591,10 +591,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   <div class="items-table-wrap">
     <table class="items-table">
       <thead><tr>
-        <th>#</th><th>اسم الصنف</th><th>الفئة</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th>المخزون</th><th></th>
+        <th>#</th><th>اسم الصنف</th><th>الفئة</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th></th>
       </tr></thead>
       <tbody id="commitItemsTbody">
-        <tr><td colspan="8" class="empty-table">لا توجد أصناف — أضف صنفاً</td></tr>
+        <tr><td colspan="7" class="empty-table">لا توجد أصناف — أضف صنفاً</td></tr>
       </tbody>
     </table>
   </div>
@@ -2326,15 +2326,13 @@ async function renderCommitItems(){
   _commitItemsCache=items||[];
   const tbody=document.getElementById('commitItemsTbody');
   tbody.innerHTML='';
-  if(!_commitItemsCache.length){tbody.innerHTML='<tr><td colspan="8" class="empty-table">لا توجد أصناف — أضف صنفاً</td></tr>';}
+  if(!_commitItemsCache.length){tbody.innerHTML='<tr><td colspan="7" class="empty-table">لا توجد أصناف — أضف صنفاً</td></tr>';}
   _commitItemsCache.forEach((item,idx)=>{
     const color=itemCatColor(item.category);
     const rowTotal=(item.price*item.qty).toFixed(2);
-    const sl=stockLabel(item.stock);
-    const sc=stockClass(item.stock);
     const tr=document.createElement('tr');
     tr.style.cursor='pointer';
-    tr.onclick=(e)=>{if(!e.target.closest('.item-del-btn,.stock-btn'))openEditItem(item.id);};
+    tr.onclick=(e)=>{if(!e.target.closest('.item-del-btn'))openEditItem(item.id);};
     tr.innerHTML=`
       <td style="color:var(--text2);font-size:11px">${idx+1}</td>
       <td style="font-weight:700;font-size:13px">${item.name}</td>
@@ -2342,7 +2340,6 @@ async function renderCommitItems(){
       <td style="text-align:center;color:var(--text3)">${item.qty}</td>
       <td class="item-price-cell">${item.price.toFixed(2)}</td>
       <td style="font-weight:800;color:var(--accent3);white-space:nowrap;font-size:12px">${rowTotal}</td>
-      <td><button class="stock-btn ${sc}" onclick="openStockPicker('${item.id}','${item.name.replace(/'/g,"\\'")}')">  ${sl||'—'}</button></td>
       <td><button class="item-del-btn" onclick="confirmDel('حذف «${item.name.replace(/'/g,"\\'")}»؟',()=>delCommitItem('${item.id}'))">🗑</button></td>`;
     tbody.appendChild(tr);
   });
@@ -2383,7 +2380,6 @@ function exportCommitToPDF(){
   const commitName=document.getElementById('commitDetailLabel').textContent;
   const periodLabel=document.getElementById('commitDetailDate').textContent;
   const total=items.reduce((s,i)=>s+i.price*i.qty,0);
-  const stockMap={full:'كامل',half:'النصف',quarter:'الربع',empty:'نفذ'};
   const catMap={};
   items.forEach(i=>{
     if(!catMap[i.category])catMap[i.category]={count:0,total:0};
@@ -2391,7 +2387,6 @@ function exportCommitToPDF(){
   });
   const itemRows=items.map((item,idx)=>{
     const rowTotal=(item.price*item.qty).toFixed(2);
-    const stock=stockMap[item.stock]||item.stock||'—';
     return `<tr>
       <td>${idx+1}</td>
       <td>${item.name}</td>
@@ -2399,7 +2394,6 @@ function exportCommitToPDF(){
       <td style="text-align:center">${item.qty}</td>
       <td style="text-align:center">${item.price.toFixed(2)}</td>
       <td style="text-align:center;font-weight:700">${rowTotal}</td>
-      <td style="text-align:center">${stock}</td>
     </tr>`;
   }).join('');
   const catRows=Object.entries(catMap).sort((a,b)=>b[1].total-a[1].total).map(([cat,d])=>{
@@ -2443,10 +2437,10 @@ function exportCommitToPDF(){
 </div>
 <div class="section-title">قائمة الأصناف</div>
 <table>
-  <thead><tr><th>#</th><th>اسم الصنف</th><th>الفئة</th><th>الكمية</th><th>سعر الوحدة (ر.س)</th><th>الإجمالي (ر.س)</th><th>المخزون</th></tr></thead>
+  <thead><tr><th>#</th><th>اسم الصنف</th><th>الفئة</th><th>الكمية</th><th>سعر الوحدة (ر.س)</th><th>الإجمالي (ر.س)</th></tr></thead>
   <tbody>
     ${itemRows}
-    <tr class="total-row"><td colspan="5">الإجمالي الكلي</td><td>${total.toFixed(2)}</td><td></td></tr>
+    <tr class="total-row"><td colspan="5">الإجمالي الكلي</td><td>${total.toFixed(2)}</td></tr>
   </tbody>
 </table>
 <div class="section-title">تقرير الفئات</div>
@@ -3335,7 +3329,6 @@ function doDelItemFromEdit(){
 // ══════════════════════════════════════════
 //  STOCK
 // ══════════════════════════════════════════
-let stockItemId = null;
 let _invStockMode = false;
 let _invStockItemName = null;
 let _inventoryItems = [];
@@ -3352,14 +3345,6 @@ function stockClass(s){
   if(STOCK_CLASS[s]) return STOCK_CLASS[s];
   if(s!==undefined&&s!==null&&s!=='') return 'stock-custom';
   return '';
-}
-
-function openStockPicker(itemId, itemName){
-  _invStockMode=false;
-  stockItemId=itemId;
-  document.getElementById('stockOverlayTitle').textContent=`🗃️ مخزون: ${itemName}`;
-  document.getElementById('stockCustomInp').value='';
-  document.getElementById('stockOverlay').classList.add('open');
 }
 
 function openInvStockPicker(itemName){
@@ -3381,20 +3366,15 @@ function setStockCustom(){
 }
 
 async function applyStock(val){
-  if(_invStockMode){
-    const {error}=await sb.from('inventory_items')
-      .update({stock:val,updated_at:new Date().toISOString()})
-      .eq('group_id',currentGroupId).eq('item_name',_invStockItemName);
-    if(!error){
-      const item=_inventoryItems.find(i=>i.item_name===_invStockItemName);
-      if(item) item.stock=val;
-      renderInventory();
-    }
-    _invStockMode=false;
-  } else {
-    const {error}=await sb.from('commitment_items').update({stock:val}).eq('id',stockItemId);
-    if(!error) await renderCommitItems();
+  const {error}=await sb.from('inventory_items')
+    .update({stock:val,updated_at:new Date().toISOString()})
+    .eq('group_id',currentGroupId).eq('item_name',_invStockItemName);
+  if(!error){
+    const item=_inventoryItems.find(i=>i.item_name===_invStockItemName);
+    if(item) item.stock=val;
+    renderInventory();
   }
+  _invStockMode=false;
   closeSheet('stockOverlay');
   toast('✅ تم تحديث المخزون','ok');
 }
