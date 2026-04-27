@@ -315,6 +315,10 @@
     .wdr-type-btn{flex:1;padding:10px 8px;border-radius:10px;border:2px solid var(--border);background:var(--bg);color:var(--text2);font-family:'Tajawal',sans-serif;font-size:0.88rem;cursor:pointer;transition:all 0.2s;font-weight:500;}
     .wdr-type-btn.sel-personal{border-color:var(--danger);color:var(--danger);background:rgba(255,77,109,0.08);}
     .wdr-type-btn.sel-purchases{border-color:var(--orange);color:var(--orange);background:rgba(245,166,35,0.08);}
+    .pay-btn{flex:1;padding:9px 8px;border-radius:10px;border:2px solid var(--border);background:var(--bg);color:var(--text2);font-family:'Tajawal',sans-serif;font-size:0.88rem;cursor:pointer;transition:all 0.2s;font-weight:600;}
+    .pay-btn.sel{border-color:var(--accent);color:var(--accent);background:rgba(108,99,255,0.1);}
+    .treasury-breakdown{display:none;justify-content:center;gap:20px;margin-top:10px;padding:9px 12px;background:rgba(255,255,255,0.03);border-radius:10px;font-size:0.8rem;color:var(--text2);}
+    .treasury-breakdown b{color:var(--text);font-weight:700;}
     /* ── Ledger ── */
     .ledger-entry{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border);}
     .ledger-entry:last-child{border-bottom:none;}
@@ -385,6 +389,10 @@
         <div class="treasury-stat-val" id="tWithdrawals" style="color:var(--danger)">0</div>
         <div class="treasury-stat-lbl">سحب</div>
       </div>
+    </div>
+    <div class="treasury-breakdown" id="treasuryBreakdown">
+      <span>💵 نقدي: <b id="tCashTotal">0</b> ر.س</span>
+      <span>💳 شبكة: <b id="tCardTotal">0</b> ر.س</span>
     </div>
     <div class="treasury-actions">
       <button class="treasury-btn deposit" onclick="openTreasuryAction('deposit')">➕ دعم الخزنة</button>
@@ -604,6 +612,13 @@
       <div class="inp-wrap">
         <div class="inp-label">السعر (ر.س)</div>
         <input class="inp" id="salePrice" type="number" placeholder="0.00" min="0" step="any">
+      </div>
+    </div>
+    <div class="inp-wrap">
+      <div class="inp-label">طريقة الدفع</div>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button type="button" class="pay-btn sel" id="salePayCash" onclick="setSalePayMethod('cash')">💵 نقدي</button>
+        <button type="button" class="pay-btn" id="salePayCard" onclick="setSalePayMethod('card')">💳 شبكة</button>
       </div>
     </div>
     <div class="inp-wrap" id="saleTotalPreview" style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center;display:none">
@@ -934,6 +949,13 @@
       </div>
     </div>
     <div class="inp-wrap">
+      <div class="inp-label">طريقة الدفع</div>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button type="button" class="pay-btn sel" id="tPayCash" onclick="setTreasuryPayMethod('cash')">💵 نقدي</button>
+        <button type="button" class="pay-btn" id="tPayCard" onclick="setTreasuryPayMethod('card')">💳 شبكة</button>
+      </div>
+    </div>
+    <div class="inp-wrap">
       <div class="inp-label">ملاحظة — اختياري</div>
       <input class="inp" id="treasuryActionNote" type="text" placeholder="مثال: راتب، مبلغ دعم...">
     </div>
@@ -1003,8 +1025,11 @@ let _recognition = null, _isListening = false;
 // Treasury
 let _treasuryEntries = [];
 let _treasuryAllPurchasesTotal = 0;
+let _treasuryPurchaseItems = []; // items with created_at for session linking
 let _treasuryActionType = 'deposit';
 let _withdrawalType = 'personal';
+let _salePayMethod = 'cash';
+let _treasuryPayMethod = 'cash';
 
 // Permissions
 let _bizIsOwner = false;
@@ -1180,7 +1205,7 @@ async function switchToBizGroup(id, name){
   _updateGroupUI();
   // إعادة تعيين الكاش
   _groupSales = []; _groupPurchases = []; _purchaseItemsCache = [];
-  _treasuryEntries = []; _treasuryAllPurchasesTotal = 0;
+  _treasuryEntries = []; _treasuryAllPurchasesTotal = 0; _treasuryPurchaseItems = [];
   await loadBizPerms();
   applyBizPerms();
   await Promise.all([loadGroupSales(), loadGroupPurchases(), loadTreasury()]);
@@ -1259,12 +1284,42 @@ async function loadTreasury(){
   const { data: allCom } = await sb.from('commitments').select('id').eq('group_id', currentGroupId);
   if(allCom && allCom.length > 0){
     const cIds = allCom.map(c => c.id);
-    const { data: allItems } = await sb.from('commitment_items').select('price, qty').in('commitment_id', cIds);
-    _treasuryAllPurchasesTotal = (allItems||[]).reduce((s,i) => s + Number(i.price)*Number(i.qty), 0);
+    const { data: allItems } = await sb.from('commitment_items').select('id, price, qty, created_at').in('commitment_id', cIds);
+    _treasuryPurchaseItems    = allItems || [];
+    _treasuryAllPurchasesTotal = _treasuryPurchaseItems.reduce((s,i) => s + Number(i.price)*Number(i.qty), 0);
   } else {
+    _treasuryPurchaseItems    = [];
     _treasuryAllPurchasesTotal = 0;
   }
   renderTreasury();
+}
+
+// كل سحب للمشتريات يُحسب على المشتريات التي أُضيفت بعده فقط
+function calcPurchaseSessions(){
+  const wdrs = _treasuryEntries
+    .filter(e => e.type==='withdrawal' && e.withdrawal_type==='purchases')
+    .sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+  if(!wdrs.length) return [];
+
+  const rets = _treasuryEntries
+    .filter(e => e.type==='deposit' && e.withdrawal_type==='purchase_return')
+    .sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+
+  return wdrs.map((wdr, i) => {
+    const from = new Date(wdr.created_at);
+    const to   = i+1 < wdrs.length ? new Date(wdrs[i+1].created_at) : new Date('9999-12-31');
+
+    const purchases = _treasuryPurchaseItems
+      .filter(it => { const d=new Date(it.created_at); return d>=from && d<to; })
+      .reduce((s,it) => s + Number(it.price)*Number(it.qty), 0);
+
+    const returned = rets
+      .filter(r => { const d=new Date(r.created_at); return d>=from && d<to; })
+      .reduce((s,r) => s + Number(r.amount), 0);
+
+    const pending = Math.max(0, Number(wdr.amount) - purchases - returned);
+    return { id: wdr.id, date: wdr.created_at, withdrawn: Number(wdr.amount), purchases, returned, pending, settled: pending < 0.01 };
+  });
 }
 
 function renderTreasury(){
@@ -1290,14 +1345,31 @@ function renderTreasury(){
   set('tPurchases',  totalPurchases);
   set('tWithdrawals',personalWdr);
 
-  // تحذير: مسحوب للمشتريات ولم يُسجَّل / يُرجَع بالكامل بعد
-  const pending = Math.max(0, purchaseWdr - totalPurchases - purchaseReturn);
-  const warnEl  = document.getElementById('purchaseWarnBanner');
-  const warnTxt = document.getElementById('purchaseWarnText');
+  // ملخص نقدي / شبكة
+  const cashIn = _groupSales.filter(s=>(s.payment_method||'cash')==='cash').reduce((s,x)=>s+Number(x.total),0)
+               + _treasuryEntries.filter(e=>e.type==='deposit'&&(e.payment_method||'cash')==='cash').reduce((s,e)=>s+Number(e.amount),0);
+  const cardIn = _groupSales.filter(s=>s.payment_method==='card').reduce((s,x)=>s+Number(x.total),0)
+               + _treasuryEntries.filter(e=>e.type==='deposit'&&e.payment_method==='card').reduce((s,e)=>s+Number(e.amount),0);
+  const breakdownEl = document.getElementById('treasuryBreakdown');
+  if(breakdownEl){
+    breakdownEl.style.display = (cashIn > 0 || cardIn > 0) ? 'flex' : 'none';
+    const ct = document.getElementById('tCashTotal'); if(ct) ct.textContent = cashIn.toFixed(0);
+    const cd = document.getElementById('tCardTotal'); if(cd) cd.textContent = cardIn.toFixed(0);
+  }
+
+  // تحذير: مسحوب للمشتريات ولم يُسجَّل / يُرجَع بالكامل بعد (محسوب لكل جلسة على حدة)
+  const sessions   = calcPurchaseSessions();
+  const pending    = sessions.reduce((s, sess) => s + sess.pending, 0);
+  const warnEl     = document.getElementById('purchaseWarnBanner');
+  const warnTxt    = document.getElementById('purchaseWarnText');
   if(warnEl){
     if(pending > 0.009){
       warnEl.style.display = 'flex';
-      if(warnTxt) warnTxt.textContent = `مسحوب ${purchaseWdr.toFixed(2)} ر.س للمشتريات — متبقي غير مُسوَّى: ${pending.toFixed(2)} ر.س`;
+      const unsettled = sessions.filter(s => !s.settled);
+      const warnMsg = unsettled.length === 1
+        ? `مسحوب ${unsettled[0].withdrawn.toFixed(2)} ر.س للمشتريات — متبقي غير مُسوَّى: ${pending.toFixed(2)} ر.س`
+        : `${unsettled.length} سحوبات غير مُسوَّاة — إجمالي المتبقي: ${pending.toFixed(2)} ر.س`;
+      if(warnTxt) warnTxt.textContent = warnMsg;
     } else {
       warnEl.style.display = 'none';
     }
@@ -1310,6 +1382,18 @@ function selectWdrType(type, btn){
   document.getElementById('wdrTypePersonal')?.classList.toggle('wdr-type-btn', true);
   document.getElementById('wdrTypePurchases')?.classList.toggle('sel-purchases', type==='purchases');
   document.getElementById('wdrPurchasesHint').style.display = type==='purchases' ? 'block' : 'none';
+}
+
+function setSalePayMethod(m){
+  _salePayMethod = m;
+  document.getElementById('salePayCash')?.classList.toggle('sel', m==='cash');
+  document.getElementById('salePayCard')?.classList.toggle('sel', m==='card');
+}
+
+function setTreasuryPayMethod(m){
+  _treasuryPayMethod = m;
+  document.getElementById('tPayCash')?.classList.toggle('sel', m==='cash');
+  document.getElementById('tPayCard')?.classList.toggle('sel', m==='card');
 }
 
 function openTreasuryAction(type){
@@ -1330,6 +1414,7 @@ function openTreasuryAction(type){
   }
   document.getElementById('treasuryActionAmount').value = '';
   document.getElementById('treasuryActionNote').value = '';
+  setTreasuryPayMethod('cash');
   document.getElementById('treasuryActionOverlay').classList.add('open');
   setTimeout(() => document.getElementById('treasuryActionAmount').focus(), 350);
 }
@@ -1340,7 +1425,7 @@ async function doTreasuryAction(){
   if(!amount || amount <= 0){ toast('أدخل مبلغاً صحيحاً','bad'); return; }
   const row = {
     group_id: currentGroupId, added_by: currentUser.id,
-    type: _treasuryActionType, amount, note
+    type: _treasuryActionType, amount, note, payment_method: _treasuryPayMethod
   };
   if(_treasuryActionType === 'withdrawal') row.withdrawal_type = _withdrawalType;
   const { data, error } = await sb.from('biz_treasury').insert(row).select().single();
@@ -1378,12 +1463,14 @@ function renderTreasuryLedger(){
   const salesByDay = {};
   _groupSales.forEach(s => {
     const dk = dateKey(s.created_at);
-    if(!salesByDay[dk]) salesByDay[dk] = { total:0, count:0, iso: s.created_at };
+    if(!salesByDay[dk]) salesByDay[dk] = { total:0, count:0, iso: s.created_at, cash:0, card:0 };
     salesByDay[dk].total += Number(s.total);
     salesByDay[dk].count++;
+    if(s.payment_method==='card') salesByDay[dk].card += Number(s.total);
+    else salesByDay[dk].cash += Number(s.total);
   });
   Object.entries(salesByDay).forEach(([dk, d]) => {
-    entries.push({ kind:'sales', date: d.iso, dk, amount: d.total, count: d.count });
+    entries.push({ kind:'sales', date: d.iso, dk, amount: d.total, count: d.count, cash: d.cash, card: d.card });
   });
 
   // Treasury entries
@@ -1412,11 +1499,14 @@ function renderTreasuryLedger(){
 
   el.innerHTML = entries.map(e => {
     if(e.kind === 'sales'){
+      const payDetail = (e.cash > 0 && e.card > 0)
+        ? ` · 💵 ${e.cash.toFixed(0)} | 💳 ${e.card.toFixed(0)}`
+        : (e.card > 0 ? ' · 💳 شبكة' : ' · 💵 نقدي');
       return `<div class="ledger-entry">
         <div class="ledger-icon">🛒</div>
         <div class="ledger-info">
           <div class="ledger-name">مبيعات — ${dayLabel(e.dk)}</div>
-          <div class="ledger-date">${e.count} عملية بيع</div>
+          <div class="ledger-date">${e.count} عملية بيع${payDetail}</div>
         </div>
         <div class="ledger-amount plus">+${e.amount.toFixed(2)}</div>
       </div>`;
@@ -1426,18 +1516,19 @@ function renderTreasuryLedger(){
         <div class="ledger-icon">↩️</div>
         <div class="ledger-info">
           <div class="ledger-name">إرجاع متبقي مشتريات${e.note ? ' — '+e.note : ''}</div>
-          <div class="ledger-date">${dateTimeLabel(e.date)}${memberName(e.profiles) ? ' · '+memberName(e.profiles) : ''}</div>
+          <div class="ledger-date">${e.payment_method==='card'?'💳':'💵'} ${dateTimeLabel(e.date)}${memberName(e.profiles) ? ' · '+memberName(e.profiles) : ''}</div>
         </div>
         <div class="ledger-amount dep-amt">+${e.amount.toFixed(2)}</div>
         <button class="ledger-del" onclick="delTreasuryEntry('${e.id}')">🗑</button>
       </div>`;
     }
     if(e.kind === 'deposit'){
+      const depIcon = e.payment_method==='card' ? '💳' : '💵';
       return `<div class="ledger-entry">
-        <div class="ledger-icon">💵</div>
+        <div class="ledger-icon">${depIcon}</div>
         <div class="ledger-info">
           <div class="ledger-name">دعم الخزنة${e.note ? ' — '+e.note : ''}</div>
-          <div class="ledger-date">${dateTimeLabel(e.date)}${memberName(e.profiles) ? ' · '+memberName(e.profiles) : ''}</div>
+          <div class="ledger-date">${depIcon} ${dateTimeLabel(e.date)}${memberName(e.profiles) ? ' · '+memberName(e.profiles) : ''}</div>
         </div>
         <div class="ledger-amount dep-amt">+${e.amount.toFixed(2)}</div>
         <button class="ledger-del" onclick="delTreasuryEntry('${e.id}')">🗑</button>
@@ -1445,11 +1536,21 @@ function renderTreasuryLedger(){
     }
     if(e.kind === 'withdrawal'){
       const isPur = e.withdrawal_type === 'purchases';
+      let sessionBadge = '';
+      if(isPur){
+        const sessions = calcPurchaseSessions();
+        const sess = sessions.find(s => s.id === e.id);
+        if(sess){
+          sessionBadge = sess.settled
+            ? ` <span style="font-size:0.68rem;color:var(--green);border:1px solid rgba(76,175,80,.4);border-radius:6px;padding:1px 5px">✓ مُسوَّى</span>`
+            : ` <span style="font-size:0.68rem;color:var(--orange);border:1px solid rgba(245,166,35,.4);border-radius:6px;padding:1px 5px">⏳ متبقي ${sess.pending.toFixed(2)}</span>`;
+        }
+      }
       return `<div class="ledger-entry">
         <div class="ledger-icon">${isPur ? '📦' : '💸'}</div>
         <div class="ledger-info">
-          <div class="ledger-name">${isPur ? 'سحب للمشتريات' : 'سحب شخصي'}${e.note ? ' — '+e.note : ''}${isPur ? ' <span style="font-size:0.68rem;color:var(--orange);border:1px solid rgba(245,166,35,.4);border-radius:6px;padding:1px 5px">⏳ معلّق</span>' : ''}</div>
-          <div class="ledger-date">${dateTimeLabel(e.date)}${memberName(e.profiles) ? ' · '+memberName(e.profiles) : ''}</div>
+          <div class="ledger-name">${isPur ? 'سحب للمشتريات' : 'سحب شخصي'}${e.note ? ' — '+e.note : ''}${sessionBadge}</div>
+          <div class="ledger-date">${e.payment_method==='card'?'💳':'💵'} ${dateTimeLabel(e.date)}${memberName(e.profiles) ? ' · '+memberName(e.profiles) : ''}</div>
         </div>
         <div class="ledger-amount ${isPur ? 'minus' : 'wdr-amt'}">${isPur ? '' : '-'}${e.amount.toFixed(2)}</div>
         <button class="ledger-del" onclick="delTreasuryEntry('${e.id}')">🗑</button>
@@ -1470,11 +1571,18 @@ function renderTreasuryLedger(){
 }
 
 function openPurchaseReturn(){
-  const purchaseWdr    = _treasuryEntries.filter(e => e.type==='withdrawal' && e.withdrawal_type==='purchases').reduce((s,e) => s + Number(e.amount), 0);
-  const purchaseReturn = _treasuryEntries.filter(e => e.type==='deposit' && e.withdrawal_type==='purchase_return').reduce((s,e) => s + Number(e.amount), 0);
-  const pending = Math.max(0, purchaseWdr - _treasuryAllPurchasesTotal - purchaseReturn);
+  const sessions = calcPurchaseSessions();
+  const unsettled = sessions.filter(s => !s.settled);
+  const pending = unsettled.reduce((s, sess) => s + sess.pending, 0);
   const infoEl = document.getElementById('purchaseReturnInfo');
-  if(infoEl) infoEl.textContent = `إجمالي المسحوب للمشتريات: ${purchaseWdr.toFixed(2)} ر.س  |  المتبقي غير مُسوَّى: ${pending.toFixed(2)} ر.س`;
+  if(infoEl){
+    if(unsettled.length === 1){
+      infoEl.textContent = `سحب: ${unsettled[0].withdrawn.toFixed(2)} ر.س | مشتريات: ${unsettled[0].purchases.toFixed(2)} ر.س | متبقي: ${pending.toFixed(2)} ر.س`;
+    } else {
+      const lines = unsettled.map((s,i) => `جلسة ${i+1}: سحب ${s.withdrawn.toFixed(2)} — متبقي ${s.pending.toFixed(2)}`).join(' | ');
+      infoEl.textContent = lines;
+    }
+  }
   document.getElementById('purchaseReturnAmount').value = pending > 0.009 ? pending.toFixed(2) : '';
   document.getElementById('purchaseReturnNote').value = 'المتبقي من المشتريات';
   document.getElementById('purchaseReturnOverlay').classList.add('open');
@@ -1552,7 +1660,7 @@ function renderSales(){
           </div>
           <div class="sale-item-right">
             <div class="sale-item-total">${Number(s.total).toFixed(2)} ر.س</div>
-            <div class="sale-item-time">${dateTimeLabel(s.created_at)}</div>
+            <div class="sale-item-time">${s.payment_method==='card'?'💳':'💵'} ${dateTimeLabel(s.created_at)}</div>
           </div>
         </div>`).join('') +
     '</div>';
@@ -1646,6 +1754,7 @@ function openAddSale(){
   document.getElementById('saleQty').value='1';
   document.getElementById('salePrice').value='';
   document.getElementById('saleTotalPreview').style.display='none';
+  setSalePayMethod('cash');
   document.getElementById('addSaleOverlay').classList.add('open');
   setTimeout(()=>document.getElementById('saleProduct').focus(),350);
 }
@@ -1672,7 +1781,7 @@ async function doAddSale(){
   const total = qty * price;
   const { data, error } = await sb.from('sales').insert({
     group_id: currentGroupId, added_by: currentUser.id,
-    product, qty, price, total, src: 'manual'
+    product, qty, price, total, src: 'manual', payment_method: _salePayMethod
   }).select().single();
   if(error){ toast('خطأ: '+error.message,'bad'); return; }
   data.profiles = { name: currentUser.user_metadata?.name || '', email: currentUser.email };
@@ -1681,7 +1790,8 @@ async function doAddSale(){
   renderSales();
   renderTreasury();
   upsertVocab(product);
-  toast(`✅ ${product} — ${total.toFixed(2)} ر.س`, 'ok');
+  const payIcon = _salePayMethod === 'card' ? '💳' : '💵';
+  toast(`✅ ${product} — ${total.toFixed(2)} ر.س ${payIcon}`, 'ok');
 }
 
 function openEditSale(id){
@@ -1797,7 +1907,7 @@ function startVoiceSale(){
         const total = res.qty * res.price;
         const { data, error } = await sb.from('sales').insert({
           group_id: currentGroupId, added_by: currentUser.id,
-          product: corrProduct, qty: res.qty, price: res.price, total, src: 'voice'
+          product: corrProduct, qty: res.qty, price: res.price, total, src: 'voice', payment_method: 'cash'
         }).select().single();
         if(!error){
           data.profiles = { name: currentUser.user_metadata?.name || '', email: currentUser.email };
@@ -2073,6 +2183,7 @@ async function doAddPurchaseItem(){
   if(error){ toast('خطأ: '+error.message,'bad'); return; }
   _purchaseItemsCache.push(data);
   _treasuryAllPurchasesTotal += price * qty;
+  _treasuryPurchaseItems.push({ id: data.id, price, qty, created_at: data.created_at });
   closeSheet('addPurchaseItemOverlay');
   renderPurchaseItems(_purchaseItemsCache.filter(i=>i.commitment_id===_currentPurchaseId));
   renderTreasury();
@@ -2127,6 +2238,7 @@ function startPurchaseItemVoice(){
         if(!error){
           _purchaseItemsCache.push(data);
           _treasuryAllPurchasesTotal += price * 1;
+          _treasuryPurchaseItems.push({ id: data.id, price, qty: 1, created_at: data.created_at });
           upsertVocab(itemName);
           piVMsg(`✅ ${itemName} — ${price.toFixed(2)} ر.س`,'ok');
           renderPurchaseItems(_purchaseItemsCache.filter(i=>i.commitment_id===_currentPurchaseId));
@@ -2173,6 +2285,8 @@ async function doEditPurchaseItem(){
     _treasuryAllPurchasesTotal += (price * qty) - (Number(old.price) * Number(old.qty));
     _purchaseItemsCache[idx]={...old, name, price, qty, category};
   }
+  const piIdx = _treasuryPurchaseItems.findIndex(i=>i.id===_editingPiId);
+  if(piIdx>=0) _treasuryPurchaseItems[piIdx] = { ..._treasuryPurchaseItems[piIdx], price, qty };
   closeSheet('editPurchaseItemOverlay');
   renderPurchaseItems(_purchaseItemsCache.filter(i=>i.commitment_id===_currentPurchaseId));
   renderTreasury();
@@ -2186,6 +2300,7 @@ function doDelPurchaseItem(){
     const item = _purchaseItemsCache.find(i=>i.id===_editingPiId);
     if(item) _treasuryAllPurchasesTotal -= Number(item.price) * Number(item.qty);
     _purchaseItemsCache = _purchaseItemsCache.filter(i=>i.id!==_editingPiId);
+    _treasuryPurchaseItems = _treasuryPurchaseItems.filter(i=>i.id!==_editingPiId);
     closeSheet('editPurchaseItemOverlay');
     renderPurchaseItems(_purchaseItemsCache.filter(i=>i.commitment_id===_currentPurchaseId));
     renderTreasury();
@@ -2200,6 +2315,7 @@ function delPurchaseItem(id){
     const item = _purchaseItemsCache.find(i=>i.id===id);
     if(item) _treasuryAllPurchasesTotal -= Number(item.price) * Number(item.qty);
     _purchaseItemsCache = _purchaseItemsCache.filter(i=>i.id!==id);
+    _treasuryPurchaseItems = _treasuryPurchaseItems.filter(i=>i.id!==id);
     renderPurchaseItems(_purchaseItemsCache.filter(i=>i.commitment_id===_currentPurchaseId));
     renderTreasury();
     toast('تم الحذف','bad');
