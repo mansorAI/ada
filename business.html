@@ -866,12 +866,8 @@
       <button class="role-preset-btn" id="preset-manager" onclick="setRolePreset('manager',this)">🏪 مدير</button>
     </div>
     <div class="perm-toggle">
-      <div><div class="perm-label">إضافة مبيعات</div><div class="perm-sub">تسجيل مبيعات جديدة يدوياً أو صوتياً</div></div>
+      <div><div class="perm-label">إضافة وتعديل المبيعات</div><div class="perm-sub">تسجيل وتعديل وحذف المبيعات</div></div>
       <label class="toggle-switch"><input type="checkbox" id="perm-add-sales"><span class="toggle-slider"></span></label>
-    </div>
-    <div class="perm-toggle">
-      <div><div class="perm-label">تعديل / حذف المبيعات</div><div class="perm-sub">تعديل أو حذف مبيعات مسجلة</div></div>
-      <label class="toggle-switch"><input type="checkbox" id="perm-edit-sales"><span class="toggle-slider"></span></label>
     </div>
     <div class="perm-toggle">
       <div><div class="perm-label">عرض التقارير</div><div class="perm-sub">الاطلاع على تقارير المبيعات والتحليلات</div></div>
@@ -880,6 +876,14 @@
     <div class="perm-toggle">
       <div><div class="perm-label">إدارة المشتريات</div><div class="perm-sub">إضافة وتعديل فئات المشتريات والأصناف</div></div>
       <label class="toggle-switch"><input type="checkbox" id="perm-manage-purchases"><span class="toggle-slider"></span></label>
+    </div>
+    <div class="perm-toggle">
+      <div><div class="perm-label">عرض الخزنة</div><div class="perm-sub">الاطلاع على رصيد وتفاصيل الخزنة</div></div>
+      <label class="toggle-switch"><input type="checkbox" id="perm-view-treasury"><span class="toggle-slider"></span></label>
+    </div>
+    <div class="perm-toggle">
+      <div><div class="perm-label">إضافة وتعديل الخزنة</div><div class="perm-sub">دعم الخزنة والسحب وتعديل الإدخالات</div></div>
+      <label class="toggle-switch"><input type="checkbox" id="perm-edit-treasury"><span class="toggle-slider"></span></label>
     </div>
     <button class="btn-primary" style="background:var(--accent);margin-top:10px" onclick="saveMemberPerms()">💾 حفظ الصلاحيات</button>
     <button class="btn-danger" onclick="removeMemberFromGroup()">🗑️ إزالة من الفريق</button>
@@ -1004,7 +1008,7 @@ let _withdrawalType = 'personal';
 
 // Permissions
 let _bizIsOwner = false;
-let _bizUserPerms = { can_add_sales: true, can_edit_sales: true, can_view_reports: true, can_manage_purchases: true };
+let _bizUserPerms = { can_add_sales: true, can_edit_sales: true, can_view_reports: true, can_manage_purchases: true, can_view_treasury: true, can_edit_treasury: true };
 let _bizMembers = [];
 let _editingMemberId = null;
 let _foundMemberProfile = null;
@@ -1194,7 +1198,8 @@ async function doCreateBranch(){
   }).select().single();
   if(error){ toast('خطأ: '+error.message,'bad'); return; }
   await sb.from('group_members').insert({ group_id: g.id, user_id: currentUser.id, role: 'owner',
-    can_add_sales: true, can_edit_sales: true, can_view_reports: true, can_manage_purchases: true });
+    can_add_sales: true, can_edit_sales: true, can_view_reports: true, can_manage_purchases: true,
+    can_view_treasury: true, can_edit_treasury: true });
   await sb.from('group_settings').insert({ group_id: g.id });
   closeSheet('createBranchOverlay');
   toast('✅ تم إنشاء الفرع: ' + name, 'ok');
@@ -1303,6 +1308,7 @@ function selectWdrType(type, btn){
 }
 
 function openTreasuryAction(type){
+  if(!_bizUserPerms.can_edit_treasury){ toast('ليس لديك صلاحية تعديل الخزنة','bad'); return; }
   _treasuryActionType = type;
   _withdrawalType = 'personal';
   const isDeposit = type === 'deposit';
@@ -2433,23 +2439,31 @@ async function doLogout(){
 async function loadBizPerms(){
   if(!currentGroupId || !currentUser) return;
   const { data } = await sb.from('group_members')
-    .select('role, can_add_sales, can_edit_sales, can_view_reports, can_manage_purchases')
+    .select('role, can_add_sales, can_edit_sales, can_view_reports, can_manage_purchases, can_view_treasury, can_edit_treasury')
     .eq('group_id', currentGroupId).eq('user_id', currentUser.id).single();
   if(!data) return;
   _bizIsOwner = data.role === 'owner';
   if(_bizIsOwner){
-    _bizUserPerms = { can_add_sales:true, can_edit_sales:true, can_view_reports:true, can_manage_purchases:true };
+    _bizUserPerms = { can_add_sales:true, can_edit_sales:true, can_view_reports:true, can_manage_purchases:true, can_view_treasury:true, can_edit_treasury:true };
   } else {
     _bizUserPerms = {
-      can_add_sales:       data.can_add_sales !== false,
-      can_edit_sales:      data.can_edit_sales === true,
-      can_view_reports:    data.can_view_reports !== false,
-      can_manage_purchases:data.can_manage_purchases === true
+      can_add_sales:        data.can_add_sales !== false,
+      can_edit_sales:       data.can_add_sales !== false,
+      can_view_reports:     data.can_view_reports !== false,
+      can_manage_purchases: data.can_manage_purchases === true,
+      can_view_treasury:    data.can_view_treasury !== false,
+      can_edit_treasury:    data.can_edit_treasury === true
     };
   }
 }
 
 function applyBizPerms(){
+  // treasury nav + action buttons
+  const navTreasury = document.getElementById('nav-treasury');
+  if(navTreasury) navTreasury.style.display = _bizUserPerms.can_view_treasury ? '' : 'none';
+  document.querySelectorAll('.treasury-btn').forEach(btn => {
+    btn.style.display = _bizUserPerms.can_edit_treasury ? '' : 'none';
+  });
   // sales nav button + add row
   const navSales = document.getElementById('nav-sales');
   if(navSales) navSales.style.display = _bizUserPerms.can_add_sales ? '' : 'none';
@@ -2477,12 +2491,13 @@ async function openTeamPage(){
 
 function getRoleLabel(m){
   const add = m.can_add_sales !== false;
-  const edit = m.can_edit_sales === true;
   const rep  = m.can_view_reports !== false;
   const pur  = m.can_manage_purchases === true;
-  if(add && edit && rep && pur)  return 'مدير فرع';
-  if(!add && !edit && rep && !pur) return 'محاسب';
-  if(add && !edit && !rep && !pur) return 'كاشير';
+  const vtr  = m.can_view_treasury !== false;
+  const etr  = m.can_edit_treasury === true;
+  if(add && rep && pur && vtr && etr) return 'مدير فرع';
+  if(!add && rep && !pur)             return 'محاسب';
+  if(add && !rep && !pur && !etr)     return 'كاشير';
   return 'مخصص';
 }
 
@@ -2523,10 +2538,11 @@ function openMemberPerms(userId){
   const prof = m.profiles;
   const name = prof?.name || prof?.email?.split('@')[0] || '—';
   document.getElementById('memberPermsTitle').textContent = `⚙️ صلاحيات: ${name}`;
-  document.getElementById('perm-add-sales').checked      = m.can_add_sales !== false;
-  document.getElementById('perm-edit-sales').checked     = m.can_edit_sales === true;
-  document.getElementById('perm-view-reports').checked   = m.can_view_reports !== false;
-  document.getElementById('perm-manage-purchases').checked = m.can_manage_purchases === true;
+  document.getElementById('perm-add-sales').checked        = m.can_add_sales !== false;
+  document.getElementById('perm-view-reports').checked     = m.can_view_reports !== false;
+  document.getElementById('perm-manage-purchases').checked  = m.can_manage_purchases === true;
+  document.getElementById('perm-view-treasury').checked    = m.can_view_treasury !== false;
+  document.getElementById('perm-edit-treasury').checked    = m.can_edit_treasury === true;
   document.querySelectorAll('.role-preset-btn').forEach(b => b.classList.remove('sel'));
   document.getElementById('memberPermsOverlay').classList.add('open');
 }
@@ -2535,9 +2551,9 @@ function setRolePreset(preset, btn){
   document.querySelectorAll('.role-preset-btn').forEach(b => b.classList.remove('sel'));
   if(btn) btn.classList.add('sel');
   const presets = {
-    cashier:   { 'perm-add-sales':true,  'perm-edit-sales':false, 'perm-view-reports':false, 'perm-manage-purchases':false },
-    accountant:{ 'perm-add-sales':false, 'perm-edit-sales':false, 'perm-view-reports':true,  'perm-manage-purchases':false },
-    manager:   { 'perm-add-sales':true,  'perm-edit-sales':true,  'perm-view-reports':true,  'perm-manage-purchases':true  }
+    cashier:   { 'perm-add-sales':true,  'perm-view-reports':false, 'perm-manage-purchases':false, 'perm-view-treasury':true,  'perm-edit-treasury':false },
+    accountant:{ 'perm-add-sales':false, 'perm-view-reports':true,  'perm-manage-purchases':false, 'perm-view-treasury':true,  'perm-edit-treasury':false },
+    manager:   { 'perm-add-sales':true,  'perm-view-reports':true,  'perm-manage-purchases':true,  'perm-view-treasury':true,  'perm-edit-treasury':true  }
   };
   const p = presets[preset]; if(!p) return;
   Object.entries(p).forEach(([id,val]) => { const el=document.getElementById(id); if(el) el.checked=val; });
@@ -2545,11 +2561,14 @@ function setRolePreset(preset, btn){
 
 async function saveMemberPerms(){
   if(!_editingMemberId) return;
+  const addSales = document.getElementById('perm-add-sales').checked;
   const perms = {
-    can_add_sales:       document.getElementById('perm-add-sales').checked,
-    can_edit_sales:      document.getElementById('perm-edit-sales').checked,
-    can_view_reports:    document.getElementById('perm-view-reports').checked,
-    can_manage_purchases:document.getElementById('perm-manage-purchases').checked
+    can_add_sales:        addSales,
+    can_edit_sales:       addSales,
+    can_view_reports:     document.getElementById('perm-view-reports').checked,
+    can_manage_purchases: document.getElementById('perm-manage-purchases').checked,
+    can_view_treasury:    document.getElementById('perm-view-treasury').checked,
+    can_edit_treasury:    document.getElementById('perm-edit-treasury').checked
   };
   const { error } = await sb.from('group_members').update(perms)
     .eq('group_id', currentGroupId).eq('user_id', _editingMemberId);
@@ -2598,7 +2617,8 @@ async function confirmAddMember(){
   if(!_foundMemberProfile) return;
   const { error } = await sb.from('group_members').insert({
     group_id: currentGroupId, user_id: _foundMemberProfile.id, role: 'editor',
-    can_add_sales: true, can_edit_sales: false, can_view_reports: false, can_manage_purchases: false
+    can_add_sales: true, can_edit_sales: true, can_view_reports: false, can_manage_purchases: false,
+    can_view_treasury: true, can_edit_treasury: false
   });
   if(error){ toast('خطأ: '+error.message,'bad'); return; }
   const addedName = _foundMemberProfile.name || _foundMemberProfile.email;
