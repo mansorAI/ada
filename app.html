@@ -432,6 +432,25 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .btn-remove{width:100%;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--danger);border-radius:14px;padding:13px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:8px}
 .btn-remove:active{background:rgba(239,68,68,.25)}
 
+/* BUDGET BARS */
+.bgt-bar-wrap{margin-top:6px}
+.bgt-bar-track{height:5px;background:var(--surface3);border-radius:4px;overflow:hidden}
+.bgt-bar-fill{height:100%;border-radius:4px;transition:width .4s}
+.bgt-bar-fill.ok{background:var(--success)}
+.bgt-bar-fill.warn{background:#f59e0b}
+.bgt-bar-fill.over{background:var(--danger)}
+.bgt-meta{display:flex;justify-content:space-between;align-items:center;margin-top:3px;font-size:10px;color:var(--text2)}
+.bgt-meta b{color:var(--text);font-weight:700}
+.savings-badge{display:inline-block;background:rgba(34,197,94,.15);color:var(--success);border:1px solid rgba(34,197,94,.3);border-radius:8px;padding:2px 8px;font-size:10px;font-weight:700;margin-top:4px}
+.over-badge{display:inline-block;background:rgba(239,68,68,.12);color:var(--danger);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:2px 8px;font-size:10px;font-weight:700;margin-top:4px}
+.cat-bgt-btn{background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);color:var(--accent);border-radius:8px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif}
+.commit-bgt-box{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:0 16px 12px}
+.commit-bgt-title{font-size:11px;color:var(--text2);margin-bottom:6px}
+.commit-bgt-nums{display:flex;gap:12px;margin-top:6px}
+.commit-bgt-num{flex:1;text-align:center}
+.commit-bgt-num span{display:block;font-size:18px;font-weight:800;color:var(--text)}
+.commit-bgt-num small{font-size:10px;color:var(--text2)}
+
 /* AI CHAT */
 .ai-chip{background:var(--card);border:1px solid var(--border);color:var(--text3);font-family:'Tajawal',sans-serif;font-size:0.78rem;padding:6px 12px;border-radius:20px;cursor:pointer;transition:all .2s}
 .ai-chip:active{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -742,6 +761,27 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 
   <button class="register-month-btn" id="registerMonthBtn" onclick="doRegisterCommit()">✅ تسجيل دفعة الشهر</button>
+
+  <!-- commit budget box -->
+  <div class="commit-bgt-box" id="commitBgtBox" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div class="commit-bgt-title">💰 ميزانية الالتزام</div>
+      <div style="display:flex;gap:6px">
+        <button class="cat-bgt-btn" onclick="openCommitBudgetModal()">✏️ تعديل</button>
+        <button class="cat-bgt-btn" style="background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.25);color:var(--danger)" onclick="removeCommitBudget()">🗑</button>
+      </div>
+    </div>
+    <div id="commitBgtBarWrap"></div>
+    <div class="commit-bgt-nums">
+      <div class="commit-bgt-num"><span id="commitBgtSpent">0</span><small>المصروف</small></div>
+      <div class="commit-bgt-num"><span id="commitBgtLimit">0</span><small>الميزانية</small></div>
+      <div class="commit-bgt-num"><span id="commitBgtRemain">0</span><small>المتبقي</small></div>
+    </div>
+    <div id="commitBgtBadge" style="margin-top:6px;text-align:center"></div>
+  </div>
+  <div id="noCommitBgtBox" style="margin:0 16px 12px;display:none">
+    <button style="width:100%;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.25);color:var(--accent);border-radius:10px;padding:10px;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer" onclick="openCommitBudgetModal()">💰 تعيين ميزانية شهرية</button>
+  </div>
 
   <div class="divider"></div>
   <div class="sec-hd"><h2>تقارير الفئات</h2></div>
@@ -1093,10 +1133,37 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         <span class="chip" onclick="pickChip(this,'تأمين')">🛡️ تأمين</span>
       </div>
     </div>
-    <div class="inp-wrap" id="fxBudgetWrap"><div class="inp-lbl">المبلغ المعتاد (ريال) — اختياري</div>
+    <div class="inp-wrap" id="fxBudgetWrap"><div class="inp-lbl">الميزانية الشهرية (ريال) — اختياري</div>
       <input id="fxInpBudget" class="inp" type="number" inputmode="decimal" placeholder="0.00">
     </div>
     <button class="btn-primary" onclick="doAddFixed()">إضافة الالتزام</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: CAT BUDGET ══════════ -->
+<div class="overlay" id="catBgtOverlay" onclick="bgClose(event,'catBgtOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title" id="catBgtTitle">💰 ميزانية الفئة</div>
+    <div class="inp-wrap"><div class="inp-lbl">الميزانية الشهرية (ريال)</div>
+      <input id="catBgtInp" class="inp" type="number" inputmode="decimal" placeholder="0.00">
+    </div>
+    <button class="btn-primary" onclick="saveCatBudget()">حفظ الميزانية</button>
+    <button class="btn-remove" id="catBgtRemoveBtn" onclick="removeCatBudget()" style="display:none">🗑 إزالة الميزانية</button>
+    <button class="btn-muted" onclick="closeSheet('catBgtOverlay')">إلغاء</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: COMMIT BUDGET ══════════ -->
+<div class="overlay" id="commitBgtOverlay" onclick="bgClose(event,'commitBgtOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title" id="commitBgtTitle">💰 ميزانية الالتزام</div>
+    <div class="inp-wrap"><div class="inp-lbl">الميزانية الشهرية (ريال)</div>
+      <input id="commitBgtInp" class="inp" type="number" inputmode="decimal" placeholder="0.00">
+    </div>
+    <button class="btn-primary" onclick="saveCommitBudget()">حفظ</button>
+    <button class="btn-muted" onclick="closeSheet('commitBgtOverlay')">إلغاء</button>
   </div>
 </div>
 
@@ -1459,6 +1526,8 @@ function renderHome(){
   document.getElementById('emptyExp').style.display=sorted.length?'none':'block';
   sorted.forEach(([name,data],i)=>{
     const pct=total>0?((data.amount/total)*100).toFixed(1):0;
+    const catBgt=_catBudgets.find(b=>b.category===name);
+    const catBgtBarHtml=catBgt?buildBgtBar(data.amount,catBgt.budget,false):'';
     const card=document.createElement('div');
     card.className='exp-card'; card.dataset.c=i%8;
     card.setAttribute('onclick',`openCatDetail('${name.replace(/'/g,"\\'")}')`)
@@ -1468,6 +1537,7 @@ function renderHome(){
         <div class="ec-name">${name}</div>
         <div class="ec-meta"><span class="ec-count">${data.count} إدخال</span><span class="ec-pct">${pct}%</span></div>
         <div class="ec-bar"><div class="ec-fill" style="width:${pct}%;background:${catColor(i)}"></div></div>
+        ${catBgtBarHtml}
       </div>
       <div class="ec-right">
         <div class="ec-amount">${data.amount.toFixed(2)}<small> ر.س</small></div>
@@ -1475,6 +1545,9 @@ function renderHome(){
           <button class="del-btn" onclick="event.stopPropagation();confirmDel('حذف فئة «${name.replace(/'/g,"\\'")}» وكل إدخالاتها؟',()=>delCat('${name.replace(/'/g,"\\'")}'))">🗑</button>
           <span class="arrow-icon">›</span>
         </div>
+        <button class="cat-bgt-btn" style="margin-top:4px" onclick="event.stopPropagation();openCatBudgetModal('${name.replace(/'/g,"\\'")}')">
+          ${catBgt?`💰 ${catBgt.budget.toFixed(0)} ر.س`:'+ ميزانية'}
+        </button>
       </div>`;
     list.appendChild(card);
   });
@@ -1647,18 +1720,21 @@ async function renderFixed(){
       else openPayFixed(cat.id,cat.name,cat.budget||0);
     };
     const paidDate=paid&&cat.paid_at?new Date(cat.paid_at).toLocaleDateString('ar-SA-u-ca-gregory',{day:'numeric',month:'short',year:'numeric'}):'';
+    const bgt=cat.budget||0;
+    const bgtBarHtml=bgt>0?buildBgtBar(paidAmt,bgt,paid):'';
     card.innerHTML=`
       <div class="fc-icon">${getIcon(cat.name)}</div>
       <div class="fc-body">
         <div class="fc-month-label">${getMonthLabel(mk)}</div>
         <div class="fc-name">${cat.name} <span style="font-size:9px;color:var(--text2);font-weight:400;background:var(--surface3);padding:1px 5px;border-radius:4px;vertical-align:middle">${catType==='list'?'📋 قائمة':'📝 عادي'}</span></div>
-        <div class="fc-budget">${paid?`دُفع: ${paidDate}`:cat.budget?`المعتاد: ${cat.budget} ر.س`:'بدون مبلغ محدد'}</div>
+        <div class="fc-budget">${paid?`دُفع: ${paidDate}`:bgt?`الميزانية: ${bgt} ر.س`:'بدون ميزانية'}</div>
+        ${bgtBarHtml}
       </div>
       <div class="fc-right">
         <div class="fc-paid-amt ${paid?'':'zero'}">${paid?paidAmt.toFixed(2):'—'}<small>${paid?' ر.س':''}</small></div>
-        ${paid?`<span class="paid-badge">✓ مدفوع</span>`:`<button class="fc-add-btn" onclick="openPayFixed('${cat.id}','${cat.name.replace(/'/g,"\\'")}',${cat.budget||0})">+ تسجيل</button>`}
+        ${paid?`<span class="paid-badge">✓ مدفوع</span>`:`<button class="fc-add-btn" onclick="openPayFixed('${cat.id}','${cat.name.replace(/'/g,"\\'")}',${bgt})">+ تسجيل</button>`}
         <div style="display:flex;gap:4px">
-          <button class="fc-edit-btn" style="background:rgba(99,102,241,.12);border:none;color:#818cf8;width:22px;height:22px;border-radius:6px;cursor:pointer;font-size:11px" onclick="openEditCommit('${cat.id}','${cat.name.replace(/'/g,"\\'")}',${cat.budget||0})">✏️</button>
+          <button class="fc-edit-btn" style="background:rgba(99,102,241,.12);border:none;color:#818cf8;width:22px;height:22px;border-radius:6px;cursor:pointer;font-size:11px" onclick="openEditCommit('${cat.id}','${cat.name.replace(/'/g,"\\'")}',${bgt})">✏️</button>
           <button class="fc-del-btn" onclick="confirmDel('حذف الالتزام «${cat.name.replace(/'/g,"\\'")}»؟',()=>delFixed('${cat.id}'))">🗑</button>
         </div>
       </div>`;
@@ -1677,8 +1753,7 @@ function openAddFixed(){
 }
 
 function toggleFxType(){
-  const isList = document.getElementById('fxInpType').value === 'list';
-  document.getElementById('fxBudgetWrap').style.display = isList ? 'none' : 'block';
+  document.getElementById('fxBudgetWrap').style.display = 'block';
 }
 
 function pickChip(el,name){
@@ -2162,6 +2237,118 @@ let _commitItemsCache=[];
 let _groupApiKey='';
 let _groupBudgetEntries=[];
 let _editingBudgetId=null;
+let _catBudgets=[];
+let _catBgtEditCat='';
+
+function buildBgtBar(spent, budget, isPaid){
+  if(!budget) return '';
+  const pct=Math.min((spent/budget)*100,100);
+  const cls=pct>=100?'over':pct>=80?'warn':'ok';
+  const remaining=budget-spent;
+  const badge=spent>budget
+    ?`<span class="over-badge">تجاوز الميزانية بـ ${(spent-budget).toFixed(2)} ر.س</span>`
+    :isPaid&&remaining>0
+      ?`<span class="savings-badge">وفّرت ${remaining.toFixed(2)} ر.س 🎉</span>`
+      :'';
+  return `<div class="bgt-bar-wrap"><div class="bgt-bar-track"><div class="bgt-bar-fill ${cls}" style="width:${pct.toFixed(1)}%"></div></div><div class="bgt-meta"><span>المصروف: <b>${spent.toFixed(2)}</b> ر.س</span><span>${remaining>=0?'المتبقي':'الزيادة'}: <b style="color:${remaining<0?'var(--danger)':''}">${Math.abs(remaining).toFixed(2)} ر.س</b></span></div>${badge}</div>`;
+}
+
+async function loadCatBudgets(){
+  if(!currentGroupId) return;
+  const mk=getCurrentMonthKey();
+  const {data}=await sb.from('cat_budgets').select('*').eq('group_id',currentGroupId).eq('month_key',mk);
+  _catBudgets=data||[];
+}
+
+function openCatBudgetModal(category){
+  _catBgtEditCat=category;
+  document.getElementById('catBgtTitle').textContent=`💰 ميزانية ${category}`;
+  const existing=_catBudgets.find(b=>b.category===category);
+  document.getElementById('catBgtInp').value=existing?existing.budget:'';
+  document.getElementById('catBgtRemoveBtn').style.display=existing?'block':'none';
+  document.getElementById('catBgtOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('catBgtInp').focus(),350);
+}
+
+async function saveCatBudget(){
+  const budget=parseFloat(document.getElementById('catBgtInp').value);
+  if(!budget||budget<=0){toast('أدخل مبلغاً صحيحاً','bad');return;}
+  const mk=getCurrentMonthKey();
+  const {error}=await sb.from('cat_budgets').upsert({group_id:currentGroupId,category:_catBgtEditCat,month_key:mk,budget},{onConflict:'group_id,category,month_key'});
+  if(error){toast('خطأ: '+error.message,'err');return;}
+  closeSheet('catBgtOverlay');
+  toast(`✅ ميزانية "${_catBgtEditCat}": ${budget} ر.س`,'ok');
+  await loadCatBudgets();
+  renderHome();
+}
+
+async function removeCatBudget(){
+  const existing=_catBudgets.find(b=>b.category===_catBgtEditCat);
+  if(!existing) return;
+  const {error}=await sb.from('cat_budgets').delete().eq('id',existing.id);
+  if(error){toast('خطأ: '+error.message,'err');return;}
+  closeSheet('catBgtOverlay');
+  toast('تم إزالة الميزانية','bad');
+  await loadCatBudgets();
+  renderHome();
+}
+
+function openCommitBudgetModal(){
+  const cat=_groupCommits.find(c=>c.id===currentCommitId)||_allGroupCommits.find(c=>c.id===currentCommitId);
+  document.getElementById('commitBgtTitle').textContent=`💰 ميزانية ${cat?.name||'الالتزام'}`;
+  document.getElementById('commitBgtInp').value=cat?.budget||'';
+  document.getElementById('commitBgtOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('commitBgtInp').focus(),350);
+}
+
+async function saveCommitBudget(){
+  const budget=parseFloat(document.getElementById('commitBgtInp').value);
+  if(!budget||budget<=0){toast('أدخل مبلغاً صحيحاً','bad');return;}
+  const {error}=await sb.from('commitments').update({budget}).eq('id',currentCommitId);
+  if(error){toast('خطأ: '+error.message,'err');return;}
+  closeSheet('commitBgtOverlay');
+  const idx=_groupCommits.findIndex(c=>c.id===currentCommitId);
+  if(idx>=0) _groupCommits[idx].budget=budget;
+  updateCommitBgtBox();
+  toast(`✅ ميزانية: ${budget} ر.س`,'ok');
+}
+
+async function removeCommitBudget(){
+  const {error}=await sb.from('commitments').update({budget:0}).eq('id',currentCommitId);
+  if(error){toast('خطأ: '+error.message,'err');return;}
+  const idx=_groupCommits.findIndex(c=>c.id===currentCommitId);
+  if(idx>=0) _groupCommits[idx].budget=0;
+  updateCommitBgtBox();
+  toast('تم إزالة الميزانية','bad');
+}
+
+function updateCommitBgtBox(){
+  const cat=_groupCommits.find(c=>c.id===currentCommitId)||_allGroupCommits.find(c=>c.id===currentCommitId);
+  const budget=cat?.budget||0;
+  const spent=_commitItemsCache.reduce((s,i)=>s+i.price*i.qty,0);
+  const bgtBox=document.getElementById('commitBgtBox');
+  const noBgtBox=document.getElementById('noCommitBgtBox');
+  if(!bgtBox||!noBgtBox) return;
+  if(budget>0){
+    bgtBox.style.display='block';
+    noBgtBox.style.display='none';
+    document.getElementById('commitBgtSpent').textContent=spent.toFixed(2);
+    document.getElementById('commitBgtLimit').textContent=budget.toFixed(2);
+    const remaining=budget-spent;
+    document.getElementById('commitBgtRemain').textContent=Math.abs(remaining).toFixed(2);
+    const pct=Math.min((spent/budget)*100,100);
+    const cls=pct>=100?'over':pct>=80?'warn':'ok';
+    document.getElementById('commitBgtBarWrap').innerHTML=`<div class="bgt-bar-track"><div class="bgt-bar-fill ${cls}" style="width:${pct.toFixed(1)}%"></div></div><div class="bgt-meta"><span>${pct.toFixed(0)}% من الميزانية</span><span style="color:${remaining<0?'var(--danger)':''}">${remaining>=0?'المتبقي':'زيادة'}: <b>${Math.abs(remaining).toFixed(2)} ر.س</b></span></div>`;
+    document.getElementById('commitBgtBadge').innerHTML=spent>budget
+      ?`<span class="over-badge">تجاوز الميزانية بـ ${(spent-budget).toFixed(2)} ر.س</span>`
+      :cat?.is_paid&&remaining>0
+        ?`<span class="savings-badge">وفّرت ${remaining.toFixed(2)} ر.س 🎉</span>`
+        :'';
+  } else {
+    bgtBox.style.display='none';
+    noBgtBox.style.display='block';
+  }
+}
 
 function _getPeriodStart(now,startDay){
   let y=now.getFullYear(),m=now.getMonth();
@@ -2375,6 +2562,7 @@ async function loadGroupCommitmentsData(){
   const {data:all}=await sb.from('commitments').select('*').eq('group_id',currentGroupId).order('created_at');
   _allGroupCommits=all||[];
   await loadGroupBudgetData();
+  await loadCatBudgets();
   await checkAndCarryoverBudget();
 }
 
@@ -2485,6 +2673,7 @@ async function openCommitDetail(id){
   if(actionRow) actionRow.style.display='';
   await renderCommitItems();
   renderCommitCatReport();
+  updateCommitBgtBox();
   goPage('commit-detail');
 }
 
@@ -2514,6 +2703,7 @@ async function renderCommitItems(){
   document.getElementById('commitDetailTotal').textContent=total.toFixed(2);
   document.getElementById('commitDetailSub').textContent=`${_commitItemsCache.length} صنف`;
   document.getElementById('commitItemsBadge').textContent=_commitItemsCache.length;
+  updateCommitBgtBox();
 }
 
 function renderCommitCatReport(){
@@ -2973,7 +3163,65 @@ function renderComprehensiveReport(){
           المتبقي: <b style="color:${getGroupBudgetTotal()-grand>=0?'var(--success)':'var(--danger)'}">${(getGroupBudgetTotal()-grand).toFixed(2)} ر.س</b>
         </div>`:''}
       </div>
-    </div>`;
+    </div>
+    ${_catBudgets.length>0?`
+    <div class="stat-divider"></div>
+    <div class="stat-full-title"><span>💰</span> استهلاك ميزانيات الفئات</div>
+    <div class="stats-section">
+      <div class="stat-card">
+        ${(()=>{
+          const currentMK=getCurrentMonthKey();
+          const currentLogs=_groupExpenses.filter(l=>getLogPeriodKey(l.ts)===currentMK);
+          const catTotals={};
+          currentLogs.forEach(l=>{catTotals[l.name]=(catTotals[l.name]||0)+l.amount;});
+          return _catBudgets.map(b=>{
+            const spent=catTotals[b.category]||0;
+            const pct=Math.min((spent/b.budget)*100,100);
+            const cls=pct>=100?'over':pct>=80?'warn':'ok';
+            const remaining=b.budget-spent;
+            const clr=cls==='over'?'var(--danger)':cls==='warn'?'#f59e0b':'var(--success)';
+            return `<div style="margin-bottom:14px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <div style="font-size:13px;font-weight:700">${getIcon(b.category)} ${b.category}</div>
+                <div style="font-size:12px;color:${clr};font-weight:700">${pct.toFixed(0)}%</div>
+              </div>
+              <div class="bgt-bar-track"><div class="bgt-bar-fill ${cls}" style="width:${pct.toFixed(1)}%"></div></div>
+              <div class="bgt-meta" style="margin-top:3px">
+                <span>المصروف: <b>${spent.toFixed(2)}</b> من <b>${b.budget.toFixed(2)}</b> ر.س</span>
+                <span style="color:${remaining<0?'var(--danger)':'var(--success)'}">${remaining>=0?'المتبقي':'زيادة'}: <b>${Math.abs(remaining).toFixed(2)} ر.س</b></span>
+              </div>
+            </div>`;
+          }).join('');
+        })()}
+      </div>
+    </div>`:''}
+    ${_groupCommits.filter(c=>c.budget>0).length>0?`
+    <div class="stat-divider"></div>
+    <div class="stat-full-title"><span>📌</span> استهلاك ميزانيات الالتزامات</div>
+    <div class="stats-section">
+      <div class="stat-card">
+        ${_groupCommits.filter(c=>c.budget>0).map(c=>{
+          const spent=c.paid_amount||0;
+          const pct=Math.min((spent/c.budget)*100,100);
+          const cls=pct>=100?'over':pct>=80?'warn':'ok';
+          const remaining=c.budget-spent;
+          const clr=cls==='over'?'var(--danger)':cls==='warn'?'#f59e0b':'var(--success)';
+          return `<div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <div style="font-size:13px;font-weight:700">${getIcon(c.name)} ${c.name}</div>
+              <div style="font-size:12px;color:${clr};font-weight:700">${c.is_paid?'✓ مدفوع':pct.toFixed(0)+'%'}</div>
+            </div>
+            <div class="bgt-bar-track"><div class="bgt-bar-fill ${cls}" style="width:${pct.toFixed(1)}%"></div></div>
+            <div class="bgt-meta" style="margin-top:3px">
+              <span>المدفوع: <b>${spent.toFixed(2)}</b> من <b>${c.budget.toFixed(2)}</b> ر.س</span>
+              <span style="color:${remaining<0?'var(--danger)':'var(--success)'}">${remaining>=0?'المتبقي':'زيادة'}: <b>${Math.abs(remaining).toFixed(2)} ر.س</b></span>
+            </div>
+            ${c.is_paid&&remaining>0?`<span class="savings-badge">وفّرت ${remaining.toFixed(2)} ر.س 🎉</span>`:''}
+            ${spent>c.budget?`<span class="over-badge">تجاوز الميزانية بـ ${(spent-c.budget).toFixed(2)} ر.س</span>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`:''}`;
 }
 
 // ══════════════════════════════════════════
