@@ -444,6 +444,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .savings-badge{display:inline-block;background:rgba(34,197,94,.15);color:var(--success);border:1px solid rgba(34,197,94,.3);border-radius:8px;padding:2px 8px;font-size:10px;font-weight:700;margin-top:4px}
 .over-badge{display:inline-block;background:rgba(239,68,68,.12);color:var(--danger);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:2px 8px;font-size:10px;font-weight:700;margin-top:4px}
 .cat-bgt-btn{background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);color:var(--accent);border-radius:8px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer;font-family:'Tajawal',sans-serif}
+.pin-btn{background:none;border:none;font-size:13px;cursor:pointer;padding:2px 3px;line-height:1;border-radius:5px;transition:transform .15s}
+.pin-btn:active{transform:scale(1.3)}
+.exp-card.pinned{border-color:rgba(245,166,35,.35)}
+.exp-card.pinned-empty{opacity:.75;border-style:dashed}
 .commit-bgt-box{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:0 16px 12px}
 .commit-bgt-title{font-size:11px;color:var(--text2);margin-bottom:6px}
 .commit-bgt-nums{display:flex;gap:12px;margin-top:6px}
@@ -1531,31 +1535,46 @@ function renderHome(){
   const htAmt=document.getElementById('heroTodayAmt');if(htAmt)htAmt.textContent=todayAmt.toFixed(2);
   renderBudget();updateMonthBar();
 
-  // cats list (current period only)
+  // cats list
+  loadPinnedCats();
   const list=document.getElementById('expList');
   [...list.querySelectorAll('.exp-card')].forEach(e=>e.remove());
-  const sorted=Object.entries(currentCats).sort((a,b)=>b[1].amount-a[1].amount);
-  document.getElementById('emptyExp').style.display=sorted.length?'none':'block';
-  sorted.forEach(([name,data],i)=>{
+  const sortedWithData=Object.entries(currentCats).sort((a,b)=>b[1].amount-a[1].amount);
+  const pinnedWithData=sortedWithData.filter(([n])=>_pinnedCats.includes(n));
+  const pinnedNoData=_pinnedCats.filter(n=>!currentCats[n]).map(n=>[n,{amount:0,count:0}]);
+  const regular=sortedWithData.filter(([n])=>!_pinnedCats.includes(n));
+  const allCards=[...pinnedWithData,...pinnedNoData,...regular];
+  document.getElementById('emptyExp').style.display=allCards.length?'none':'block';
+  allCards.forEach(([name,data],i)=>{
+    const isEmpty=data.count===0;
+    const isPinned=_pinnedCats.includes(name);
     const pct=total>0?((data.amount/total)*100).toFixed(1):0;
     const catBgt=_catBudgets.find(b=>b.category===name);
     const catBgtBarHtml=catBgt?buildBgtBar(data.amount,catBgt.budget,false):'';
     const card=document.createElement('div');
-    card.className='exp-card'; card.dataset.c=i%8;
+    card.className='exp-card'+(isPinned?' pinned':'')+(isEmpty?' pinned-empty':'');
+    card.dataset.c=i%8;
     card.setAttribute('onclick',`openCatDetail('${name.replace(/'/g,"\\'")}')`)
     card.innerHTML=`
-      <div class="ec-icon">${getIcon(name)}</div>
+      <div class="ec-icon" style="position:relative">${getIcon(name)}${isPinned?'<span style="position:absolute;top:-4px;right:-4px;font-size:9px">📌</span>':''}</div>
       <div class="ec-body">
         <div class="ec-name">${name}</div>
-        <div class="ec-meta"><span class="ec-count">${data.count} إدخال</span><span class="ec-pct">${pct}%</span></div>
-        <div class="ec-bar"><div class="ec-fill" style="width:${pct}%;background:${catColor(i)}"></div></div>
+        <div class="ec-meta">
+          ${isEmpty
+            ?'<span class="ec-count" style="color:var(--text2)">لا مصروفات الشهر</span>'
+            :`<span class="ec-count">${data.count} إدخال</span><span class="ec-pct">${pct}%</span>`}
+        </div>
+        ${!isEmpty?`<div class="ec-bar"><div class="ec-fill" style="width:${pct}%;background:${catColor(i)}"></div></div>`:''}
         ${catBgtBarHtml}
       </div>
       <div class="ec-right">
-        <div class="ec-amount">${data.amount.toFixed(2)}<small> ر.س</small></div>
-        <div style="display:flex;gap:5px">
-          <button class="del-btn" onclick="event.stopPropagation();confirmDel('حذف فئة «${name.replace(/'/g,"\\'")}» وكل إدخالاتها؟',()=>delCat('${name.replace(/'/g,"\\'")}'))">🗑</button>
-          <span class="arrow-icon">›</span>
+        <div class="ec-amount" style="${isEmpty?'color:var(--text2)':''}">${data.amount.toFixed(2)}<small> ر.س</small></div>
+        <div style="display:flex;gap:4px;align-items:center">
+          <button class="pin-btn" onclick="event.stopPropagation();togglePinCat('${name.replace(/'/g,"\\'")}')">
+            ${isPinned?'📌':'📍'}
+          </button>
+          ${!isEmpty?`<button class="del-btn" onclick="event.stopPropagation();confirmDel('حذف فئة «${name.replace(/'/g,"\\'")}» وكل إدخالاتها؟',()=>delCat('${name.replace(/'/g,"\\'")}'))">🗑</button>`:''}
+          ${!isEmpty?`<span class="arrow-icon">›</span>`:''}
         </div>
         <button class="cat-bgt-btn" style="margin-top:4px" onclick="event.stopPropagation();openCatBudgetModal('${name.replace(/'/g,"\\'")}')">
           ${catBgt?`💰 ${catBgt.budget.toFixed(0)} ر.س`:'+ ميزانية'}
@@ -2316,6 +2335,20 @@ let _groupBudgetEntries=[];
 let _editingBudgetId=null;
 let _catBudgets=[];
 let _catBgtEditCat='';
+let _pinnedCats=[];
+
+function loadPinnedCats(){
+  if(!currentGroupId) return;
+  _pinnedCats=JSON.parse(localStorage.getItem(`pins_${currentGroupId}`)||'[]');
+}
+
+function togglePinCat(name){
+  loadPinnedCats();
+  if(_pinnedCats.includes(name)) _pinnedCats=_pinnedCats.filter(p=>p!==name);
+  else _pinnedCats.push(name);
+  localStorage.setItem(`pins_${currentGroupId}`,JSON.stringify(_pinnedCats));
+  renderHome();
+}
 
 function buildBgtBar(spent, budget, isPaid){
   if(!budget) return '';
