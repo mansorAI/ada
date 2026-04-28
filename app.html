@@ -1183,10 +1183,22 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 <div class="overlay" id="expArchiveOverlay" onclick="bgClose(event,'expArchiveOverlay')">
   <div class="sheet" style="max-height:85vh;overflow-y:auto">
     <div class="sh-handle"></div>
-    <div class="sh-title" id="expArchiveOverlayTitle">📦 مصروفات الشهر</div>
-    <div id="expArchiveOverlayTotal" style="text-align:center;font-size:22px;font-weight:900;color:var(--accent);margin-bottom:16px"></div>
+    <div class="sh-title" id="expArchiveOverlayTitle">📅 مصروفات الشهر</div>
+    <div id="expArchiveOverlayTotal" style="text-align:center;font-size:22px;font-weight:900;color:var(--accent);margin-bottom:4px"></div>
+    <div style="text-align:center;font-size:11px;color:var(--text2);margin-bottom:14px">اضغط على الفترة لتفاصيل الفئات</div>
     <div id="expArchiveOverlayCats"></div>
     <button class="btn-muted" style="margin-top:8px" onclick="closeSheet('expArchiveOverlay')">إغلاق</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: 5-DAY PERIOD DETAIL ══════════ -->
+<div class="overlay" id="exp5DayOverlay" onclick="bgClose(event,'exp5DayOverlay')">
+  <div class="sheet" style="max-height:85vh;overflow-y:auto">
+    <div class="sh-handle"></div>
+    <div class="sh-title" id="exp5DayTitle">📆 تفاصيل الفترة</div>
+    <div id="exp5DayTotal" style="text-align:center;font-size:22px;font-weight:900;color:var(--accent);margin-bottom:16px"></div>
+    <div id="exp5DayContent"></div>
+    <button class="btn-muted" style="margin-top:8px" onclick="closeSheet('exp5DayOverlay')">إغلاق</button>
   </div>
 </div>
 
@@ -1578,12 +1590,31 @@ function renderHome(){
 
 // ── expense archive ─────────────────────────
 function renderExpArchive(currentMK){
+  const todayStr=new Date().toDateString();
   const oldLogs=_groupExpenses.filter(l=>getLogPeriodKey(l.ts)!==currentMK);
+  const currentPastLogs=_groupExpenses.filter(l=>getLogPeriodKey(l.ts)===currentMK&&new Date(l.ts).toDateString()!==todayStr);
   const section=document.getElementById('expArchiveSection');
   const list=document.getElementById('expArchiveList');
-  if(!oldLogs.length){section.style.display='none';return;}
+  if(!oldLogs.length&&!currentPastLogs.length){section.style.display='none';return;}
   section.style.display='block';
-  // group by period key, newest first
+  let html='';
+  // current month past days card
+  if(currentPastLogs.length){
+    const total=currentPastLogs.reduce((s,l)=>s+l.amount,0);
+    const label=getMonthLabel(currentMK);
+    const safeMk=encodeURIComponent(currentMK);
+    html+=`<div onclick="openExpArchivePeriod('${safeMk}')" style="background:var(--surface2);border:1px solid rgba(245,166,35,.25);border-radius:14px;padding:14px 16px;margin-bottom:10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-weight:700;font-size:14px">📅 ${label} — الأيام الماضية</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px">${currentPastLogs.length} إدخال • اضغط لعرض الفترات</div>
+      </div>
+      <div style="text-align:left">
+        <div style="font-size:17px;font-weight:900;color:var(--accent)">${total.toFixed(2)}</div>
+        <div style="font-size:10px;color:var(--text2)">ر.س</div>
+      </div>
+    </div>`;
+  }
+  // past months
   const periods={};
   oldLogs.forEach(l=>{
     const mk=getLogPeriodKey(l.ts);
@@ -1595,7 +1626,7 @@ function renderExpArchive(currentMK){
     const tsB=b[0].startsWith('custom-')?parseInt(b[0].replace('custom-','')):(()=>{const p=b[0].split('-');return new Date(+p[0],+p[1],1).getTime();})();
     return tsB-tsA;
   });
-  list.innerHTML=sorted.map(([mk,logs])=>{
+  html+=sorted.map(([mk,logs])=>{
     const total=logs.reduce((s,l)=>s+l.amount,0);
     const label=getMonthLabel(mk);
     const safeMk=encodeURIComponent(mk);
@@ -1610,18 +1641,64 @@ function renderExpArchive(currentMK){
       </div>
     </div>`;
   }).join('');
+  list.innerHTML=html;
 }
 
 function openExpArchivePeriod(safeMk){
   const mk=decodeURIComponent(safeMk);
-  const logs=_groupExpenses.filter(l=>getLogPeriodKey(l.ts)===mk);
+  const todayStr=new Date().toDateString();
+  const isCurrent=mk===getCurrentMonthKey();
+  let logs=_groupExpenses.filter(l=>getLogPeriodKey(l.ts)===mk);
+  if(isCurrent) logs=logs.filter(l=>new Date(l.ts).toDateString()!==todayStr);
+  const total=logs.reduce((s,l)=>s+l.amount,0);
+  const label=getMonthLabel(mk);
+  document.getElementById('expArchiveOverlayTitle').textContent=`📅 ${label}`;
+  document.getElementById('expArchiveOverlayTotal').textContent=`${total.toFixed(2)} ر.س`;
+  // group by 5-day periods
+  const fiveDayMap={};
+  logs.forEach(l=>{
+    const d=new Date(l.ts);
+    const day=d.getDate();
+    const ps=Math.floor((day-1)/5)*5+1;
+    const daysInMonth=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+    const pe=Math.min(ps+4,daysInMonth);
+    const key=`${ps}-${pe}`;
+    if(!fiveDayMap[key]) fiveDayMap[key]={start:ps,end:pe,logs:[]};
+    fiveDayMap[key].logs.push(l);
+  });
+  const fiveDaySorted=Object.entries(fiveDayMap).sort((a,b)=>b[1].start-a[1].start);
+  document.getElementById('expArchiveOverlayCats').innerHTML=fiveDaySorted.length
+    ?fiveDaySorted.map(([key,data])=>{
+        const pTotal=data.logs.reduce((s,l)=>s+l.amount,0);
+        return `<div onclick="openExp5DayDetail(${data.start},${data.end},'${safeMk}')" style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--border);cursor:pointer">
+          <div>
+            <div style="font-weight:700;font-size:13px">📆 أيام ${data.start}–${data.end}</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px">${data.logs.length} إدخال</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font-weight:800;font-size:15px;color:var(--accent)">${pTotal.toFixed(2)}<small style="font-size:10px;color:var(--text2)"> ر.س</small></div>
+            <span style="color:var(--text2);font-size:18px">›</span>
+          </div>
+        </div>`;
+      }).join('')
+    :'<div style="text-align:center;color:var(--text2);padding:20px">لا توجد بيانات</div>';
+  document.getElementById('expArchiveOverlay').classList.add('open');
+}
+
+function openExp5DayDetail(start,end,safeMk){
+  const mk=decodeURIComponent(safeMk);
+  const logs=_groupExpenses.filter(l=>{
+    if(getLogPeriodKey(l.ts)!==mk) return false;
+    const day=new Date(l.ts).getDate();
+    return day>=start&&day<=end;
+  });
   const cats=computeCatsFromLogs(logs);
   const total=logs.reduce((s,l)=>s+l.amount,0);
   const label=getMonthLabel(mk);
-  document.getElementById('expArchiveOverlayTitle').textContent=`📦 مصروفات ${label}`;
-  document.getElementById('expArchiveOverlayTotal').textContent=`${total.toFixed(2)} ر.س`;
+  document.getElementById('exp5DayTitle').textContent=`📆 أيام ${start}–${end} — ${label}`;
+  document.getElementById('exp5DayTotal').textContent=`${total.toFixed(2)} ر.س`;
   const sorted=Object.entries(cats).sort((a,b)=>b[1].amount-a[1].amount);
-  document.getElementById('expArchiveOverlayCats').innerHTML=sorted.map(([name,data],i)=>{
+  document.getElementById('exp5DayContent').innerHTML=sorted.map(([name,data],i)=>{
     const pct=total>0?((data.amount/total)*100).toFixed(1):0;
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
       <div style="font-size:20px">${getIcon(name)}</div>
@@ -1635,7 +1712,7 @@ function openExpArchivePeriod(safeMk){
       <div style="font-weight:800;font-size:14px;color:${catColor(i)}">${data.amount.toFixed(2)}<small style="font-size:10px;color:var(--text2)"> ر.س</small></div>
     </div>`;
   }).join('');
-  document.getElementById('expArchiveOverlay').classList.add('open');
+  document.getElementById('exp5DayOverlay').classList.add('open');
 }
 
 // ══════════════════════════════════════════
