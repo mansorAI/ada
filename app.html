@@ -431,6 +431,18 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 .btn-muted:active{background:var(--surface3)}
 .btn-remove{width:100%;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--danger);border-radius:14px;padding:13px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:8px}
 .btn-remove:active{background:rgba(239,68,68,.25)}
+
+/* AI CHAT */
+.ai-chip{background:var(--card);border:1px solid var(--border);color:var(--text3);font-family:'Tajawal',sans-serif;font-size:0.78rem;padding:6px 12px;border-radius:20px;cursor:pointer;transition:all .2s}
+.ai-chip:active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.ai-input-bar{position:fixed;bottom:var(--bottom);left:0;right:0;background:var(--bg);border-top:1px solid var(--border);padding:10px 14px;z-index:50}
+.ai-bubble-q{background:var(--accent2);color:#fff;border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:0.88rem;line-height:1.6;margin-bottom:10px;align-self:flex-end;max-width:85%}
+.ai-bubble-a{background:var(--card);border:1px solid var(--border);border-radius:4px 16px 16px 16px;padding:12px 14px;font-size:0.88rem;line-height:1.8;white-space:pre-wrap}
+.ai-dots{display:flex;justify-content:center;gap:6px;padding:16px}
+.ai-dots span{width:8px;height:8px;background:var(--accent);border-radius:50%;animation:aiDot 1.2s infinite}
+.ai-dots span:nth-child(2){animation-delay:.2s}
+.ai-dots span:nth-child(3){animation-delay:.4s}
+@keyframes aiDot{0%,80%,100%{transform:scale(0.6);opacity:.4}40%{transform:scale(1);opacity:1}}
 </style>
 </head>
 <body>
@@ -460,10 +472,47 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       </div>
     </div>
   </div>
-  <div id="pg-home-content" style="padding:60px 24px;text-align:center;color:var(--text2)">
-    <div style="font-size:3rem;margin-bottom:12px">🤖</div>
-    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:6px">قريباً — المساعد المالي الذكي</div>
-    <div style="font-size:0.82rem;line-height:1.7">اسأل عن مصروفاتك، ميزانيتك،<br>أو أي سؤال مالي تريده</div>
+  <!-- chat messages area -->
+  <div id="aiChatArea" style="padding:16px 16px 140px;min-height:60vh">
+    <!-- welcome state -->
+    <div id="aiWelcome" style="text-align:center;padding:40px 8px">
+      <div style="font-size:2.8rem;margin-bottom:10px">🤖</div>
+      <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:6px">المساعد المالي الذكي</div>
+      <div style="font-size:0.82rem;line-height:1.8;color:var(--text2)">اسأل عن مصروفاتك، ميزانيتك،<br>أو أي سؤال تريده</div>
+      <div style="margin-top:20px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
+        <button class="ai-chip" onclick="setAiQ('كم صرفت هذا الشهر؟')">كم صرفت هذا الشهر؟</button>
+        <button class="ai-chip" onclick="setAiQ('وين تذهب معظم مصروفاتي؟')">وين تذهب معظم مصروفاتي؟</button>
+        <button class="ai-chip" onclick="setAiQ('كيف أوفر أكثر؟')">كيف أوفر أكثر؟</button>
+        <button class="ai-chip" onclick="setAiQ('كم المتبقي من ميزانيتي؟')">كم المتبقي من ميزانيتي؟</button>
+      </div>
+    </div>
+    <!-- response -->
+    <div id="aiResponseWrap" style="display:none;flex-direction:column">
+      <div class="ai-bubble-q" id="aiQuestion"></div>
+      <div class="ai-bubble-a" id="aiAnswer"></div>
+    </div>
+    <!-- loading -->
+    <div id="aiLoading" style="display:none;text-align:center;padding:20px">
+      <div class="ai-dots"><span></span><span></span><span></span></div>
+      <div style="font-size:0.78rem;color:var(--text2)">جار التفكير...</div>
+    </div>
+  </div>
+
+  <!-- sticky input bar -->
+  <div class="ai-input-bar">
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <textarea id="aiInput" class="inp" maxlength="300" rows="1"
+        placeholder="اسأل أي سؤال..."
+        style="flex:1;resize:none;line-height:1.5;padding:8px 12px;min-height:40px;max-height:100px;overflow-y:auto"
+        oninput="onAiInput(this)"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAiMessage();}"></textarea>
+      <button id="aiSendBtn" onclick="sendAiMessage()" class="btn-primary"
+        style="padding:9px 18px;min-width:64px;height:40px" disabled>إرسال</button>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:5px">
+      <div style="font-size:0.7rem;color:var(--text2)" id="aiCharCount">0 / 300</div>
+      <div style="font-size:0.7rem;color:var(--text2)">متبقي: <span id="aiRemaining">15</span>/15 رسالة اليوم</div>
+    </div>
   </div>
 </div>
 
@@ -1912,6 +1961,7 @@ function goPage(p){
   document.getElementById('mainNav').style.display=subPages.includes(p)?'none':'flex';
   if(p==='tasks'){const tl=document.getElementById('tasksDateLabel');if(tl)tl.textContent=document.getElementById('dateLabel').textContent;}
   if(p==='daily'){renderHome();const dl=document.getElementById('dailyDateLabel');const sl=document.getElementById('dateLabel');if(dl&&sl)dl.textContent=sl.textContent;}
+  if(p==='home' && currentUser){loadAiRemaining();}
   window.scrollTo(0,0);
 }
 
@@ -4251,6 +4301,136 @@ async function doLogout(){
 
 // تشغيل Auth عند تحميل الصفحة
 initAuth();
+
+// ══════════════════════════════════════════
+//  AI CHAT
+// ══════════════════════════════════════════
+const AI_MAX_DAILY = 15;
+
+function buildFinancialContext(){
+  const now = new Date();
+  const currentMK = getCurrentMonthKey();
+  const currentLogs = _groupExpenses.filter(l => getLogPeriodKey(l.ts) === currentMK);
+
+  // مصروفات حسب الفئة
+  const catTotals = {};
+  currentLogs.forEach(e => {
+    const cat = e.category || 'أخرى';
+    catTotals[cat] = (catTotals[cat] || 0) + Number(e.amount);
+  });
+  const expLines = Object.entries(catTotals).sort((a,b)=>b[1]-a[1])
+    .map(([cat,amt]) => `- ${cat}: ${amt.toFixed(2)} ر.س`).join('\n') || '- لا توجد مصروفات';
+  const totalExp = Object.values(catTotals).reduce((s,v)=>s+v, 0);
+
+  // الميزانية
+  const budget = getGroupBudgetTotal();
+  const remaining = budget - totalExp;
+
+  // الالتزامات
+  const commitLines = (_groupCommits||[]).map(c=>`- ${c.name}: ${Number(c.amount).toFixed(2)} ر.س`).join('\n') || '- لا توجد التزامات';
+  const totalCommit = (_groupCommits||[]).reduce((s,c)=>s+Number(c.amount),0);
+
+  // مصروف اليوم
+  const todayStr = now.toISOString().split('T')[0];
+  const todayTotal = currentLogs.filter(e=>e.created_at?.startsWith(todayStr)).reduce((s,e)=>s+Number(e.amount),0);
+
+  return `التاريخ: ${now.toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}
+
+=== الميزانية ===
+الميزانية الكلية: ${budget.toFixed(2)} ر.س
+إجمالي المصروفات: ${totalExp.toFixed(2)} ر.س
+المتبقي: ${remaining.toFixed(2)} ر.س
+مصروف اليوم: ${todayTotal.toFixed(2)} ر.س
+
+=== المصروفات حسب الفئة (هذا الشهر) ===
+${expLines}
+
+=== الالتزامات الشهرية ===
+${commitLines}
+إجمالي الالتزامات: ${totalCommit.toFixed(2)} ر.س`;
+}
+
+async function loadAiRemaining(){
+  try {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const {data} = await sb.from('ai_usage').select('message_count')
+      .eq('user_id', currentUser.id).eq('usage_date', todayStr).single();
+    const used = data?.message_count || 0;
+    const rem = Math.max(0, AI_MAX_DAILY - used);
+    const el = document.getElementById('aiRemaining');
+    if(el) el.textContent = rem;
+    return rem;
+  } catch(e){ return AI_MAX_DAILY; }
+}
+
+function onAiInput(ta){
+  const len = ta.value.length;
+  const cc = document.getElementById('aiCharCount');
+  if(cc) cc.textContent = `${len} / 300`;
+  const btn = document.getElementById('aiSendBtn');
+  if(btn) btn.disabled = len === 0;
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(ta.scrollHeight, 100) + 'px';
+}
+
+function setAiQ(q){
+  const inp = document.getElementById('aiInput');
+  if(!inp) return;
+  inp.value = q;
+  onAiInput(inp);
+  inp.focus();
+}
+
+async function sendAiMessage(){
+  const inp = document.getElementById('aiInput');
+  const question = inp?.value?.trim();
+  if(!question) return;
+
+  const rem = await loadAiRemaining();
+  if(rem <= 0){ toast('انتهت رسائلك اليوم (15/15). عد غداً 🌙','bad'); return; }
+
+  // show loading
+  document.getElementById('aiWelcome').style.display = 'none';
+  document.getElementById('aiResponseWrap').style.display = 'none';
+  document.getElementById('aiLoading').style.display = 'block';
+  document.getElementById('aiSendBtn').disabled = true;
+  document.getElementById('aiQuestion').textContent = question;
+  inp.value = ''; onAiInput(inp);
+
+  try {
+    const {data:{session}} = await sb.auth.getSession();
+    const token = session?.access_token;
+
+    const res = await fetch(`${SUPA_URL}/functions/v1/claude-chat`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, financialContext: buildFinancialContext() })
+    });
+
+    const result = await res.json();
+
+    if(result.error === 'limit_reached'){
+      toast('انتهت رسائلك اليوم (15/15). عد غداً 🌙','bad');
+      document.getElementById('aiLoading').style.display = 'none';
+      document.getElementById('aiWelcome').style.display = 'block';
+      return;
+    }
+    if(result.error) throw new Error(result.error);
+
+    document.getElementById('aiLoading').style.display = 'none';
+    document.getElementById('aiResponseWrap').style.display = 'flex';
+    document.getElementById('aiAnswer').textContent = result.answer;
+    const remEl = document.getElementById('aiRemaining');
+    if(remEl && result.remaining !== undefined) remEl.textContent = result.remaining;
+
+  } catch(e){
+    document.getElementById('aiLoading').style.display = 'none';
+    document.getElementById('aiWelcome').style.display = 'block';
+    toast('حدث خطأ، حاول مرة أخرى','bad');
+  } finally {
+    document.getElementById('aiSendBtn').disabled = false;
+  }
+}
 </script>
 </body>
 </html>
