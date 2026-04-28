@@ -1516,43 +1516,46 @@ function computeCatsFromLogs(logs){
 
 function renderHome(){
   const currentMK=getCurrentMonthKey();
-  const currentLogs=_groupExpenses.filter(l=>getLogPeriodKey(l.ts)===currentMK);
-  const currentCats=computeCatsFromLogs(currentLogs);
+  const allMonthLogs=_groupExpenses.filter(l=>getLogPeriodKey(l.ts)===currentMK);
+  const today=new Date().toDateString();
+  const todayLogs=allMonthLogs.filter(l=>new Date(l.ts).toDateString()===today);
+  const todayCats=computeCatsFromLogs(todayLogs);   // اليوم فقط — للبطاقات الحية
+  const monthCats=computeCatsFromLogs(allMonthLogs); // الشهر كامل — للميزانية والهيرو
 
-  const expTotal=currentLogs.reduce((s,l)=>s+l.amount,0);
+  const expTotal=allMonthLogs.reduce((s,l)=>s+l.amount,0);
   const commitsTotal=getCommitsMonthTotal();
   const total=expTotal+commitsTotal;
-  const today=new Date().toDateString();
-  const todayLogs=currentLogs.filter(l=>new Date(l.ts).toDateString()===today);
   const todayAmt=todayLogs.reduce((s,l)=>s+l.amount,0);
   const todayN=todayLogs.length;
   document.getElementById('totalAmt').textContent=total.toFixed(2);
-  document.getElementById('catCnt').textContent=Object.keys(currentCats).length;
-  document.getElementById('entryCnt').textContent=currentLogs.length;
+  document.getElementById('catCnt').textContent=Object.keys(monthCats).length;
+  document.getElementById('entryCnt').textContent=allMonthLogs.length;
   document.getElementById('todayCnt').textContent=todayN;
   const heAmt=document.getElementById('heroExpAmt');if(heAmt)heAmt.textContent=expTotal.toFixed(2);
   const hcAmt=document.getElementById('heroCommitAmt');if(hcAmt)hcAmt.textContent=commitsTotal.toFixed(2);
   const htAmt=document.getElementById('heroTodayAmt');if(htAmt)htAmt.textContent=todayAmt.toFixed(2);
   renderBudget();updateMonthBar();
 
-  // cats list
+  // cats list — اليوم فقط + المثبّتات دائماً
   loadPinnedCats();
   const list=document.getElementById('expList');
   [...list.querySelectorAll('.exp-card')].forEach(e=>e.remove());
-  const sortedWithData=Object.entries(currentCats).sort((a,b)=>b[1].amount-a[1].amount);
+  const sortedWithData=Object.entries(todayCats).sort((a,b)=>b[1].amount-a[1].amount);
   const pinnedWithData=sortedWithData.filter(([n])=>_pinnedCats.includes(n));
-  const pinnedNoData=_pinnedCats.filter(n=>!currentCats[n]).map(n=>[n,{amount:0,count:0}]);
+  const pinnedNoData=_pinnedCats.filter(n=>!todayCats[n]).map(n=>[n,{amount:0,count:0}]);
   const regular=sortedWithData.filter(([n])=>!_pinnedCats.includes(n));
   const allCards=[...pinnedWithData,...pinnedNoData,...regular];
   document.getElementById('emptyExp').style.display=allCards.length?'none':'block';
   allCards.forEach(([name,data],i)=>{
-    const isEmpty=data.count===0;
+    const noToday=data.count===0;
     const isPinned=_pinnedCats.includes(name);
-    const pct=total>0?((data.amount/total)*100).toFixed(1):0;
+    const hasMonthData=!!monthCats[name];
+    const pct=todayAmt>0?((data.amount/todayAmt)*100).toFixed(1):0;
+    const monthSpent=monthCats[name]?.amount||0;
     const catBgt=_catBudgets.find(b=>b.category===name);
-    const catBgtBarHtml=catBgt?buildBgtBar(data.amount,catBgt.budget,false):'';
+    const catBgtBarHtml=catBgt?buildBgtBar(monthSpent,catBgt.budget,false):'';
     const card=document.createElement('div');
-    card.className='exp-card'+(isPinned?' pinned':'')+(isEmpty?' pinned-empty':'');
+    card.className='exp-card'+(isPinned?' pinned':'')+(noToday?' pinned-empty':'');
     card.dataset.c=i%8;
     card.setAttribute('onclick',`openCatDetail('${name.replace(/'/g,"\\'")}')`)
     card.innerHTML=`
@@ -1560,21 +1563,21 @@ function renderHome(){
       <div class="ec-body">
         <div class="ec-name">${name}</div>
         <div class="ec-meta">
-          ${isEmpty
-            ?'<span class="ec-count" style="color:var(--text2)">لا مصروفات الشهر</span>'
-            :`<span class="ec-count">${data.count} إدخال</span><span class="ec-pct">${pct}%</span>`}
+          ${noToday
+            ?`<span class="ec-count" style="color:var(--text2)">لا مصروفات اليوم</span>${monthSpent>0?`<span class="ec-pct" style="font-size:10px">${monthSpent.toFixed(0)} هذا الشهر</span>`:''}`
+            :`<span class="ec-count">${data.count} إدخال اليوم</span><span class="ec-pct">${pct}%</span>`}
         </div>
-        ${!isEmpty?`<div class="ec-bar"><div class="ec-fill" style="width:${pct}%;background:${catColor(i)}"></div></div>`:''}
+        ${!noToday?`<div class="ec-bar"><div class="ec-fill" style="width:${pct}%;background:${catColor(i)}"></div></div>`:''}
         ${catBgtBarHtml}
       </div>
       <div class="ec-right">
-        <div class="ec-amount" style="${isEmpty?'color:var(--text2)':''}">${data.amount.toFixed(2)}<small> ر.س</small></div>
+        <div class="ec-amount" style="${noToday?'color:var(--text2)':''}">${data.amount.toFixed(2)}<small> ر.س</small></div>
         <div style="display:flex;gap:4px;align-items:center">
           <button class="pin-btn" onclick="event.stopPropagation();togglePinCat('${name.replace(/'/g,"\\'")}')">
             ${isPinned?'📌':'📍'}
           </button>
-          ${!isEmpty?`<button class="del-btn" onclick="event.stopPropagation();confirmDel('حذف فئة «${name.replace(/'/g,"\\'")}» وكل إدخالاتها؟',()=>delCat('${name.replace(/'/g,"\\'")}'))">🗑</button>`:''}
-          ${!isEmpty?`<span class="arrow-icon">›</span>`:''}
+          ${hasMonthData?`<button class="del-btn" onclick="event.stopPropagation();confirmDel('حذف فئة «${name.replace(/'/g,"\\'")}» وكل إدخالاتها؟',()=>delCat('${name.replace(/'/g,"\\'")}'))">🗑</button>`:''}
+          ${!noToday?`<span class="arrow-icon">›</span>`:''}
         </div>
         <button class="cat-bgt-btn" style="margin-top:4px" onclick="event.stopPropagation();openCatBudgetModal('${name.replace(/'/g,"\\'")}')">
           ${catBgt?`💰 ${catBgt.budget.toFixed(0)} ر.س`:'+ ميزانية'}
@@ -1583,11 +1586,11 @@ function renderHome(){
     list.appendChild(card);
   });
 
-  // recent logs (current period)
+  // recent logs — اليوم فقط
   const logList=document.getElementById('logList');
   [...logList.querySelectorAll('.log-item')].forEach(e=>e.remove());
-  const recentLogs=currentLogs.slice(0,15);
-  document.getElementById('logBadge').textContent=currentLogs.length;
+  const recentLogs=todayLogs.slice(0,15);
+  document.getElementById('logBadge').textContent=todayLogs.length;
   document.getElementById('emptyLog').style.display=recentLogs.length?'none':'block';
   recentLogs.forEach(log=>{
     const d=new Date(log.ts);
@@ -1595,7 +1598,7 @@ function renderHome(){
     const dateStr=d.toLocaleDateString('ar-SA-u-ca-gregory',{weekday:'short',month:'short',day:'numeric'});
     const li=document.createElement('div'); li.className='log-item';
     li.innerHTML=`
-      <div class="log-dot" style="background:${catColor(Object.keys(currentCats).indexOf(log.name))}"></div>
+      <div class="log-dot" style="background:${catColor(Object.keys(todayCats).indexOf(log.name))}"></div>
       <div class="log-body">
         <div class="log-name">${getIcon(log.name)} ${log.name}</div>
         <div class="log-time">${dateStr} — ${timeStr} ${log.src==='voice'?'🎙️':''}</div>
