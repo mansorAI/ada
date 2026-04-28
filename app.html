@@ -446,6 +446,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 </div>
 
 <!-- ══════════ PAGE: HOME ══════════ -->
+<!-- ══════════ PAGE: HOME (للذكاء الاصطناعي) ══════════ -->
 <div id="pg-home" class="page active">
   <div class="topbar">
     <div class="topbar-row">
@@ -455,6 +456,27 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         <div class="user-chip" onclick="toggleUserMenu(event)">
           <span>👤</span>
           <span class="uname" id="topbarUserName">...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="pg-home-content" style="padding:60px 24px;text-align:center;color:var(--text2)">
+    <div style="font-size:3rem;margin-bottom:12px">🤖</div>
+    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:6px">قريباً — المساعد المالي الذكي</div>
+    <div style="font-size:0.82rem;line-height:1.7">اسأل عن مصروفاتك، ميزانيتك،<br>أو أي سؤال مالي تريده</div>
+  </div>
+</div>
+
+<!-- ══════════ PAGE: DAILY (المصروف اليومي) ══════════ -->
+<div id="pg-daily" class="page">
+  <div class="topbar">
+    <div class="topbar-row">
+      <div class="page-title">💸 مصروف يومي</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="date-chip" id="dailyDateLabel"></div>
+        <div class="user-chip" onclick="toggleUserMenu(event)">
+          <span>👤</span>
+          <span class="uname" id="dailyTopbarUserName">...</span>
         </div>
       </div>
     </div>
@@ -521,7 +543,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 <div id="pg-catdetail" class="page">
   <div class="topbar">
     <div class="topbar-row">
-      <button class="back-btn" onclick="goPage('home')">← رجوع</button>
+      <button class="back-btn" onclick="goPage('daily')">← رجوع</button>
       <div class="date-chip" id="catDetailDate"></div>
     </div>
     <div class="cat-detail-hero" id="catDetailHero">
@@ -940,8 +962,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   <button class="nav-btn active" id="nav-home" onclick="goPage('home')">
     <span class="nicon">🏠</span>الرئيسية
   </button>
-  <button class="nav-btn mic-nav" id="nav-mic" onclick="openVoice()">
-    <span class="nicon" id="micIcon">🎙️</span>إضافة مصروف
+  <button class="nav-btn mic-nav" id="nav-daily" onclick="goPage('daily')">
+    <span class="nicon">💸</span>مصروف يومي
   </button>
   <button class="nav-btn" id="nav-tasks" onclick="openTasksPage()">
     <span class="nicon">📋</span>المهام
@@ -1728,7 +1750,7 @@ function doDelExpense(){
     closeSheet('editExpenseOverlay');
     logAction('delete','expense',exp?.name||'',{amount:exp?.amount});
     renderHome();
-    goPage('home');
+    goPage('daily');
     toast('تم الحذف','bad');
   });
 }
@@ -1884,6 +1906,7 @@ function goPage(p){
   const subPages=['catdetail','commit-detail','inventory','extract'];
   document.getElementById('mainNav').style.display=subPages.includes(p)?'none':'flex';
   if(p==='tasks'){const tl=document.getElementById('tasksDateLabel');if(tl)tl.textContent=document.getElementById('dateLabel').textContent;}
+  if(p==='daily'){renderHome();const dl=document.getElementById('dailyDateLabel');const sl=document.getElementById('dateLabel');if(dl&&sl)dl.textContent=sl.textContent;}
   window.scrollTo(0,0);
 }
 
@@ -2005,7 +2028,7 @@ function startVoice(){
   if(!SR){vMsg('المتصفح لا يدعم الصوت — استخدم Chrome','err');return;}
   recognition=new SR();
   recognition.lang='ar-SA';recognition.interimResults=true;recognition.continuous=false;recognition.maxAlternatives=3;
-  recognition.onstart=()=>{isListening=true;document.getElementById('vRing').classList.add('active');document.getElementById('nav-mic').classList.add('rec');document.getElementById('micIcon').textContent='🔴';vMsg('🔴 يستمع... تكلم الآن','');document.getElementById('vStartBtn').style.display='none';document.getElementById('vStopBtn').style.display='block';};
+  recognition.onstart=()=>{isListening=true;document.getElementById('vRing').classList.add('active');vMsg('🔴 يستمع... تكلم الآن','');document.getElementById('vStartBtn').style.display='none';document.getElementById('vStopBtn').style.display='block';};
   recognition.onresult=(e)=>{const t=Array.from(e.results).map(r=>r[0].transcript).join('');document.getElementById('vTranscript').textContent=`"${t}"`;vMsg('جار التعرف...','heard');};
   recognition.onend=async()=>{
     if(!isListening) return;
@@ -2026,7 +2049,7 @@ function startVoice(){
   recognition.start();
 }
 function stopVoice(){isListening=false;if(recognition){try{recognition.stop();}catch(e){}recognition=null;}resetListenUI();}
-function resetListenUI(){isListening=false;document.getElementById('vRing').classList.remove('active');document.getElementById('nav-mic').classList.remove('rec');document.getElementById('micIcon').textContent='🎙️';document.getElementById('vStartBtn').style.display='block';document.getElementById('vStopBtn').style.display='none';}
+function resetListenUI(){isListening=false;document.getElementById('vRing').classList.remove('active');document.getElementById('vStartBtn').style.display='block';document.getElementById('vStopBtn').style.display='none';}
 function resetVoice(){resetListenUI();document.getElementById('vTranscript').textContent='';vMsg('اضغط زر البدء وتكلم','');}
 function vMsg(msg,cls){const el=document.getElementById('vMsg');el.textContent=msg;el.className='v-msg'+(cls?' '+cls:'');}
 
@@ -3901,7 +3924,7 @@ function applyPermissions(){
   const p = currentUserPerms;
   const show = (id, visible) => { const el = document.getElementById(id); if(el) el.style.display = visible ? '' : 'none'; };
   show('nav-home',  p.can_view_expenses);
-  show('nav-mic',   p.can_edit_expenses);
+  show('nav-daily', p.can_edit_expenses);
   show('nav-fixed', p.can_view_commitments);
   show('nav-tasks', p.can_view_tasks);
   show('addTaskBtn', p.can_edit_tasks || p.role==='owner');
@@ -3909,10 +3932,10 @@ function applyPermissions(){
   const active = document.querySelector('.page.active');
   if(!active) return;
   const pid = active.id;
-  if(pid === 'pg-home' && !p.can_view_expenses){
+  if(pid === 'pg-daily' && !p.can_view_expenses){
     if(p.can_view_commitments) goPage('fixed'); else goPage('stats');
   } else if(pid === 'pg-fixed' && !p.can_view_commitments){
-    if(p.can_view_expenses) goPage('home'); else goPage('stats');
+    if(p.can_view_expenses) goPage('daily'); else goPage('stats');
   }
 }
 
@@ -4153,7 +4176,7 @@ async function switchToGroup(id, name){
   await Promise.all([loadGroupCommitmentsData(), loadGroupExpenses()]);
   await migrateLocalExpenses();
   toast('✅ تم التبديل إلى: ' + name, 'ok');
-  if(currentUserPerms.can_view_expenses){ renderHome(); goPage('home'); }
+  if(currentUserPerms.can_view_expenses){ renderHome(); goPage('daily'); }
   else if(currentUserPerms.can_view_commitments) goPage('fixed');
   else goPage('stats');
 }
