@@ -510,6 +510,8 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
         <button class="ai-chip" onclick="setAiQ('وين تذهب معظم مصروفاتي؟')">وين تذهب معظم مصروفاتي؟</button>
         <button class="ai-chip" onclick="setAiQ('كيف أوفر أكثر؟')">كيف أوفر أكثر؟</button>
         <button class="ai-chip" onclick="setAiQ('كم المتبقي من ميزانيتي؟')">كم المتبقي من ميزانيتي؟</button>
+        <button class="ai-chip" onclick="setAiQ('أبي أشتري كنب بـ 3000 ريال، أقدر أشتريه؟ وإذا لا كيف أوفر له؟')">🛋️ أقدر أشتري شيء؟</button>
+        <button class="ai-chip" onclick="setAiQ('حلل وضعي المالي هذا الشهر وعطني نصائح')">📊 حلل وضعي</button>
       </div>
     </div>
     <!-- response -->
@@ -4955,8 +4957,7 @@ function buildFinancialContext(){
   // مصروفات حسب الفئة
   const catTotals = {};
   currentLogs.forEach(e => {
-    const cat = e.category || 'أخرى';
-    catTotals[cat] = (catTotals[cat] || 0) + Number(e.amount);
+    catTotals[e.name] = (catTotals[e.name] || 0) + Number(e.amount);
   });
   const expLines = Object.entries(catTotals).sort((a,b)=>b[1]-a[1])
     .map(([cat,amt]) => `- ${cat}: ${amt.toFixed(2)} ر.س`).join('\n') || '- لا توجد مصروفات';
@@ -4967,27 +4968,62 @@ function buildFinancialContext(){
   const remaining = budget - totalExp;
 
   // الالتزامات
-  const commitLines = (_groupCommits||[]).map(c=>`- ${c.name}: ${Number(c.amount).toFixed(2)} ر.س`).join('\n') || '- لا توجد التزامات';
-  const totalCommit = (_groupCommits||[]).reduce((s,c)=>s+Number(c.amount),0);
+  const commitLines = (_groupCommits||[]).map(c=>{
+    const paid = c.is_paid ? ' ✓ مدفوع' : '';
+    const bgt = c.budget ? ` (ميزانية: ${c.budget} ر.س)` : '';
+    return `- ${c.name}: ${Number(c.paid_amount||c.amount||0).toFixed(2)} ر.س${bgt}${paid}`;
+  }).join('\n') || '- لا توجد التزامات';
+  const totalCommit = (_groupCommits||[]).reduce((s,c)=>s+Number(c.paid_amount||c.amount||0),0);
+
+  // أيام الشهر
+  const monthStart = _groupSettings?.month_start || 1;
+  const daysInMonth = 30;
+  const dayOfMonth = now.getDate();
+  const daysElapsed = Math.max(1, dayOfMonth < monthStart ? dayOfMonth + daysInMonth - monthStart : dayOfMonth - monthStart + 1);
+  const daysLeft = Math.max(0, daysInMonth - daysElapsed);
+  const dailyAvg = daysElapsed > 0 ? totalExp / daysElapsed : 0;
+  const projectedEnd = dailyAvg * daysInMonth;
+
+  // المال الحر الفعلي (بعد الالتزامات)
+  const freeMoney = budget - totalCommit - totalExp;
 
   // مصروف اليوم
-  const todayStr = now.toISOString().split('T')[0];
-  const todayTotal = currentLogs.filter(e=>e.created_at?.startsWith(todayStr)).reduce((s,e)=>s+Number(e.amount),0);
+  const todayStr = now.toDateString();
+  const todayTotal = currentLogs.filter(e=>new Date(e.ts).toDateString()===todayStr).reduce((s,e)=>s+Number(e.amount),0);
 
-  return `التاريخ: ${now.toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}
+  // آخر 3 أشهر للمقارنة
+  const prevMonths = [];
+  for(let i=1;i<=2;i++){
+    const d=new Date(now); d.setMonth(d.getMonth()-i);
+    const mk=getLogPeriodKey(d.getTime());
+    const monthLogs=_groupExpenses.filter(l=>getLogPeriodKey(l.ts)===mk);
+    if(monthLogs.length){
+      const total=monthLogs.reduce((s,l)=>s+Number(l.amount),0);
+      prevMonths.push(`- ${d.toLocaleDateString('ar-SA',{month:'long',year:'numeric'})}: ${total.toFixed(2)} ر.س`);
+    }
+  }
 
-=== الميزانية ===
+  return `التاريخ: ${now.toLocaleDateString('ar-SA-u-ca-gregory',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}
+
+=== الميزانية الشهرية ===
 الميزانية الكلية: ${budget.toFixed(2)} ر.س
-إجمالي المصروفات: ${totalExp.toFixed(2)} ر.س
-المتبقي: ${remaining.toFixed(2)} ر.س
+إجمالي المصروفات حتى الآن: ${totalExp.toFixed(2)} ر.س
+إجمالي الالتزامات: ${totalCommit.toFixed(2)} ر.س
+المال الحر المتبقي (بعد كل شيء): ${freeMoney.toFixed(2)} ر.س
 مصروف اليوم: ${todayTotal.toFixed(2)} ر.س
+
+=== تحليل الإنفاق ===
+أيام مضت من الشهر: ${daysElapsed} يوم — متبقي: ${daysLeft} يوم
+معدل الإنفاق اليومي: ${dailyAvg.toFixed(2)} ر.س/يوم
+المتوقع عند نهاية الشهر: ${projectedEnd.toFixed(2)} ر.س
 
 === المصروفات حسب الفئة (هذا الشهر) ===
 ${expLines}
 
 === الالتزامات الشهرية ===
 ${commitLines}
-إجمالي الالتزامات: ${totalCommit.toFixed(2)} ر.س`;
+
+${prevMonths.length ? `=== مقارنة بالأشهر السابقة ===\n${prevMonths.join('\n')}` : ''}`;
 }
 
 async function loadAiRemaining(){
