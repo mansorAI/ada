@@ -2670,6 +2670,7 @@ let _savingsContribs=[];
 let _currentGoalId=null;
 let _currentDetailGoalId=null;
 let _goalSelectedIcon='🎯';
+let _currentGoalContribs=[];
 let _commitItemsCache=[];
 let _groupApiKey='';
 let _groupBudgetEntries=[];
@@ -5083,11 +5084,16 @@ function renderSavingsGoals(){
     const remaining = Math.max(0, g.target_amount - g.saved_amount);
     const monthsLeft = g.monthly_amount>0 ? Math.ceil(remaining/g.monthly_amount) : '∞';
     const contrib = _savingsContribs.find(c=>c.goal_id===g.id && c.month_key===mk);
+    const isSkipped = contrib?.status==='skipped';
     const needsConfirm = !contrib || contrib.status==='pending';
-    return `<div onclick="openGoalDetail('${g.id}')" style="min-width:155px;background:var(--card);border:1px solid ${needsConfirm?'var(--accent)':'var(--border)'};border-radius:12px;padding:10px 12px;cursor:pointer;flex-shrink:0">
+    const borderColor = isSkipped ? '#ff9800' : needsConfirm ? 'var(--accent)' : 'var(--border)';
+    const badge = isSkipped
+      ? `<div style="font-size:0.6rem;color:#ff9800;font-weight:700;background:rgba(255,152,0,0.15);padding:2px 6px;border-radius:6px">⚠️ متأخر</div>`
+      : needsConfirm ? `<div style="width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0"></div>` : '';
+    return `<div onclick="openGoalDetail('${g.id}')" style="min-width:155px;background:var(--card);border:1px solid ${borderColor};border-radius:12px;padding:10px 12px;cursor:pointer;flex-shrink:0">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
         <div style="font-size:0.82rem;font-weight:700">${g.icon} ${g.name}</div>
-        ${needsConfirm?'<div style="width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0"></div>':''}
+        ${badge}
       </div>
       <div style="font-size:0.68rem;color:var(--text2);margin-bottom:5px">${Number(g.saved_amount).toFixed(0)} / ${Number(g.target_amount).toFixed(0)} ر.س</div>
       <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:5px">
@@ -5158,10 +5164,20 @@ async function saveGoal(){
   renderSavingsGoals();
 }
 
-function openGoalDetail(goalId){
+async function openGoalDetail(goalId){
   _currentDetailGoalId = goalId;
+  const {data} = await sb.from('savings_contributions')
+    .select('*').eq('goal_id',goalId).order('month_key',{ascending:false});
+  _currentGoalContribs = data||[];
   renderGoalDetail();
   document.getElementById('goalDetailOverlay').classList.add('open');
+}
+
+function mkToLabel(mk){
+  const parts = mk.split('-');
+  if(parts.length<2) return mk;
+  const d = new Date(parseInt(parts[0]), parseInt(parts[1]), 1);
+  return d.toLocaleDateString('ar-SA-u-ca-gregory',{month:'long',year:'numeric'});
 }
 
 function renderGoalDetail(){
@@ -5223,6 +5239,21 @@ function renderGoalDetail(){
       <div style="font-size:0.82rem;font-weight:700;margin-bottom:10px">💳 هل وفّرت هذا الشهر؟</div>
       ${confirmHTML}
     </div>
+    ${_currentGoalContribs.filter(c=>c.status!=='pending').length ? `
+    <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:14px">
+      <div style="font-size:0.82rem;font-weight:700;margin-bottom:8px">📋 السجل</div>
+      ${_currentGoalContribs.filter(c=>c.status!=='pending').map(c=>{
+        const icon = c.status==='confirmed'?'✅':c.status==='partial'?'⚡':'⏸️';
+        const color = c.status==='confirmed'?'#4caf50':c.status==='partial'?'#ff9800':'var(--accent2)';
+        const label = c.status==='confirmed'?`وفّر ${Number(c.actual_amount).toFixed(0)} ر.س`
+          :c.status==='partial'?`جزئي ${Number(c.actual_amount).toFixed(0)} ر.س`
+          :`<span style="color:var(--accent2);font-weight:600">متأخر — لم يُوفَّر</span>`;
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.78rem">
+          <div style="color:${color}">${icon} ${mkToLabel(c.month_key)}</div>
+          <div>${label}</div>
+        </div>`;
+      }).join('')}
+    </div>` : ''}
     <div style="display:flex;gap:8px">
       <button class="btn-muted" style="flex:1" onclick="closeSheet('goalDetailOverlay');openAddGoalOverlay('${g.id}')">✏️ تعديل</button>
       <button class="btn-muted" style="flex:1;color:var(--accent2)" onclick="deleteGoal('${g.id}')">🗑 حذف</button>
