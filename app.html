@@ -5071,7 +5071,7 @@ async function loadAiRemaining(){
   try {
     const todayStr = new Date().toISOString().split('T')[0];
     const {data} = await sb.from('ai_usage').select('message_count')
-      .eq('user_id', currentUser.id).eq('usage_date', todayStr).single();
+      .eq('user_id', currentUser.id).eq('usage_date', todayStr).maybeSingle();
     const used = data?.message_count || 0;
     const rem = Math.max(0, AI_MAX_DAILY - used);
     const el = document.getElementById('aiRemaining');
