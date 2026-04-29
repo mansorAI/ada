@@ -502,7 +502,10 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       <div style="font-size:2.8rem;margin-bottom:10px">🤖</div>
       <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:6px">المساعد المالي الذكي</div>
       <div style="font-size:0.82rem;line-height:1.8;color:var(--text2)">اسأل عن مصروفاتك، ميزانيتك،<br>أو أي سؤال تريده</div>
-      <div style="margin-top:20px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
+      <div style="margin-top:18px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;text-align:right;font-size:0.8rem;line-height:1.9;color:var(--text2)">
+        💡 <strong style="color:var(--text)">للاستفادة القصوى:</strong> سجّل ميزانيتك الشهرية والتزاماتك الثابتة مع ميزانية كل منها، ثم أضف مصروفاتك اليومية — حتى بدون ميزانية محددة مثل قهوة، مطاعم، بنزين. أنا أتابع كل شيء وأجيب بدقة على أسئلتك.
+      </div>
+      <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
         <button class="ai-chip" onclick="setAiQ('كم صرفت هذا الشهر؟')">كم صرفت هذا الشهر؟</button>
         <button class="ai-chip" onclick="setAiQ('وين تذهب معظم مصروفاتي؟')">وين تذهب معظم مصروفاتي؟</button>
         <button class="ai-chip" onclick="setAiQ('كيف أوفر أكثر؟')">كيف أوفر أكثر؟</button>
@@ -524,13 +527,15 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   <!-- sticky input bar -->
   <div class="ai-input-bar">
     <div style="display:flex;gap:8px;align-items:flex-end">
-      <textarea id="aiInput" class="inp" maxlength="300" rows="1"
+      <textarea id="aiInput" class="inp" maxlength="300" rows="2"
         placeholder="اسأل أي سؤال..."
-        style="flex:1;resize:none;line-height:1.5;padding:8px 12px;min-height:40px;max-height:100px;overflow-y:auto"
+        style="flex:1;resize:none;line-height:1.6;padding:10px 12px;min-height:56px;max-height:120px;overflow-y:auto"
         oninput="onAiInput(this)"
         onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAiMessage();}"></textarea>
       <button id="aiSendBtn" onclick="sendAiMessage()" class="btn-primary"
-        style="padding:9px 18px;min-width:64px;height:40px" disabled>إرسال</button>
+        style="width:48px;height:56px;min-width:48px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:12px" disabled>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
     </div>
     <div style="display:flex;justify-content:space-between;margin-top:5px">
       <div style="font-size:0.7rem;color:var(--text2)" id="aiCharCount">0 / 300</div>
