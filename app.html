@@ -502,8 +502,11 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       <div style="font-size:2.8rem;margin-bottom:10px">🤖</div>
       <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:6px">المساعد المالي الذكي</div>
       <div style="font-size:0.82rem;line-height:1.8;color:var(--text2)">اسأل عن مصروفاتك، ميزانيتك،<br>أو أي سؤال تريده</div>
-      <div style="margin-top:18px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;text-align:right;font-size:0.8rem;line-height:1.9;color:var(--text2)">
-        🛋️ <strong style="color:var(--text)">إذا حاب تشتري شي وناوي تخطط عليه</strong> — قول لي كم سعره وأنا أحلل لك حسب ميزانيتك وصرفك، راح أقولك متى تشتريه وكيف تشتريه. لو محتاجه ضروري أدبّر وضعك بطريقتي الخاصة 💡
+      <div style="margin-top:18px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;text-align:right;font-size:0.8rem;line-height:1.7;color:var(--text2)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div>🛋️ <strong style="color:var(--text)">إذا حاب تشتري شي وناوي تخطط عليه</strong><br><span style="font-size:0.75rem">أحلل وضعك وأعطيك خطة دقيقة حسب ميزانيتك 💡</span></div>
+          <button onclick="openBuyPlanForm()" style="background:var(--accent);color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:0.78rem;font-family:'Tajawal',sans-serif;cursor:pointer;white-space:nowrap;flex-shrink:0">📲 اضغط هنا</button>
+        </div>
       </div>
       <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
         <button class="ai-chip" onclick="setAiQ('كم صرفت هذا الشهر؟')">كم صرفت هذا الشهر؟</button>
@@ -1211,6 +1214,44 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <div style="text-align:center;font-size:11px;color:var(--text2);margin-bottom:14px">اضغط على اليوم لتفاصيل مصروفاته</div>
     <div id="exp5DayContent"></div>
     <button class="btn-muted" style="margin-top:8px" onclick="closeSheet('exp5DayOverlay')">إغلاق</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: BUY PLAN ══════════ -->
+<div class="overlay" id="buyPlanOverlay" onclick="bgClose(event,'buyPlanOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title">🛒 خطة شراء ذكية</div>
+    <div style="font-size:0.8rem;color:var(--text2);margin-bottom:16px;text-align:center">أجاوب على الأسئلة الثلاثة وأنا أدبّر لك الخطة</div>
+
+    <div class="inp-wrap">
+      <div class="inp-lbl">1. وش تبي تشتري؟</div>
+      <input id="buyPlanItem" class="inp" type="text" placeholder="مثال: كنب، جوال، تلفزيون...">
+    </div>
+    <div class="inp-wrap">
+      <div class="inp-lbl">2. كم يكلف؟ (ريال)</div>
+      <input id="buyPlanPrice" class="inp" type="number" placeholder="مثال: 2500">
+    </div>
+    <div class="inp-wrap">
+      <div class="inp-lbl">3. متى تبيه؟</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
+          <input type="radio" name="buyTiming" value="urgent" style="accent-color:var(--accent)"> 🚨 ضروري الشهر القادم
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
+          <input type="radio" name="buyTiming" value="2months" style="accent-color:var(--accent)"> 📅 بعد شهرين
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
+          <input type="radio" name="buyTiming" value="3months" style="accent-color:var(--accent)"> 📅 بعد 3 أشهر
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer">
+          <input type="radio" name="buyTiming" value="flexible" checked style="accent-color:var(--accent)"> 🔄 مرن، متى يكون مناسب
+        </label>
+      </div>
+    </div>
+
+    <button class="btn-primary" style="margin-top:16px" onclick="sendBuyPlan()">🤖 حلّل وضعي</button>
+    <button class="btn-muted" style="margin-top:6px" onclick="closeSheet('buyPlanOverlay')">إغلاق</button>
   </div>
 </div>
 
@@ -5047,6 +5088,31 @@ function onAiInput(ta){
   if(btn) btn.disabled = len === 0;
   ta.style.height = 'auto';
   ta.style.height = Math.min(ta.scrollHeight, 100) + 'px';
+}
+
+function openBuyPlanForm(){
+  document.getElementById('buyPlanItem').value='';
+  document.getElementById('buyPlanPrice').value='';
+  document.querySelector('input[name="buyTiming"][value="flexible"]').checked=true;
+  document.getElementById('buyPlanOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('buyPlanItem').focus(),350);
+}
+function sendBuyPlan(){
+  const item=document.getElementById('buyPlanItem').value.trim();
+  const price=document.getElementById('buyPlanPrice').value.trim();
+  const timingVal=document.querySelector('input[name="buyTiming"]:checked')?.value||'flexible';
+  if(!item||!price){toast('اكتب اسم الشيء والسعر','bad');return;}
+  const timingMap={
+    urgent:'ضروري عندي الشهر القادم',
+    '2months':'بعد شهرين تقريباً',
+    '3months':'بعد 3 أشهر',
+    flexible:'مرن متى يكون مناسب'
+  };
+  const timing=timingMap[timingVal];
+  const q=`أبي أشتري ${item} سعره ${price} ريال، والوقت المناسب عندي: ${timing}.\n\nأبيك تسوي لي خطة كاملة:\n1. صنّف التزاماتي ومصروفاتي: أيها ثابتة ما تنقص (مثل إيجار، كهرباء) وأيها مرنة أقدر أقلصها\n2. احسب هل أقدر أشتريه في الوقت المحدد أم لا\n3. لو في عجز، قولي وين أقتطع وكم بالضبط من كل بند\n4. عطني خطة شهرية واضحة خطوة خطوة`;
+  closeSheet('buyPlanOverlay');
+  setAiQ(q);
+  setTimeout(()=>sendAiMessage(),300);
 }
 
 function setAiQ(q){
