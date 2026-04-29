@@ -5166,6 +5166,7 @@ async function sendAiMessage(){
     if(remEl && result.remaining !== undefined) remEl.textContent = result.remaining;
 
   } catch(e){
+    console.error('AI Error:', e);
     document.getElementById('aiLoading').style.display = 'none';
     document.getElementById('aiWelcome').style.display = 'block';
     toast('حدث خطأ، حاول مرة أخرى','bad');
