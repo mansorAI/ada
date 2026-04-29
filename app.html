@@ -1212,6 +1212,18 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
+<!-- ══════════ OVERLAY: ICON PICKER ══════════ -->
+<div class="overlay" id="iconPickerOverlay" onclick="bgClose(event,'iconPickerOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title">🎨 اختر أيقونة</div>
+    <div id="iconPickerName" style="text-align:center;font-size:13px;color:var(--text2);margin-bottom:12px"></div>
+    <div id="iconPickerGrid" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-height:52vh;overflow-y:auto;padding-bottom:4px"></div>
+    <button class="btn-muted" style="margin-top:14px" onclick="resetCatIcon()">↩ إعادة الأيقونة الافتراضية</button>
+    <button class="btn-muted" style="margin-top:6px" onclick="closeSheet('iconPickerOverlay')">إغلاق</button>
+  </div>
+</div>
+
 <!-- ══════════ OVERLAY: DAY DETAIL ══════════ -->
 <div class="overlay" id="expDayDetailOverlay" onclick="bgClose(event,'expDayDetailOverlay')">
   <div class="sheet" style="max-height:85vh;overflow-y:auto">
@@ -1502,9 +1514,99 @@ function migrateDB(){
 // ══════════════════════════════════════════
 //  ICONS & COLORS
 // ══════════════════════════════════════════
-const ICON_MAP={'قهوة':'☕','كافيه':'☕','كافي':'☕','اسبريسو':'☕','بنزين':'⛽','وقود':'⛽','غاز':'⛽','سوبرماركت':'🛒','بقالة':'🛒','تسوق':'🛍️','مطعم':'🍔','اكل':'🍔','طعام':'🍔','فطور':'🥐','عشاء':'🌮','غداء':'🥗','دواء':'💊','صيدلية':'💊','طبيب':'🏥','مستشفى':'🏥','إيجار':'🏠','ايجار':'🏠','كهرباء':'💡','ماء':'💧','انترنت':'📡','هاتف':'📱','جوال':'📱','شحن':'🔋','مواصلات':'🚌','تاكسي':'🚕','أوبر':'🚕','كريم':'🚕','حلاق':'💇','صالون':'💇','ملابس':'👗','أحذية':'👟','كتب':'📚','قرطاسية':'✏️','تعليم':'🎓','رياضة':'🏋️','جيم':'🏋️','سينما':'🎬','ترفيه':'🎮','هدايا':'🎁','سفر':'✈️','فندق':'🏨','مشاوير':'🚗','صيانة':'🔧','أقساط':'💳','اشتراكات':'🔄','مدرسة':'🎒','تأمين':'🛡️'};
+const ICON_MAP={
+  'قهوة':'☕','كافيه':'☕','كافي':'☕','اسبريسو':'☕','كابتشينو':'☕','لاتيه':'☕','نسكافيه':'☕',
+  'بنزين':'⛽','وقود':'⛽','غاز':'⛽','ديزل':'⛽',
+  'سوبرماركت':'🛒','بقالة':'🛒','هايبر':'🛒','ارض':'🛒',
+  'تسوق':'🛍️','شوبينج':'🛍️',
+  'مطعم':'🍔','اكل':'🍔','طعام':'🍔','أكل':'🍔','مأكولات':'🍔','وجبة':'🍔','ساندوتش':'🥪','برجر':'🍔','شاورما':'🌯','كبسة':'🍚','مندي':'🍚',
+  'فطور':'🥐','فطار':'🥐','بريك فاست':'🥐',
+  'عشاء':'🌮','غداء':'🥗','سلطة':'🥗',
+  'بيتزا':'🍕','بيتزه':'🍕',
+  'حلويات':'🍰','كيك':'🍰','آيس كريم':'🍦','ايس كريم':'🍦',
+  'عصير':'🧃','مشروبات':'🧃','ماء':'💧','كولا':'🥤',
+  'دواء':'💊','صيدلية':'💊','دوا':'💊',
+  'طبيب':'🏥','مستشفى':'🏥','عيادة':'🏥','تحاليل':'🩺','اشعة':'🩻',
+  'إيجار':'🏠','ايجار':'🏠','سكن':'🏠','شقة':'🏠',
+  'كهرباء':'💡','ضوء':'💡',
+  'ماء':'💧','فاتورة ماء':'💧',
+  'انترنت':'📡','نت':'📡','واي فاي':'📡','wifi':'📡',
+  'هاتف':'📱','جوال':'📱','موبايل':'📱','شحن':'🔋','باقة':'📱',
+  'مواصلات':'🚌','باص':'🚌','حافلة':'🚌',
+  'تاكسي':'🚕','أوبر':'🚕','uber':'🚕','كريم':'🚕','careem':'🚕',
+  'سيارة':'🚗','مشاوير':'🚗','بارك':'🅿️',
+  'صيانة':'🔧','إصلاح':'🔧',
+  'حلاق':'💇','صالون':'💇','حلق':'💇','مزين':'💇',
+  'ملابس':'👗','ثياب':'👗','بنطال':'👖','قميص':'👕','عباية':'👘',
+  'أحذية':'👟','احذية':'👟','حذاء':'👟',
+  'كتب':'📚','كتاب':'📚','قرطاسية':'✏️','ادوات مكتبية':'✏️',
+  'تعليم':'🎓','مدرسة':'🎒','جامعة':'🎓','دورة':'🎓',
+  'رياضة':'🏋️','جيم':'🏋️','gym':'🏋️','نادي':'🏋️','سباحة':'🏊',
+  'سينما':'🎬','فيلم':'🎬','مسرح':'🎭',
+  'ترفيه':'🎮','ألعاب':'🎮','games':'🎮',
+  'هدايا':'🎁','هدية':'🎁',
+  'سفر':'✈️','طيران':'✈️','تذكرة':'✈️',
+  'فندق':'🏨','اوتيل':'🏨',
+  'أقساط':'💳','قسط':'💳','بنك':'🏦',
+  'اشتراكات':'🔄','نتفليكس':'🎬','سبوتيفاي':'🎵',
+  'تأمين':'🛡️','بيمة':'🛡️',
+  'كلاب':'🐶','قطط':'🐱','حيوانات':'🐾',
+  'زهور':'🌺','نباتات':'🌿',
+  'نظافة':'🧹','تنظيف':'🧹',
+  'غسيل':'👕','مغسلة':'👕',
+  'كشري':'🍚','مكرونة':'🍝'
+};
 const ICONS_DEF=['🛒','⛽','☕','🍔','💊','🏠','🎮','👗','📱','🚌','💇','🎓','🍕','🛵','💡','🛍️'];
-function getIcon(name){ for(let k in ICON_MAP) if(name.includes(k)) return ICON_MAP[k]; return ICONS_DEF[name.charCodeAt(0)%ICONS_DEF.length]; }
+const ICON_PICKER_LIST=[
+  '☕','🍔','🍕','🥗','🌮','🥐','🧃','🥤','🍦','🍰','🥩','🍳','🧆','🍚','🌯','🥪','🍝',
+  '⛽','🚗','🚕','🚌','✈️','🛵','🚲','🅿️','🏎️',
+  '🛒','🛍️','👗','👟','👜','👕','👖','👘',
+  '💊','🏥','🩺','🩻','🧴','💉',
+  '🏠','💡','💧','🔌','📡','🔧','🛠️','🏗️',
+  '🎮','🎬','🎵','🎸','🎭','🎳','⚽','🏋️','🎁','🎯','🏊','🏄',
+  '📚','🎓','✏️','📖','🖥️','🎒',
+  '💳','💰','🏦','📊','🛡️','🔄',
+  '📱','🔋','💇','✂️','🐾','🌺','🌿','🧹','🌙','⭐','❤️','🔥','💎','🎪'
+];
+let _customIcons={};
+let _iconPickerTarget='';
+function loadCustomIcons(){
+  if(!currentGroupId) return;
+  _customIcons=JSON.parse(localStorage.getItem(`icons_${currentGroupId}`)||'{}');
+}
+function saveCustomIcon(name,icon){
+  _customIcons[name]=icon;
+  localStorage.setItem(`icons_${currentGroupId}`,JSON.stringify(_customIcons));
+}
+function getIcon(name){
+  if(_customIcons[name]) return _customIcons[name];
+  for(let k in ICON_MAP) if(name.includes(k)) return ICON_MAP[k];
+  return ICONS_DEF[name.charCodeAt(0)%ICONS_DEF.length];
+}
+function openIconPicker(name){
+  _iconPickerTarget=name;
+  document.getElementById('iconPickerName').textContent=`الفئة: ${name}`;
+  const grid=document.getElementById('iconPickerGrid');
+  grid.innerHTML=ICON_PICKER_LIST.map(ic=>
+    `<button onclick="pickIcon('${ic}')" style="width:44px;height:44px;font-size:22px;background:var(--card);border:1px solid var(--border);border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .1s" onmousedown="this.style.transform='scale(.85)'" onmouseup="this.style.transform='scale(1)'">${ic}</button>`
+  ).join('');
+  document.getElementById('iconPickerOverlay').classList.add('open');
+}
+function pickIcon(icon){
+  if(!_iconPickerTarget) return;
+  saveCustomIcon(_iconPickerTarget,icon);
+  closeSheet('iconPickerOverlay');
+  renderHome();
+  renderFixed();
+}
+function resetCatIcon(){
+  if(!_iconPickerTarget) return;
+  delete _customIcons[_iconPickerTarget];
+  localStorage.setItem(`icons_${currentGroupId}`,JSON.stringify(_customIcons));
+  closeSheet('iconPickerOverlay');
+  renderHome();
+  renderFixed();
+}
 const COLORS=['#f5a623','#e8441a','#3ecfcf','#a259ff','#22c55e','#ec4899','#f59e0b','#6366f1'];
 function catColor(idx){ return COLORS[idx%COLORS.length]; }
 
@@ -1555,6 +1657,7 @@ function renderHome(){
 
   // cats list — اليوم فقط + المثبّتات دائماً
   loadPinnedCats();
+  loadCustomIcons();
   const list=document.getElementById('expList');
   [...list.querySelectorAll('.exp-card')].forEach(e=>e.remove());
   const sortedWithData=Object.entries(todayCats).sort((a,b)=>b[1].amount-a[1].amount);
@@ -1576,7 +1679,11 @@ function renderHome(){
     card.dataset.c=i%8;
     card.setAttribute('onclick',`openCatDetail('${name.replace(/'/g,"\\'")}')`)
     card.innerHTML=`
-      <div class="ec-icon" style="position:relative">${getIcon(name)}${isPinned?'<span style="position:absolute;top:-4px;right:-4px;font-size:9px">📌</span>':''}</div>
+      <div class="ec-icon" style="position:relative;cursor:pointer" onclick="event.stopPropagation();openIconPicker('${name.replace(/'/g,"\\'")}')">
+        ${getIcon(name)}
+        <span style="position:absolute;bottom:-3px;left:-3px;font-size:9px;background:var(--surface3);border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center">✏️</span>
+        ${isPinned?'<span style="position:absolute;top:-4px;right:-4px;font-size:9px">📌</span>':''}
+      </div>
       <div class="ec-body">
         <div class="ec-name">${name}</div>
         <div class="ec-meta">
@@ -1768,32 +1875,73 @@ function openExp5DayDetail(yr,mo,start,end,safeMk){
   document.getElementById('exp5DayOverlay').classList.add('open');
 }
 
+let _dayDetailSafeDayStr='';
+let _dayDetailSafeMk='';
 function openExpDayDetail(safeDayStr,safeMk){
-  const mk=decodeURIComponent(safeMk);
-  const ds=decodeURIComponent(safeDayStr);
+  _dayDetailSafeDayStr=safeDayStr;
+  _dayDetailSafeMk=safeMk;
+  _renderExpDayDetail();
+  document.getElementById('expDayDetailOverlay').classList.add('open');
+}
+function _renderExpDayDetail(){
+  const mk=decodeURIComponent(_dayDetailSafeMk);
+  const ds=decodeURIComponent(_dayDetailSafeDayStr);
   const logs=_groupExpenses.filter(l=>getLogPeriodKey(l.ts)===mk&&new Date(l.ts).toDateString()===ds);
-  const cats=computeCatsFromLogs(logs);
   const total=logs.reduce((s,l)=>s+l.amount,0);
   const d=new Date(logs[0]?.ts||Date.now());
   const dateLabel=d.toLocaleDateString('ar-SA-u-ca-gregory',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   document.getElementById('expDayDetailTitle').textContent=`📅 ${dateLabel}`;
   document.getElementById('expDayDetailTotal').textContent=`${total.toFixed(2)} ر.س`;
-  const sorted=Object.entries(cats).sort((a,b)=>b[1].amount-a[1].amount);
+  loadPinnedCats();
+  loadCustomIcons();
+  // group by category, show each group with its entries + pin button
+  const catMap={};
+  logs.forEach(l=>{
+    if(!catMap[l.name]) catMap[l.name]={logs:[],amount:0};
+    catMap[l.name].logs.push(l);
+    catMap[l.name].amount+=l.amount;
+  });
+  const sorted=Object.entries(catMap).sort((a,b)=>b[1].amount-a[1].amount);
   document.getElementById('expDayDetailContent').innerHTML=sorted.map(([name,data],i)=>{
+    const isPinned=_pinnedCats.includes(name);
     const pct=total>0?((data.amount/total)*100).toFixed(1):0;
-    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
-      <div style="font-size:20px">${getIcon(name)}</div>
-      <div style="flex:1">
-        <div style="font-weight:700;font-size:13px">${name}</div>
-        <div style="font-size:11px;color:var(--text2)">${data.count} إدخال — ${pct}%</div>
-        <div style="height:4px;background:var(--surface3);border-radius:2px;margin-top:4px">
-          <div style="height:4px;width:${pct}%;background:${catColor(i)};border-radius:2px"></div>
+    const entries=data.logs.sort((a,b)=>b.ts-a.ts).map(l=>{
+      const t=new Date(l.ts);
+      const timeStr=t.toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0 5px 4px;border-bottom:1px dashed var(--border)">
+        <span style="font-size:11px;color:var(--text2)">🕐 ${timeStr}</span>
+        <span style="font-size:12px;font-weight:700;color:${catColor(i)}">${l.amount.toFixed(2)} ر.س</span>
+      </div>`;
+    }).join('');
+    return `<div style="border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="font-size:20px">${getIcon(name)}</div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:13px">${name}</div>
+          <div style="font-size:11px;color:var(--text2)">${data.logs.length} إدخال — ${pct}%</div>
+          <div style="height:3px;background:var(--surface3);border-radius:2px;margin-top:4px">
+            <div style="height:3px;width:${pct}%;background:${catColor(i)};border-radius:2px"></div>
+          </div>
+        </div>
+        <div style="text-align:left">
+          <div style="font-weight:800;font-size:14px;color:${catColor(i)}">${data.amount.toFixed(2)}<small style="font-size:10px;color:var(--text2)"> ر.س</small></div>
+          <button onclick="pinFromArchive('${name.replace(/'/g,"\\'")}');_renderExpDayDetail()" style="margin-top:4px;background:${isPinned?'rgba(245,166,35,.15)':'var(--surface2)'};border:1px solid ${isPinned?'rgba(245,166,35,.5)':'var(--border)'};color:${isPinned?'#f5a623':'var(--text2)'};font-size:10px;padding:3px 7px;border-radius:6px;cursor:pointer;white-space:nowrap">
+            ${isPinned?'📌 مثبّت':'📍 تثبيت'}
+          </button>
         </div>
       </div>
-      <div style="font-weight:800;font-size:14px;color:${catColor(i)}">${data.amount.toFixed(2)}<small style="font-size:10px;color:var(--text2)"> ر.س</small></div>
+      ${entries}
     </div>`;
   }).join('');
-  document.getElementById('expDayDetailOverlay').classList.add('open');
+}
+function pinFromArchive(name){
+  loadPinnedCats();
+  if(!_pinnedCats.includes(name)){
+    _pinnedCats.push(name);
+    localStorage.setItem(`pins_${currentGroupId}`,JSON.stringify(_pinnedCats));
+    toast(`تم تثبيت "${name}" 📌`,'ok');
+    renderHome();
+  }
 }
 
 // ══════════════════════════════════════════
@@ -1856,6 +2004,7 @@ function openCatDetail(name){
 let currentPayFixedId=null;
 
 async function renderFixed(){
+  loadCustomIcons();
   await loadGroupCommitmentsData();
   const mk=getCurrentMonthKey();
   const totalPaid=_groupCommits.filter(c=>c.is_paid).reduce((s,c)=>s+(c.paid_amount||0),0);
@@ -1881,7 +2030,10 @@ async function renderFixed(){
     const bgt=cat.budget||0;
     const bgtBarHtml=bgt>0?buildBgtBar(paidAmt,bgt,paid):'';
     card.innerHTML=`
-      <div class="fc-icon">${getIcon(cat.name)}</div>
+      <div class="fc-icon" style="position:relative;cursor:pointer" onclick="event.stopPropagation();openIconPicker('${cat.name.replace(/'/g,"\\'")}')">
+        ${getIcon(cat.name)}
+        <span style="position:absolute;bottom:-3px;left:-3px;font-size:9px;background:var(--surface3);border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center">✏️</span>
+      </div>
       <div class="fc-body">
         <div class="fc-month-label">${getMonthLabel(mk)}</div>
         <div class="fc-name">${cat.name} <span style="font-size:9px;color:var(--text2);font-weight:400;background:var(--surface3);padding:1px 5px;border-radius:4px;vertical-align:middle">${catType==='list'?'📋 قائمة':'📝 عادي'}</span></div>
