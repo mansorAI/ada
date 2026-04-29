@@ -5017,7 +5017,7 @@ function buildFinancialContext(){
   const totalCommit = (_groupCommits||[]).reduce((s,c)=>s+Number(c.paid_amount||c.amount||0),0);
 
   // أيام الشهر
-  const monthStart = _groupSettings?.month_start || 1;
+  const monthStart = DB.monthStart ? new Date(DB.monthStart).getDate() : 1;
   const daysInMonth = 30;
   const dayOfMonth = now.getDate();
   const daysElapsed = Math.max(1, dayOfMonth < monthStart ? dayOfMonth + daysInMonth - monthStart : dayOfMonth - monthStart + 1);
