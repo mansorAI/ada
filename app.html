@@ -495,6 +495,15 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       </div>
     </div>
   </div>
+  <!-- savings goals section -->
+  <div id="savingsSection" style="padding:10px 14px 0">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:0.82rem;font-weight:700;color:var(--text)">🎯 أهداف الادخار</div>
+      <button onclick="openAddGoalOverlay()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:4px 12px;font-size:0.75rem;font-family:'Tajawal',sans-serif;cursor:pointer;font-weight:600">+ هدف</button>
+    </div>
+    <div id="savingsGoalsList" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none"></div>
+  </div>
+
   <!-- chat messages area -->
   <div id="aiChatArea" style="padding:16px 16px 140px;min-height:60vh">
     <!-- welcome state -->
@@ -1252,6 +1261,55 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 
     <button class="btn-primary" style="margin-top:16px" onclick="sendBuyPlan()">🤖 حلّل وضعي</button>
     <button class="btn-muted" style="margin-top:6px" onclick="closeSheet('buyPlanOverlay')">إغلاق</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: ADD GOAL ══════════ -->
+<div class="overlay" id="addGoalOverlay" onclick="bgClose(event,'addGoalOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title" id="addGoalTitle">🎯 هدف ادخار جديد</div>
+    <div class="inp-wrap">
+      <div class="inp-lbl">الأيقونة</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px" id="goalIconPicker">
+        <span onclick="selectGoalIcon(this,'🎯')" style="font-size:1.4rem;cursor:pointer;padding:4px;border-radius:8px;border:2px solid var(--accent)">🎯</span>
+        <span onclick="selectGoalIcon(this,'🚗')" style="font-size:1.4rem;cursor:pointer;padding:4px;border-radius:8px;border:2px solid transparent">🚗</span>
+        <span onclick="selectGoalIcon(this,'📱')" style="font-size:1.4rem;cursor:pointer;padding:4px;border-radius:8px;border:2px solid transparent">📱</span>
+        <span onclick="selectGoalIcon(this,'💻')" style="font-size:1.4rem;cursor:pointer;padding:4px;border-radius:8px;border:2px solid transparent">💻</span>
+        <span onclick="selectGoalIcon(this,'🏠')" style="font-size:1.4rem;cursor:pointer;padding:4px;border-radius:8px;border:2px solid transparent">🏠</span>
+        <span onclick="selectGoalIcon(this,'✈️')" style="font-size:1.4rem;cursor:pointer;padding:4px;border-radius:8px;border:2px solid transparent">✈️</span>
+        <span onclick="selectGoalIcon(this,'💍')" style="font-size:1.4rem;cursor:pointer;padding:4px;border-radius:8px;border:2px solid transparent">💍</span>
+        <span onclick="selectGoalIcon(this,'🎓')" style="font-size:1.4rem;cursor:pointer;padding:4px;border-radius:8px;border:2px solid transparent">🎓</span>
+        <span onclick="selectGoalIcon(this,'🛋️')" style="font-size:1.4rem;cursor:pointer;padding:4px;border-radius:8px;border:2px solid transparent">🛋️</span>
+        <span onclick="selectGoalIcon(this,'💰')" style="font-size:1.4rem;cursor:pointer;padding:4px;border-radius:8px;border:2px solid transparent">💰</span>
+        <span onclick="selectGoalIcon(this,'🎮')" style="font-size:1.4rem;cursor:pointer;padding:4px;border-radius:8px;border:2px solid transparent">🎮</span>
+        <span onclick="selectGoalIcon(this,'🌴')" style="font-size:1.4rem;cursor:pointer;padding:4px;border-radius:8px;border:2px solid transparent">🌴</span>
+      </div>
+    </div>
+    <div class="inp-wrap">
+      <div class="inp-lbl">اسم الهدف</div>
+      <input type="text" id="goalName" class="inp" placeholder="مثال: جوال، رحلة، سيارة...">
+    </div>
+    <div class="inp-wrap">
+      <div class="inp-lbl">المبلغ الكلي (ريال)</div>
+      <input type="number" id="goalTarget" class="inp" placeholder="3000" oninput="updateGoalCalc()">
+    </div>
+    <div class="inp-wrap">
+      <div class="inp-lbl">المبلغ الشهري (ريال)</div>
+      <input type="number" id="goalMonthly" class="inp" placeholder="500" oninput="updateGoalCalc()">
+    </div>
+    <div id="goalMonthsCalc" style="display:none;background:rgba(108,99,255,0.1);border:1px solid rgba(108,99,255,0.3);border-radius:10px;padding:10px;font-size:0.8rem;color:var(--accent);text-align:center;margin-bottom:10px"></div>
+    <button class="btn-primary" onclick="saveGoal()">💾 حفظ الهدف</button>
+    <button class="btn-muted" style="margin-top:6px" onclick="closeSheet('addGoalOverlay')">إغلاق</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: GOAL DETAIL ══════════ -->
+<div class="overlay" id="goalDetailOverlay" onclick="bgClose(event,'goalDetailOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div id="goalDetailContent"></div>
+    <button class="btn-muted" style="margin-top:6px" onclick="closeSheet('goalDetailOverlay')">إغلاق</button>
   </div>
 </div>
 
@@ -2410,7 +2468,7 @@ function goPage(p){
   document.getElementById('mainNav').style.display=subPages.includes(p)?'none':'flex';
   if(p==='tasks'){const tl=document.getElementById('tasksDateLabel');if(tl)tl.textContent=document.getElementById('dateLabel').textContent;}
   if(p==='daily'){renderHome();const dl=document.getElementById('dailyDateLabel');const sl=document.getElementById('dateLabel');if(dl&&sl)dl.textContent=sl.textContent;}
-  if(p==='home' && currentUser){loadAiRemaining();}
+  if(p==='home' && currentUser){loadAiRemaining();loadSavingsData().then(renderSavingsGoals);}
   window.scrollTo(0,0);
 }
 
@@ -2607,6 +2665,11 @@ function populateCatSelects(){
 let currentCommitId=null;
 let _groupCommits=[];
 let _allGroupCommits=[];
+let _savingsGoals=[];
+let _savingsContribs=[];
+let _currentGoalId=null;
+let _currentDetailGoalId=null;
+let _goalSelectedIcon='🎯';
 let _commitItemsCache=[];
 let _groupApiKey='';
 let _groupBudgetEntries=[];
@@ -4988,6 +5051,221 @@ initAuth();
 // ══════════════════════════════════════════
 //  AI CHAT
 // ══════════════════════════════════════════
+//  SAVINGS GOALS
+// ══════════════════════════════════════════
+async function loadSavingsData(){
+  if(!currentGroupId) return;
+  const {data:goals} = await sb.from('savings_goals')
+    .select('*').eq('group_id',currentGroupId).eq('is_completed',false)
+    .order('created_at',{ascending:true});
+  _savingsGoals = goals||[];
+  if(!_savingsGoals.length){ _savingsContribs=[]; return; }
+  const mk = getCurrentMonthKey();
+  const {data:contribs} = await sb.from('savings_contributions')
+    .select('*').in('goal_id',_savingsGoals.map(g=>g.id)).eq('month_key',mk);
+  _savingsContribs = contribs||[];
+}
+
+function getSavingsMonthlyTotal(){
+  return _savingsGoals.reduce((s,g)=>s+Number(g.monthly_amount),0);
+}
+
+function renderSavingsGoals(){
+  const list = document.getElementById('savingsGoalsList');
+  if(!list) return;
+  if(!_savingsGoals.length){
+    list.innerHTML=`<div style="font-size:0.75rem;color:var(--text2);padding:2px 0">لا توجد أهداف بعد</div>`;
+    return;
+  }
+  const mk = getCurrentMonthKey();
+  list.innerHTML = _savingsGoals.map(g=>{
+    const pct = Math.min(100,Math.round((g.saved_amount/g.target_amount)*100));
+    const remaining = Math.max(0, g.target_amount - g.saved_amount);
+    const monthsLeft = g.monthly_amount>0 ? Math.ceil(remaining/g.monthly_amount) : '∞';
+    const contrib = _savingsContribs.find(c=>c.goal_id===g.id && c.month_key===mk);
+    const needsConfirm = !contrib || contrib.status==='pending';
+    return `<div onclick="openGoalDetail('${g.id}')" style="min-width:155px;background:var(--card);border:1px solid ${needsConfirm?'var(--accent)':'var(--border)'};border-radius:12px;padding:10px 12px;cursor:pointer;flex-shrink:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:0.82rem;font-weight:700">${g.icon} ${g.name}</div>
+        ${needsConfirm?'<div style="width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0"></div>':''}
+      </div>
+      <div style="font-size:0.68rem;color:var(--text2);margin-bottom:5px">${Number(g.saved_amount).toFixed(0)} / ${Number(g.target_amount).toFixed(0)} ر.س</div>
+      <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:5px">
+        <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2))"></div>
+      </div>
+      <div style="font-size:0.65rem;color:var(--text2)">${pct}% • ${monthsLeft} شهر</div>
+    </div>`;
+  }).join('');
+}
+
+function selectGoalIcon(el, icon){
+  _goalSelectedIcon = icon;
+  document.querySelectorAll('#goalIconPicker span').forEach(s=>s.style.borderColor='transparent');
+  el.style.borderColor = 'var(--accent)';
+}
+
+function updateGoalCalc(){
+  const target = parseFloat(document.getElementById('goalTarget')?.value)||0;
+  const monthly = parseFloat(document.getElementById('goalMonthly')?.value)||0;
+  const el = document.getElementById('goalMonthsCalc');
+  if(!el) return;
+  if(target>0 && monthly>0){
+    const months = Math.ceil(target/monthly);
+    const d = new Date(); d.setMonth(d.getMonth()+months);
+    const dateStr = d.toLocaleDateString('ar-SA-u-ca-gregory',{month:'long',year:'numeric'});
+    el.textContent = `⏱ ${months} شهر — تصل للهدف في ${dateStr}`;
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function openAddGoalOverlay(goalId=null){
+  _currentGoalId = goalId;
+  const g = goalId ? _savingsGoals.find(x=>x.id===goalId) : null;
+  document.getElementById('addGoalTitle').textContent = goalId ? '✏️ تعديل الهدف' : '🎯 هدف ادخار جديد';
+  document.getElementById('goalName').value = g?.name||'';
+  document.getElementById('goalTarget').value = g?.target_amount||'';
+  document.getElementById('goalMonthly').value = g?.monthly_amount||'';
+  _goalSelectedIcon = g?.icon||'🎯';
+  document.querySelectorAll('#goalIconPicker span').forEach(s=>{
+    s.style.borderColor = s.textContent.trim()===_goalSelectedIcon ? 'var(--accent)' : 'transparent';
+  });
+  updateGoalCalc();
+  document.getElementById('addGoalOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('goalName').focus(),350);
+}
+
+async function saveGoal(){
+  const name = document.getElementById('goalName').value.trim();
+  const target = parseFloat(document.getElementById('goalTarget').value);
+  const monthly = parseFloat(document.getElementById('goalMonthly').value);
+  const icon = _goalSelectedIcon||'🎯';
+  if(!name) return toast('أدخل اسم الهدف','bad');
+  if(!target||target<=0) return toast('أدخل المبلغ الكلي','bad');
+  if(!monthly||monthly<=0) return toast('أدخل المبلغ الشهري','bad');
+  if(_currentGoalId){
+    const {error} = await sb.from('savings_goals').update({name,target_amount:target,monthly_amount:monthly,icon}).eq('id',_currentGoalId);
+    if(error) return toast('خطأ: '+error.message,'bad');
+    toast('✅ تم التعديل','ok');
+  } else {
+    const {error} = await sb.from('savings_goals').insert({group_id:currentGroupId,name,target_amount:target,monthly_amount:monthly,icon,saved_amount:0});
+    if(error) return toast('خطأ: '+error.message,'bad');
+    toast('✅ تم إضافة الهدف','ok');
+  }
+  closeSheet('addGoalOverlay');
+  await loadSavingsData();
+  renderSavingsGoals();
+}
+
+function openGoalDetail(goalId){
+  _currentDetailGoalId = goalId;
+  renderGoalDetail();
+  document.getElementById('goalDetailOverlay').classList.add('open');
+}
+
+function renderGoalDetail(){
+  const g = _savingsGoals.find(x=>x.id===_currentDetailGoalId);
+  if(!g) return;
+  const mk = getCurrentMonthKey();
+  const contrib = _savingsContribs.find(c=>c.goal_id===g.id && c.month_key===mk);
+  const pct = Math.min(100,Math.round((g.saved_amount/g.target_amount)*100));
+  const remaining = Math.max(0, g.target_amount - g.saved_amount);
+  const monthsLeft = g.monthly_amount>0 ? Math.ceil(remaining/g.monthly_amount) : null;
+  const d = new Date(); if(monthsLeft) d.setMonth(d.getMonth()+monthsLeft);
+  const dateStr = monthsLeft ? d.toLocaleDateString('ar-SA-u-ca-gregory',{month:'long',year:'numeric'}) : '—';
+  const confirmHTML = contrib?.status==='confirmed'
+    ? `<div style="background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);border-radius:10px;padding:10px;text-align:center;font-size:0.82rem;color:#4caf50">✅ وفّرت ${Number(contrib.actual_amount).toFixed(0)} ر.س هذا الشهر</div>`
+    : contrib?.status==='skipped'
+    ? `<div style="background:rgba(255,101,132,0.1);border:1px solid rgba(255,101,132,0.3);border-radius:10px;padding:10px;text-align:center;font-size:0.82rem;color:var(--accent2);margin-bottom:8px">⏸️ تم التخطي هذا الشهر</div>
+       <button class="btn-muted" onclick="confirmSavingsMonth('${g.id}','confirmed',${g.monthly_amount})">↩️ تراجع — وفّرت فعلاً</button>`
+    : contrib?.status==='partial'
+    ? `<div style="background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);border-radius:10px;padding:10px;text-align:center;font-size:0.82rem;color:#4caf50">⚡ وفّرت جزئياً ${Number(contrib.actual_amount).toFixed(0)} ر.س هذا الشهر</div>`
+    : `<div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn-primary" onclick="confirmSavingsMonth('${g.id}','confirmed',${g.monthly_amount})">✅ نعم، حوّلت ${Number(g.monthly_amount).toFixed(0)} ر.س</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="number" id="partialAmt" class="inp" placeholder="مبلغ جزئي..." style="flex:1">
+          <button class="btn-muted" style="white-space:nowrap" onclick="confirmSavingsPartial('${g.id}')">جزئي ✔</button>
+        </div>
+        <button class="btn-muted" onclick="confirmSavingsMonth('${g.id}','skipped',0)">⏸️ مو هالشهر</button>
+      </div>`;
+  document.getElementById('goalDetailContent').innerHTML = `
+    <div style="text-align:center;margin-bottom:14px">
+      <div style="font-size:2.2rem;margin-bottom:4px">${g.icon}</div>
+      <div style="font-weight:700;font-size:1.05rem">${g.name}</div>
+      <div style="font-size:0.78rem;color:var(--text2);margin-top:4px">${Number(g.saved_amount).toFixed(2)} / ${Number(g.target_amount).toFixed(2)} ر.س</div>
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text2);margin-bottom:5px"><span>التقدم</span><span>${pct}%</span></div>
+      <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2))"></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+      <div style="background:var(--bg);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:0.65rem;color:var(--text2)">الشهري</div>
+        <div style="font-weight:700;color:var(--accent)">${Number(g.monthly_amount).toFixed(0)} ر.س</div>
+      </div>
+      <div style="background:var(--bg);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:0.65rem;color:var(--text2)">متبقي</div>
+        <div style="font-weight:700">${remaining.toFixed(0)} ر.س</div>
+      </div>
+      <div style="background:var(--bg);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:0.65rem;color:var(--text2)">أشهر متبقية</div>
+        <div style="font-weight:700">${monthsLeft||'—'}</div>
+      </div>
+      <div style="background:var(--bg);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:0.65rem;color:var(--text2)">الوصول المتوقع</div>
+        <div style="font-weight:700;font-size:0.7rem">${dateStr}</div>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:14px;margin-bottom:14px">
+      <div style="font-size:0.82rem;font-weight:700;margin-bottom:10px">💳 هل وفّرت هذا الشهر؟</div>
+      ${confirmHTML}
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-muted" style="flex:1" onclick="closeSheet('goalDetailOverlay');openAddGoalOverlay('${g.id}')">✏️ تعديل</button>
+      <button class="btn-muted" style="flex:1;color:var(--accent2)" onclick="deleteGoal('${g.id}')">🗑 حذف</button>
+    </div>`;
+}
+
+async function confirmSavingsMonth(goalId, status, actualAmount){
+  const mk = getCurrentMonthKey();
+  const g = _savingsGoals.find(x=>x.id===goalId);
+  if(!g) return;
+  const contrib = _savingsContribs.find(c=>c.goal_id===goalId && c.month_key===mk);
+  if(contrib){
+    await sb.from('savings_contributions').update({status,actual_amount:actualAmount,confirmed_at:new Date().toISOString()}).eq('id',contrib.id);
+  } else {
+    await sb.from('savings_contributions').insert({goal_id:goalId,group_id:currentGroupId,month_key:mk,planned_amount:g.monthly_amount,actual_amount:actualAmount,status,confirmed_at:new Date().toISOString()});
+  }
+  if(status==='confirmed'||status==='partial'){
+    const newSaved = Number(g.saved_amount) + actualAmount;
+    const done = newSaved >= g.target_amount;
+    await sb.from('savings_goals').update({saved_amount:newSaved,is_completed:done,completed_at:done?new Date().toISOString():null}).eq('id',goalId);
+    if(done) toast(`🎉 تهانينا! أكملت هدف "${g.name}"!`,'ok');
+  }
+  await loadSavingsData();
+  renderSavingsGoals();
+  renderGoalDetail();
+}
+
+async function confirmSavingsPartial(goalId){
+  const amt = parseFloat(document.getElementById('partialAmt')?.value)||0;
+  if(amt<=0) return toast('أدخل المبلغ','bad');
+  await confirmSavingsMonth(goalId,'partial',amt);
+}
+
+async function deleteGoal(goalId){
+  if(!confirm('حذف هذا الهدف نهائياً؟')) return;
+  await sb.from('savings_goals').delete().eq('id',goalId);
+  closeSheet('goalDetailOverlay');
+  await loadSavingsData();
+  renderSavingsGoals();
+  toast('تم الحذف','ok');
+}
+
+// ══════════════════════════════════════════
 const AI_MAX_DAILY = 15;
 
 function buildFinancialContext(){
@@ -5017,7 +5295,7 @@ function buildFinancialContext(){
   const totalCommit = (_groupCommits||[]).reduce((s,c)=>s+Number(c.paid_amount||c.amount||0),0);
 
   // أيام الشهر
-  const monthStart = DB.monthStart ? new Date(DB.monthStart).getDate() : 1;
+  const monthStart = DB.monthStart || 1;
   const daysInMonth = 30;
   const dayOfMonth = now.getDate();
   const daysElapsed = Math.max(1, dayOfMonth < monthStart ? dayOfMonth + daysInMonth - monthStart : dayOfMonth - monthStart + 1);
@@ -5025,8 +5303,20 @@ function buildFinancialContext(){
   const dailyAvg = daysElapsed > 0 ? totalExp / daysElapsed : 0;
   const projectedEnd = dailyAvg * daysInMonth;
 
-  // المال الحر الفعلي (بعد الالتزامات)
-  const freeMoney = budget - totalCommit - totalExp;
+  // أهداف الادخار
+  const savingsMonthly = getSavingsMonthlyTotal();
+  const savingsLines = _savingsGoals.length
+    ? _savingsGoals.map(g=>{
+        const pct = Math.min(100,Math.round((g.saved_amount/g.target_amount)*100));
+        const mk = getCurrentMonthKey();
+        const contrib = _savingsContribs.find(c=>c.goal_id===g.id&&c.month_key===mk);
+        const status = contrib ? contrib.status : 'pending';
+        return `- ${g.icon} ${g.name}: وفّر ${Number(g.saved_amount).toFixed(0)} من ${Number(g.target_amount).toFixed(0)} ر.س (${pct}%) — شهري: ${Number(g.monthly_amount).toFixed(0)} ر.س — هذا الشهر: ${status==='confirmed'?'✅ تم':status==='skipped'?'⏸ تخطى':status==='partial'?'⚡ جزئي':'⏳ لم يؤكد'}`;
+      }).join('\n')
+    : '- لا توجد أهداف';
+
+  // المال الحر الفعلي (بعد الالتزامات والادخار)
+  const freeMoney = budget - totalCommit - totalExp - savingsMonthly;
 
   // مصروف اليوم
   const todayStr = now.toDateString();
@@ -5064,7 +5354,11 @@ ${expLines}
 === الالتزامات الشهرية ===
 ${commitLines}
 
-${prevMonths.length ? `=== مقارنة بالأشهر السابقة ===\n${prevMonths.join('\n')}` : ''}`;
+${prevMonths.length ? `=== مقارنة بالأشهر السابقة ===\n${prevMonths.join('\n')}` : ''}
+
+=== أهداف الادخار ===
+${savingsLines}
+إجمالي الادخار الشهري المخطط: ${savingsMonthly.toFixed(2)} ر.س`;
 }
 
 async function loadAiRemaining(){
