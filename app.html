@@ -1235,6 +1235,21 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
+<!-- ══════════ OVERLAY: EXPENSE NOTE ══════════ -->
+<div class="overlay" id="expNoteOverlay" onclick="bgClose(event,'expNoteOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title">📝 ملاحظة</div>
+    <div id="expNoteEntryLabel" style="font-size:12px;color:var(--text2);margin-bottom:10px;text-align:center"></div>
+    <textarea id="expNoteInput" class="inp" rows="4" maxlength="300" placeholder="اكتب ملاحظتك هنا..." style="resize:none;line-height:1.7"></textarea>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn-primary" style="flex:1" onclick="saveExpNote()">حفظ</button>
+      <button id="expNoteDelBtn" class="btn-muted" style="color:var(--danger)" onclick="deleteExpNote()">حذف</button>
+    </div>
+    <button class="btn-muted" style="margin-top:6px" onclick="closeSheet('expNoteOverlay')">إغلاق</button>
+  </div>
+</div>
+
 <!-- ══════════ OVERLAY: EDIT EXPENSE ══════════ -->
 <div class="overlay" id="editExpenseOverlay" onclick="bgClose(event,'editExpenseOverlay')">
   <div class="sheet">
@@ -1974,22 +1989,28 @@ function openCatDetail(name){
   if(!logs.length){
     container.innerHTML='<div class="empty" style="padding:20px"><p style="font-size:13px">لا توجد إدخالات</p></div>';
   } else {
+    loadExpNotes();
     logs.forEach(log=>{
       const d=new Date(log.ts);
       const timeStr=d.toLocaleTimeString('ar-SA-u-ca-gregory',{hour:'2-digit',minute:'2-digit'});
       const dateStr=d.toLocaleDateString('ar-SA-u-ca-gregory',{weekday:'long',month:'long',day:'numeric'});
       const canEdit=currentUserPerms.can_edit_expenses||currentUserPerms.role==='owner';
-      const li=document.createElement('div'); li.className='log-item'; li.style.cursor=canEdit?'pointer':'default';
-      if(canEdit) li.onclick=()=>openEditExpense(log.id);
+      const note=_expNotes[log.id]||'';
+      const noteLabel=`${name} — ${dateStr} ${timeStr}`;
+      const li=document.createElement('div'); li.className='log-item'; li.dataset.noteId=log.id;
       li.innerHTML=`
         <div class="log-dot" style="background:${color}"></div>
-        <div class="log-body">
+        <div class="log-body" style="cursor:${canEdit?'pointer':'default'}" onclick="${canEdit?`openEditExpense('${log.id}')`:''}" >
           <div class="log-name" style="font-size:13px">${dateStr}</div>
           <div class="log-time">${timeStr} ${log.src==='voice'?'🎙️ صوتي':'✏️ يدوي'}</div>
+          ${note?`<div id="notewrap_${log.id}" style="font-size:11px;color:var(--text2);margin-top:3px;background:var(--surface2);padding:4px 8px;border-radius:6px;border-right:2px solid var(--accent)">${note}</div>`
+                :`<div id="notewrap_${log.id}" style="font-size:11px;color:var(--text2);margin-top:3px"></div>`}
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <div class="log-amt" style="color:${color}">${log.amount.toFixed(2)} ر.س</div>
-          ${canEdit?`<span style="font-size:11px;color:var(--text2)">✏️</span>`:''}
+          <button id="notebtn_${log.id}" onclick="openExpNoteEdit('${log.id}','${noteLabel.replace(/'/g,"\\'")}')"
+            style="background:none;border:none;font-size:15px;cursor:pointer;padding:2px;color:${note?'var(--accent)':'var(--text2)'}" title="ملاحظة">💬</button>
+          ${canEdit?`<span style="font-size:11px;color:var(--text2);cursor:pointer" onclick="openEditExpense('${log.id}')">✏️</span>`:''}
         </div>`;
       container.appendChild(li);
     });
@@ -2562,6 +2583,53 @@ function togglePinCat(name){
   else _pinnedCats.push(name);
   localStorage.setItem(`pins_${currentGroupId}`,JSON.stringify(_pinnedCats));
   renderHome();
+}
+
+// ══════════════════════════════════════════
+//  EXPENSE NOTES
+// ══════════════════════════════════════════
+let _expNotes={};
+let _expNoteEditId='';
+let _expNoteEditLabel='';
+
+function loadExpNotes(){
+  if(!currentGroupId) return;
+  _expNotes=JSON.parse(localStorage.getItem(`expnotes_${currentGroupId}`)||'{}');
+}
+function openExpNoteEdit(logId,label){
+  loadExpNotes();
+  _expNoteEditId=logId;
+  _expNoteEditLabel=label;
+  const note=_expNotes[logId]||'';
+  document.getElementById('expNoteEntryLabel').textContent=label;
+  document.getElementById('expNoteInput').value=note;
+  document.getElementById('expNoteDelBtn').style.display=note?'block':'none';
+  document.getElementById('expNoteOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('expNoteInput').focus(),350);
+}
+function saveExpNote(){
+  const val=document.getElementById('expNoteInput').value.trim();
+  if(!val){deleteExpNote();return;}
+  _expNotes[_expNoteEditId]=val;
+  localStorage.setItem(`expnotes_${currentGroupId}`,JSON.stringify(_expNotes));
+  closeSheet('expNoteOverlay');
+  _refreshCatDetailNotes();
+}
+function deleteExpNote(){
+  delete _expNotes[_expNoteEditId];
+  localStorage.setItem(`expnotes_${currentGroupId}`,JSON.stringify(_expNotes));
+  closeSheet('expNoteOverlay');
+  _refreshCatDetailNotes();
+}
+function _refreshCatDetailNotes(){
+  loadExpNotes();
+  document.querySelectorAll('[data-note-id]').forEach(el=>{
+    const id=el.dataset.noteId;
+    const noteWrap=document.getElementById(`notewrap_${id}`);
+    if(noteWrap) noteWrap.textContent=_expNotes[id]||'';
+    const noteBtn=document.getElementById(`notebtn_${id}`);
+    if(noteBtn) noteBtn.style.color=_expNotes[id]?'var(--accent)':'var(--text2)';
+  });
 }
 
 function buildBgtBar(spent, budget, isPaid){
