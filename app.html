@@ -1199,10 +1199,22 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 <div class="overlay" id="exp5DayOverlay" onclick="bgClose(event,'exp5DayOverlay')">
   <div class="sheet" style="max-height:85vh;overflow-y:auto">
     <div class="sh-handle"></div>
-    <div class="sh-title" id="exp5DayTitle">📆 تفاصيل الفترة</div>
-    <div id="exp5DayTotal" style="text-align:center;font-size:22px;font-weight:900;color:var(--accent);margin-bottom:16px"></div>
+    <div class="sh-title" id="exp5DayTitle">📆 أيام الفترة</div>
+    <div id="exp5DayTotal" style="text-align:center;font-size:22px;font-weight:900;color:var(--accent);margin-bottom:4px"></div>
+    <div style="text-align:center;font-size:11px;color:var(--text2);margin-bottom:14px">اضغط على اليوم لتفاصيل مصروفاته</div>
     <div id="exp5DayContent"></div>
     <button class="btn-muted" style="margin-top:8px" onclick="closeSheet('exp5DayOverlay')">إغلاق</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: DAY DETAIL ══════════ -->
+<div class="overlay" id="expDayDetailOverlay" onclick="bgClose(event,'expDayDetailOverlay')">
+  <div class="sheet" style="max-height:85vh;overflow-y:auto">
+    <div class="sh-handle"></div>
+    <div class="sh-title" id="expDayDetailTitle">📅 مصروفات اليوم</div>
+    <div id="expDayDetailTotal" style="text-align:center;font-size:22px;font-weight:900;color:var(--accent);margin-bottom:16px"></div>
+    <div id="expDayDetailContent"></div>
+    <button class="btn-muted" style="margin-top:8px" onclick="closeSheet('expDayDetailOverlay')">إغلاق</button>
   </div>
 </div>
 
@@ -1680,21 +1692,28 @@ function openExpArchivePeriod(safeMk){
   const fiveDayMap={};
   logs.forEach(l=>{
     const d=new Date(l.ts);
+    const yr=d.getFullYear(),mo=d.getMonth();
     const day=d.getDate();
     const ps=Math.floor((day-1)/5)*5+1;
-    const daysInMonth=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+    const daysInMonth=new Date(yr,mo+1,0).getDate();
     const pe=Math.min(ps+4,daysInMonth);
-    const key=`${ps}-${pe}`;
-    if(!fiveDayMap[key]) fiveDayMap[key]={start:ps,end:pe,logs:[]};
+    const key=`${yr}-${mo}-${ps}`;
+    if(!fiveDayMap[key]) fiveDayMap[key]={yr,mo,start:ps,end:pe,logs:[]};
     fiveDayMap[key].logs.push(l);
   });
-  const fiveDaySorted=Object.entries(fiveDayMap).sort((a,b)=>b[1].start-a[1].start);
+  const fiveDaySorted=Object.entries(fiveDayMap).sort((a,b)=>{
+    const da=a[1],db=b[1];
+    if(db.yr!==da.yr) return db.yr-da.yr;
+    if(db.mo!==da.mo) return db.mo-da.mo;
+    return db.start-da.start;
+  });
   document.getElementById('expArchiveOverlayCats').innerHTML=fiveDaySorted.length
     ?fiveDaySorted.map(([key,data])=>{
         const pTotal=data.logs.reduce((s,l)=>s+l.amount,0);
-        return `<div onclick="openExp5DayDetail(${data.start},${data.end},'${safeMk}')" style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--border);cursor:pointer">
+        const moName=new Date(data.yr,data.mo,1).toLocaleDateString('ar-SA-u-ca-gregory',{month:'short'});
+        return `<div onclick="openExp5DayDetail(${data.yr},${data.mo},${data.start},${data.end},'${safeMk}')" style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--border);cursor:pointer">
           <div>
-            <div style="font-weight:700;font-size:13px">📆 أيام ${data.start}–${data.end}</div>
+            <div style="font-weight:700;font-size:13px">📆 ${moName} — أيام ${data.start}–${data.end}</div>
             <div style="font-size:11px;color:var(--text2);margin-top:2px">${data.logs.length} إدخال</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
@@ -1707,20 +1726,55 @@ function openExpArchivePeriod(safeMk){
   document.getElementById('expArchiveOverlay').classList.add('open');
 }
 
-function openExp5DayDetail(start,end,safeMk){
+function openExp5DayDetail(yr,mo,start,end,safeMk){
   const mk=decodeURIComponent(safeMk);
   const logs=_groupExpenses.filter(l=>{
     if(getLogPeriodKey(l.ts)!==mk) return false;
-    const day=new Date(l.ts).getDate();
-    return day>=start&&day<=end;
+    const d=new Date(l.ts);
+    return d.getFullYear()===yr&&d.getMonth()===mo&&d.getDate()>=start&&d.getDate()<=end;
   });
+  // group by calendar day
+  const dayMap={};
+  logs.forEach(l=>{
+    const ds=new Date(l.ts).toDateString();
+    if(!dayMap[ds]) dayMap[ds]={date:new Date(l.ts),logs:[]};
+    dayMap[ds].logs.push(l);
+  });
+  const days=Object.entries(dayMap).sort((a,b)=>b[1].date-a[1].date);
+  const total=logs.reduce((s,l)=>s+l.amount,0);
+  const moName=new Date(yr,mo,1).toLocaleDateString('ar-SA-u-ca-gregory',{month:'long'});
+  document.getElementById('exp5DayTitle').textContent=`📆 ${moName} — أيام ${start}–${end}`;
+  document.getElementById('exp5DayTotal').textContent=`${total.toFixed(2)} ر.س`;
+  document.getElementById('exp5DayContent').innerHTML=days.map(([ds,data])=>{
+    const dayTotal=data.logs.reduce((s,l)=>s+l.amount,0);
+    const dateLabel=data.date.toLocaleDateString('ar-SA-u-ca-gregory',{weekday:'short',day:'numeric',month:'numeric',year:'numeric'});
+    const safeDayStr=encodeURIComponent(ds);
+    return `<div onclick="openExpDayDetail('${safeDayStr}','${safeMk}')" style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--border);cursor:pointer">
+      <div>
+        <div style="font-weight:700;font-size:13px">📅 ${dateLabel}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px">${data.logs.length} إدخال</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="font-weight:800;font-size:15px;color:var(--accent)">${dayTotal.toFixed(2)}<small style="font-size:10px;color:var(--text2)"> ر.س</small></div>
+        <span style="color:var(--text2);font-size:18px">›</span>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('exp5DayOverlay').classList.add('open');
+}
+
+function openExpDayDetail(safeDayStr,safeMk){
+  const mk=decodeURIComponent(safeMk);
+  const ds=decodeURIComponent(safeDayStr);
+  const logs=_groupExpenses.filter(l=>getLogPeriodKey(l.ts)===mk&&new Date(l.ts).toDateString()===ds);
   const cats=computeCatsFromLogs(logs);
   const total=logs.reduce((s,l)=>s+l.amount,0);
-  const label=getMonthLabel(mk);
-  document.getElementById('exp5DayTitle').textContent=`📆 أيام ${start}–${end} — ${label}`;
-  document.getElementById('exp5DayTotal').textContent=`${total.toFixed(2)} ر.س`;
+  const d=new Date(logs[0]?.ts||Date.now());
+  const dateLabel=d.toLocaleDateString('ar-SA-u-ca-gregory',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('expDayDetailTitle').textContent=`📅 ${dateLabel}`;
+  document.getElementById('expDayDetailTotal').textContent=`${total.toFixed(2)} ر.س`;
   const sorted=Object.entries(cats).sort((a,b)=>b[1].amount-a[1].amount);
-  document.getElementById('exp5DayContent').innerHTML=sorted.map(([name,data],i)=>{
+  document.getElementById('expDayDetailContent').innerHTML=sorted.map(([name,data],i)=>{
     const pct=total>0?((data.amount/total)*100).toFixed(1):0;
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
       <div style="font-size:20px">${getIcon(name)}</div>
@@ -1734,7 +1788,7 @@ function openExp5DayDetail(start,end,safeMk){
       <div style="font-weight:800;font-size:14px;color:${catColor(i)}">${data.amount.toFixed(2)}<small style="font-size:10px;color:var(--text2)"> ر.س</small></div>
     </div>`;
   }).join('');
-  document.getElementById('exp5DayOverlay').classList.add('open');
+  document.getElementById('expDayDetailOverlay').classList.add('open');
 }
 
 // ══════════════════════════════════════════
