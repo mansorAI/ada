@@ -1105,6 +1105,28 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       <input id="inpAmt" class="inp" type="number" inputmode="decimal" placeholder="0.00">
     </div>
     <button class="btn-primary" onclick="doAddManual()">إضافة المصروف</button>
+    <button class="btn-ghost" style="margin-top:8px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px" onclick="closeSheet('addOverlay');openSmsImport()">📋 لصق رسالة البنك</button>
+  </div>
+</div>
+
+<!-- ══════════ OVERLAY: SMS IMPORT ══════════ -->
+<div class="overlay" id="smsOverlay" onclick="bgClose(event,'smsOverlay')">
+  <div class="sheet">
+    <div class="sh-handle"></div>
+    <div class="sh-title">📋 رسالة البنك</div>
+    <div class="inp-wrap">
+      <div class="inp-lbl">الصق نص رسالة البنك</div>
+      <textarea id="smsTxt" class="inp" rows="5" style="resize:none;line-height:1.6" placeholder="الصق الرسالة هنا...&#10;&#10;مثال: تم الخصم من حسابكم مبلغ 50.00 ريال لدى ستاربكس"></textarea>
+    </div>
+    <div id="smsPreview" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+      <div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:700">النتيجة</div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div id="smsPreviewName" style="font-size:15px;font-weight:800"></div>
+        <div id="smsPreviewAmt" style="font-size:18px;font-weight:900;color:var(--accent)"></div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="processSmsText()">🔍 تحليل واستخراج</button>
+    <button class="btn-ghost" style="margin-top:8px;width:100%" onclick="closeSheet('smsOverlay')">إلغاء</button>
   </div>
 </div>
 
@@ -2477,6 +2499,111 @@ function goPage(p){
 // ══════════════════════════════════════════
 function openAdd(){ document.getElementById('addOverlay').classList.add('open'); setTimeout(()=>document.getElementById('inpName').focus(),350); }
 function openVoice(){ document.getElementById('voiceOverlay').classList.add('open'); loadVocab(); }
+function openSmsImport(){ document.getElementById('smsTxt').value=''; document.getElementById('smsPreview').style.display='none'; document.getElementById('smsOverlay').classList.add('open'); setTimeout(()=>document.getElementById('smsTxt').focus(),350); }
+
+// ── SMS BANK IMPORT ──
+const SMS_MERCHANTS = {
+  'ستاربكس':'ستاربكس ☕','starbucks':'ستاربكس ☕',
+  'كوفي':'قهوة ☕','coffee':'قهوة ☕','كافيه':'قهوة ☕',
+  'تميمي':'تميمي 🛒','tamimi':'تميمي 🛒',
+  'بنده':'بنده 🛒','panda':'بنده 🛒',
+  'الدانوب':'الدانوب 🛒','danube':'الدانوب 🛒',
+  'كارفور':'كارفور 🛒','carrefour':'كارفور 🛒',
+  'لولو':'لولو 🛒','lulu':'لولو 🛒',
+  'النهدي':'النهدي 💊','nahdi':'النهدي 💊',
+  'صيدلية':'صيدلية 💊','pharmacy':'صيدلية 💊',
+  'كريم':'كريم 🚗','careem':'كريم 🚗',
+  'أوبر':'أوبر 🚗','uber':'أوبر 🚗',
+  'stc':'STC 📱','زين':'زين 📱','موبايلي':'موبايلي 📱',
+  'الكهرباء':'كهرباء ⚡','sec':'كهرباء ⚡',
+  'ماكدونالدز':'ماكدونالدز 🍔','ماكدونالز':'ماكدونالدز 🍔','mcdonalds':'ماكدونالدز 🍔',
+  'كنتاكي':'كنتاكي 🍗','kfc':'كنتاكي 🍗',
+  'هارديز':'هارديز 🍔','hardees':'هارديز 🍔',
+  'برغر كينج':'برغر كينج 🍔','burger king':'برغر كينج 🍔',
+  'مطعم':'مطعم 🍽','برغر':'مطعم 🍽','بيتزا':'مطعم 🍽','شاورما':'مطعم 🍽',
+  'بنزين':'بنزين ⛽','aramco':'بنزين ⛽','أرامكو':'بنزين ⛽','shell':'شل ⛽','شل':'شل ⛽',
+  'زارا':'زارا 👕','zara':'زارا 👕','h&m':'H&M 👕',
+  'نون':'نون 🛍','noon':'نون 🛍',
+  'أمازون':'أمازون 🛍','amazon':'أمازون 🛍',
+};
+
+function parseBankSMS(text){
+  // استخراج المبلغ
+  const amtPatterns = [
+    /(\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s*(?:SAR|ريال|رس|SR)/i,
+    /(?:SAR|ريال|رس|SR)\s*(\d{1,3}(?:,\d{3})*(?:\.\d+)?)/i,
+    /مبلغ\s+(\d{1,3}(?:,\d{3})*(?:\.\d+)?)/,
+  ];
+  let amount = null;
+  for(const p of amtPatterns){
+    const m = text.match(p);
+    if(m){ amount = parseFloat(m[1].replace(/,/g,'')); break; }
+  }
+
+  // استخراج الجهة
+  const merchantPatterns = [
+    /لدى\s+([^\n\r،,\d][^\n\r،,]{1,40}?)(?:\s+بتاريخ|\s+في\s+\d|\s+\d{2}\/|$)/,
+    /at\s+([A-Za-z0-9\s&']{2,40}?)(?:\s+on\s|\s+\d|$)/i,
+    /في\s+([^\n\r،,\d][^\n\r،,]{1,30}?)(?:\s+بتاريخ|\s+\d{2}\/|$)/,
+    /from\s+([A-Za-z0-9\s&']{2,40}?)(?:\s+on\s|\s+\d|$)/i,
+  ];
+  let merchant = null;
+  for(const p of merchantPatterns){
+    const m = text.match(p);
+    if(m){ merchant = m[1].trim(); break; }
+  }
+
+  // مطابقة مع القاموس
+  let expenseName = merchant;
+  if(merchant){
+    const lower = merchant.toLowerCase();
+    for(const [key,val] of Object.entries(SMS_MERCHANTS)){
+      if(lower.includes(key.toLowerCase())){ expenseName = val; break; }
+    }
+  }
+
+  return { amount, merchant, expenseName };
+}
+
+function processSmsText(){
+  const text = document.getElementById('smsTxt').value.trim();
+  if(!text){ toast('الصق نص الرسالة أولاً','bad'); return; }
+  const r = parseBankSMS(text);
+  if(!r.amount){ toast('لم أتمكن من استخراج المبلغ','bad'); return; }
+
+  // عرض معاينة
+  const preview = document.getElementById('smsPreview');
+  document.getElementById('smsPreviewName').textContent = r.expenseName || r.merchant || 'غير معروف';
+  document.getElementById('smsPreviewAmt').textContent = r.amount + ' ر.س';
+  preview.style.display = 'block';
+
+  // انتظار ثانية ثم فتح نموذج الإضافة
+  setTimeout(()=>{
+    closeSheet('smsOverlay');
+    openAdd();
+    if(r.expenseName || r.merchant) document.getElementById('inpName').value = r.expenseName || r.merchant;
+    document.getElementById('inpAmt').value = r.amount;
+  }, 900);
+}
+
+function applySmsFromUrl(){
+  const params = new URLSearchParams(window.location.search);
+  const sms = params.get('sms');
+  if(!sms) return;
+  const wait = setInterval(()=>{
+    if(!currentGroupId) return;
+    clearInterval(wait);
+    const r = parseBankSMS(decodeURIComponent(sms));
+    if(r.amount){
+      openAdd();
+      if(r.expenseName||r.merchant) document.getElementById('inpName').value = r.expenseName||r.merchant;
+      document.getElementById('inpAmt').value = r.amount;
+      toast('📋 '+(r.expenseName||'رسالة البنك')+' — '+r.amount+' ر.س','ok');
+    }
+    // تنظيف URL
+    window.history.replaceState({},'',window.location.pathname);
+  }, 400);
+}
 function closeSheet(id){ document.getElementById(id).classList.remove('open'); if(id==='voiceOverlay') stopVoice(); }
 function bgClose(e,id){ if(e.target===document.getElementById(id)) closeSheet(id); }
 
@@ -5085,6 +5212,7 @@ async function doLogout(){
 
 // تشغيل Auth عند تحميل الصفحة
 initAuth();
+applySmsFromUrl();
 
 // ══════════════════════════════════════════
 //  AI CHAT
