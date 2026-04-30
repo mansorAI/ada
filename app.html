@@ -2595,12 +2595,14 @@ function applySmsFromUrl(){
     clearInterval(wait);
     const r = parseBankSMS(decodeURIComponent(sms));
     if(r.amount){
-      openAdd();
-      if(r.expenseName||r.merchant) document.getElementById('inpName').value = r.expenseName||r.merchant;
-      document.getElementById('inpAmt').value = r.amount;
-      toast('📋 '+(r.expenseName||'رسالة البنك')+' — '+r.amount+' ر.س','ok');
+      goPage('expenses');
+      setTimeout(()=>{
+        openAdd();
+        if(r.expenseName||r.merchant) document.getElementById('inpName').value = r.expenseName||r.merchant;
+        document.getElementById('inpAmt').value = r.amount;
+        toast('📋 '+(r.expenseName||'رسالة البنك')+' — '+r.amount+' ر.س','ok');
+      }, 300);
     }
-    // تنظيف URL
     window.history.replaceState({},'',window.location.pathname);
   }, 400);
 }
