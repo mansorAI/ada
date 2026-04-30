@@ -117,6 +117,14 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1px solid var(--bord
 
 /* LOADING */
 .loading{text-align:center;padding:48px;color:var(--text2);font-size:14px}
+.badge-online{display:inline-flex;align-items:center;gap:4px;font-size:10px;background:rgba(34,197,94,.15);color:var(--success);border:1px solid rgba(34,197,94,.3);padding:2px 8px;border-radius:5px;font-weight:700;margin-right:6px}
+.badge-online::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--success);display:inline-block;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.user-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:20px}
+.user-modal-overlay.open{display:flex}
+.user-modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:540px;max-height:80vh;overflow-y:auto}
+tr.clickable{cursor:pointer}
+tr.clickable:hover td{background:rgba(245,166,35,.05)!important}
 
 @media(max-width:700px){
   .sidebar{width:100%;height:auto;position:relative;flex-direction:row;padding:10px;overflow-x:auto}
@@ -140,6 +148,14 @@ input[type=color]{width:44px;height:38px;padding:2px;border:1px solid var(--bord
     <input class="inp" type="password" id="adminPass" placeholder="كلمة المرور" onkeydown="if(event.key==='Enter')doLogin()">
     <button class="btn btn-primary" onclick="doLogin()">دخول</button>
     <div class="err-msg" id="authErr"></div>
+  </div>
+</div>
+
+<!-- USER DETAIL MODAL -->
+<div class="user-modal-overlay" id="userModal" onclick="if(event.target===this)closeUserModal()">
+  <div class="user-modal">
+    <div id="userModalContent"></div>
+    <button class="btn btn-muted" style="margin-top:16px;width:100%" onclick="closeUserModal()">إغلاق</button>
   </div>
 </div>
 
@@ -324,15 +340,18 @@ async function loadUsers(){
   document.getElementById('statAdmins').textContent=users.filter(u=>u.is_super_admin).length;
   document.getElementById('usersBadge').textContent=users.length;
   if(!users.length){document.getElementById('usersTable').innerHTML='<div class="loading">لا يوجد مستخدمون</div>';return;}
+  const now = Date.now();
   let html=`<table><thead><tr><th>الاسم</th><th>البريد الإلكتروني</th><th>تاريخ التسجيل</th><th>الصلاحية</th><th>إجراءات</th></tr></thead><tbody>`;
   users.forEach(u=>{
     const d=new Date(u.created_at).toLocaleDateString('ar-SA',{day:'numeric',month:'short',year:'numeric'});
-    html+=`<tr>
-      <td style="font-weight:700">${u.name||'—'}</td>
+    const isOnline = u.last_seen_at && (now - new Date(u.last_seen_at).getTime()) < 10*60*1000;
+    const onlineBadge = isOnline ? '<span class="badge-online">نشط</span>' : '';
+    html+=`<tr class="clickable" onclick="openUserModal('${u.id}','${(u.name||'—').replace(/'/g,'')}')" title="اضغط لعرض التفاصيل">
+      <td style="font-weight:700">${u.name||'—'} ${onlineBadge}</td>
       <td style="color:var(--text2);direction:ltr;text-align:right">${u.email}</td>
       <td style="color:var(--text2)">${d}</td>
       <td>${u.is_super_admin?'<span class="badge-admin">👑 مدير</span>':'<span style="color:var(--text2);font-size:12px">عضو عادي</span>'}</td>
-      <td style="display:flex;gap:6px;flex-wrap:wrap">
+      <td style="display:flex;gap:6px;flex-wrap:wrap" onclick="event.stopPropagation()">
         <button class="act-btn prm" onclick="toggleAdmin('${u.id}',${!u.is_super_admin})">${u.is_super_admin?'إلغاء المدير':'تعيين مدير'}</button>
         ${u.id!==adminUser.id?`<button class="act-btn del" onclick="deleteUser('${u.id}','${u.email}')">حذف</button>`:''}
       </td>
@@ -524,6 +543,77 @@ function toast(msg,type){
 }
 
 // ── INIT ──
+// ── USER DETAIL MODAL ──
+function closeUserModal(){ document.getElementById('userModal').classList.remove('open'); }
+
+async function openUserModal(userId, userName){
+  document.getElementById('userModal').classList.add('open');
+  document.getElementById('userModalContent').innerHTML = `<div class="loading">جار التحميل...</div>`;
+  const [{data: sessions},{data: prof}] = await Promise.all([
+    sb.from('user_sessions').select('*').eq('user_id', userId).order('started_at',{ascending:false}).limit(30),
+    sb.from('profiles').select('last_seen_at,created_at,email').eq('id',userId).single()
+  ]);
+  const now = Date.now();
+  const isOnline = prof?.last_seen_at && (now - new Date(prof.last_seen_at).getTime()) < 10*60*1000;
+  const lastSeen = prof?.last_seen_at ? fmtRelTime(prof.last_seen_at) : 'غير معروف';
+  const totalMin = (sessions||[]).reduce((s,x)=>s+(x.duration_minutes||0),0);
+  const avgMin = sessions?.length ? Math.round(totalMin/sessions.length) : 0;
+  const sessionsHTML = (sessions||[]).length ? (sessions||[]).map(s=>{
+    const dur = s.duration_minutes || Math.round((new Date(s.last_active_at)-new Date(s.started_at))/60000);
+    const d = new Date(s.started_at).toLocaleDateString('ar-SA-u-ca-gregory',{day:'numeric',month:'short',year:'numeric'});
+    const t = new Date(s.started_at).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
+    const active = !s.ended_at;
+    return `<tr>
+      <td>${d} — ${t}</td>
+      <td>${fmtDur(dur)}</td>
+      <td>${active?'<span class="badge-online">نشط الآن</span>':fmtRelTime(s.last_active_at)}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="3" style="text-align:center;color:var(--text2)">لا توجد جلسات مسجّلة</td></tr>`;
+
+  document.getElementById('userModalContent').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div style="font-size:18px;font-weight:900">${userName}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;direction:ltr;text-align:right">${prof?.email||''}</div>
+      </div>
+      ${isOnline?'<span class="badge-online" style="font-size:12px;padding:4px 12px">نشط الآن</span>':''}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:22px;font-weight:900;color:var(--accent)">${sessions?.length||0}</div>
+        <div style="font-size:11px;color:var(--text2)">إجمالي الجلسات</div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:22px;font-weight:900;color:var(--accent3)">${fmtDur(avgMin)}</div>
+        <div style="font-size:11px;color:var(--text2)">متوسط الجلسة</div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:14px;font-weight:900;color:var(--text)">${lastSeen}</div>
+        <div style="font-size:11px;color:var(--text2)">آخر نشاط</div>
+      </div>
+    </div>
+    <div style="font-size:13px;font-weight:800;margin-bottom:10px">سجل الجلسات</div>
+    <table>
+      <thead><tr><th>وقت الدخول</th><th>المدة</th><th>آخر نشاط</th></tr></thead>
+      <tbody>${sessionsHTML}</tbody>
+    </table>`;
+}
+
+function fmtDur(min){
+  if(!min||min<1) return '< دقيقة';
+  if(min<60) return `${min} د`;
+  return `${Math.floor(min/60)}س ${min%60}د`;
+}
+
+function fmtRelTime(ts){
+  if(!ts) return '—';
+  const diff = Math.round((Date.now()-new Date(ts).getTime())/60000);
+  if(diff<1) return 'الآن';
+  if(diff<60) return `منذ ${diff} د`;
+  if(diff<1440) return `منذ ${Math.floor(diff/60)} س`;
+  return `منذ ${Math.floor(diff/1440)} يوم`;
+}
+
 sb.auth.getSession().then(({data})=>{
   if(data?.session){
     sb.from('profiles').select('name,is_super_admin').eq('id',data.session.user.id).single().then(({data:p})=>{

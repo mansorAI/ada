@@ -4623,6 +4623,9 @@ const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 let currentUser = null;
 let currentProfile = null;
+let _sessionId = null;
+let _lastActivity = Date.now();
+let _heartbeatInterval = null;
 let currentGroupId = sessionStorage.getItem('groupId');
 let currentGroupName = sessionStorage.getItem('groupName');
 let currentUserPerms = { role: 'owner', can_view_expenses: true, can_edit_expenses: true, can_delete_expenses: true, can_view_commitments: true, can_edit_commitments: true, can_delete_commitments: true, can_view_tasks: true, can_edit_tasks: true, can_delete_tasks: true };
@@ -4656,6 +4659,7 @@ async function initAuth(){
   await loadGroupExpenses();
   await migrateLocalExpenses();
   initAppUI();
+  startSession();
 }
 
 async function autoSelectGroup(){
@@ -5040,7 +5044,40 @@ async function showInviteCode(){
   toggleUserMenu();
 }
 
+async function startSession(){
+  if(!currentUser) return;
+  const now = new Date().toISOString();
+  await sb.from('profiles').update({last_seen_at: now}).eq('id', currentUser.id);
+  const {data} = await sb.from('user_sessions').insert({
+    user_id: currentUser.id, started_at: now, last_active_at: now
+  }).select('id').single();
+  _sessionId = data?.id;
+  ['click','keydown','touchstart','scroll'].forEach(e =>
+    document.addEventListener(e, () => _lastActivity = Date.now(), {passive:true})
+  );
+  _heartbeatInterval = setInterval(async () => {
+    const idleMin = (Date.now() - _lastActivity) / 60000;
+    if(idleMin > 15) return;
+    const t = new Date().toISOString();
+    await sb.from('profiles').update({last_seen_at: t}).eq('id', currentUser.id);
+    if(_sessionId) await sb.from('user_sessions').update({last_active_at: t}).eq('id', _sessionId);
+  }, 5 * 60 * 1000);
+  window.addEventListener('beforeunload', () => endSession());
+}
+
+async function endSession(){
+  if(!_sessionId) return;
+  clearInterval(_heartbeatInterval);
+  const {data: s} = await sb.from('user_sessions').select('started_at,last_active_at').eq('id',_sessionId).maybeSingle();
+  if(s){
+    const dur = Math.max(1, Math.round((new Date(s.last_active_at) - new Date(s.started_at)) / 60000));
+    await sb.from('user_sessions').update({ended_at: new Date().toISOString(), duration_minutes: dur}).eq('id', _sessionId);
+  }
+  _sessionId = null;
+}
+
 async function doLogout(){
+  await endSession();
   await sb.auth.signOut();
   sessionStorage.clear();
   window.location.href = 'index.html';
