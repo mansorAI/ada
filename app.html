@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>مصروفاتي</title>
+<title>O2</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -485,7 +485,15 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
 <div id="pg-home" class="page active">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="page-title">مصروفاتي 💸</div>
+      <div class="page-title" style="display:flex;align-items:center;gap:6px">
+        <svg width="28" height="28" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="17" fill="none" stroke="#22c55e" stroke-width="2.5"/>
+          <circle cx="20" cy="20" r="11" fill="none" stroke="#22c55e" stroke-width="1.5" opacity="0.4"/>
+          <text x="14" y="25" fill="#f0eeea" font-size="15" font-weight="900" font-family="Arial,sans-serif">O</text>
+          <text x="26" y="29" fill="#3ecfcf" font-size="10" font-weight="700" font-family="Arial,sans-serif">2</text>
+        </svg>
+        O2
+      </div>
       <div style="display:flex;align-items:center;gap:8px">
         <div class="date-chip" id="dateLabel"></div>
         <div class="user-chip" onclick="toggleUserMenu(event)">
@@ -3433,7 +3441,7 @@ function exportCommitToPDF(){
   <thead><tr><th>الفئة</th><th>عدد الأصناف</th><th>الإجمالي (ر.س)</th><th>النسبة %</th></tr></thead>
   <tbody>${catRows}</tbody>
 </table>
-<div class="footer">مصروفاتي — masrofati.vercel.app</div>
+<div class="footer">O2 — masrofati.vercel.app</div>
 <script>window.onload=()=>{window.print();}<\/script>
 </body></html>`;
   const w=window.open('','_blank');
@@ -4661,7 +4669,7 @@ function exportExtractPDF(){
   </tr></thead>
   <tbody>${rows}</tbody>
 </table>
-<div class="footer">مصروفاتي — masrofati.vercel.app</div>
+<div class="footer">O2 — masrofati.vercel.app</div>
 <script>window.onload=()=>{window.print();}<\/script>
 </body></html>`;
   const w=window.open('','_blank');
