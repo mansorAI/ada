@@ -922,18 +922,6 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       <button class="btn-remove" onclick="removeMemberFromGroup()">🗑️ إزالة من المجموعة</button>
     </div>
 
-    <div class="perm-section">
-      <div class="perm-section-title">📸 تحليل الصور بالذكاء الاصطناعي</div>
-      <div class="perm-row" style="justify-content:space-between;align-items:center;padding:8px 0">
-        <span>الاستخدام الحالي</span>
-        <span id="memberAnalysesUsed" style="font-weight:700;color:var(--accent);font-size:15px">0</span>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:6px">
-        <button class="btn-muted" style="flex:1;font-size:13px;padding:10px" onclick="updateUserAnalysisQuota(0)">🔄 إعادة الضبط</button>
-        <button class="btn-primary" style="flex:1;font-size:13px;padding:10px" onclick="updateUserAnalysisQuota(-1)">♾️ لا محدود</button>
-      </div>
-    </div>
-
     <button class="btn-muted" onclick="closeSheet('memberPermsOverlay')">إلغاء</button>
   </div>
 </div>
@@ -4961,7 +4949,7 @@ async function openGroupDetail(groupId, groupName, isOwner) {
 async function renderMembersList() {
   const { data: members } = await sb
     .from('group_members')
-    .select('id, user_id, role, can_view_expenses, can_edit_expenses, can_delete_expenses, can_view_commitments, can_edit_commitments, can_delete_commitments, can_view_tasks, can_edit_tasks, can_delete_tasks, profiles(name, email, image_analyses_used)')
+    .select('id, user_id, role, can_view_expenses, can_edit_expenses, can_delete_expenses, can_view_commitments, can_edit_commitments, can_delete_commitments, can_view_tasks, can_edit_tasks, can_delete_tasks, profiles(name, email)')
     .eq('group_id', viewingGroupId);
 
   const el = document.getElementById('membersList');
@@ -4987,18 +4975,10 @@ async function renderMembersList() {
       const et = m.can_edit_tasks         ?? false;
       const dt = m.can_delete_tasks       ?? false;
       const perms = `مصروفات:${yn(ve)}${yn(ee)}${yn(de)} التزامات:${yn(vc)}${yn(ec)}${yn(dc)} مهام:${yn(vt)}${yn(et)}${yn(dt)}`;
-      const analyses = m.profiles?.image_analyses_used ?? 0;
-      const quotaBadge = viewingGroupIsOwner
-        ? (analyses === -1
-            ? `<span style="font-size:10px;background:rgba(37,211,102,.15);color:#25d366;border:1px solid rgba(37,211,102,.4);border-radius:6px;padding:2px 6px;margin-right:4px">♾️ لا محدود</span>`
-            : analyses >= 1
-              ? `<span style="font-size:10px;background:rgba(239,68,68,.15);color:var(--danger);border:1px solid rgba(239,68,68,.35);border-radius:6px;padding:2px 6px;margin-right:4px">📸 استنفذ</span>`
-              : '')
-        : '';
-      return `<div class="exp-card" style="margin-bottom:8px${canClick?';cursor:pointer':''}" ${canClick ? `onclick="openMemberPerms('${m.id}','${m.user_id}','${name.replace(/'/g,"\\'")}','${m.role}',${ve},${ee},${de},${vc},${ec},${dc},${vt},${et},${dt},${analyses})"` : ''}>
+      return `<div class="exp-card" style="margin-bottom:8px${canClick?';cursor:pointer':''}" ${canClick ? `onclick="openMemberPerms('${m.id}','${m.user_id}','${name.replace(/'/g,"\\'")}','${m.role}',${ve},${ee},${de},${vc},${ec},${dc},${vt},${et},${dt})"` : ''}>
         <div class="ec-icon">${m.role==='owner'?'👑':'👤'}</div>
         <div class="ec-body">
-          <div class="ec-name">${name}${isMe?' (أنت)':''} ${quotaBadge}</div>
+          <div class="ec-name">${name}${isMe?' (أنت)':''}</div>
           <div class="ec-meta">
             <span class="ec-count">${roleLabel(m.role)}</span>
             ${m.role!=='owner' ? `<span class="ec-count" style="font-size:10px">${perms}</span>` : ''}
@@ -5069,7 +5049,7 @@ async function addMemberToGroup(userId, userName) {
   toast(`✅ تمت إضافة ${userName}`, 'ok');
 }
 
-function openMemberPerms(memberId, userId, name, role, ve, ee, de, vc, ec, dc, vt=true, et=false, dt=false, analyses=0) {
+function openMemberPerms(memberId, userId, name, role, ve, ee, de, vc, ec, dc, vt=true, et=false, dt=false) {
   editingMemberId   = memberId;
   editingMemberUserId = userId;
   editingMemberRole = role;
@@ -5083,7 +5063,6 @@ function openMemberPerms(memberId, userId, name, role, ve, ee, de, vc, ec, dc, v
   document.getElementById('permEditCom').checked = ec;
   document.getElementById('permViewTasks').checked = vt;
   document.getElementById('permEditTasks').checked = et;
-  document.getElementById('memberAnalysesUsed').textContent = analyses === -1 ? '♾️ لا محدود' : analyses;
   document.getElementById('memberManageSection').style.display = role === 'owner' ? 'none' : '';
   if (role !== 'owner') selectMemberRole(role);
   document.getElementById('memberPermsOverlay').classList.add('open');
@@ -5123,14 +5102,6 @@ async function removeMemberFromGroup() {
   toast('تم إزالة العضو', 'bad');
 }
 
-async function updateUserAnalysisQuota(value) {
-  if (!editingMemberUserId) return;
-  const { error } = await sb.from('profiles').update({ image_analyses_used: value }).eq('id', editingMemberUserId);
-  if (error) return toast('خطأ: ' + error.message, 'err');
-  document.getElementById('memberAnalysesUsed').textContent = value === -1 ? '♾️ لا محدود' : value;
-  await renderMembersList();
-  toast(value === -1 ? '♾️ تم تفعيل لا محدود' : '🔄 تم إعادة الضبط', 'ok');
-}
 
 async function renderGroupsPage(){
   const { data: memberships, error } = await sb
