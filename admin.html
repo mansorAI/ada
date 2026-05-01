@@ -167,6 +167,10 @@ tr.clickable:hover td{background:rgba(245,166,35,.05)!important}
       <h1>⚙️ لوحة التحكم</h1>
       <p>O2</p>
     </div>
+    <div style="display:flex;gap:4px;padding:0 12px 12px;border-bottom:1px solid var(--border);margin-bottom:8px">
+      <button id="modePersonal" onclick="setMode('personal')" style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#000;font-family:'Tajawal',sans-serif;font-size:12px;font-weight:800;cursor:pointer">👤 شخصي</button>
+      <button id="modeBusiness" onclick="setMode('business')" style="flex:1;padding:7px 4px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-family:'Tajawal',sans-serif;font-size:12px;font-weight:800;cursor:pointer">💼 أعمال</button>
+    </div>
     <div class="nav-item active" onclick="showTab('users')"><span class="ni">👥</span>المستخدمون</div>
     <div class="nav-item" onclick="showTab('groups')"><span class="ni">📁</span>المجموعات</div>
     <div class="nav-item" onclick="showTab('categories')"><span class="ni">🏷️</span>الفئات العالمية</div>
@@ -291,6 +295,7 @@ const SUPA_URL='https://xnfzttjnwkfznxvohngy.supabase.co';
 const SUPA_KEY='sb_publishable_nUDdwuF5r5KdA78CYm2hGA_R5gvLzha';
 const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
 let adminUser=null;
+let _mode='personal';
 
 // ── AUTH ──
 async function doLogin(){
@@ -334,6 +339,19 @@ function showTab(name){
   event.currentTarget.classList.add('active');
 }
 
+// ── MODE ──
+function setMode(m){
+  _mode=m;
+  document.getElementById('modePersonal').style.background = m==='personal'?'var(--accent)':'transparent';
+  document.getElementById('modePersonal').style.color = m==='personal'?'#000':'var(--text2)';
+  document.getElementById('modePersonal').style.borderColor = m==='personal'?'var(--accent)':'var(--border)';
+  document.getElementById('modeBusiness').style.background = m==='business'?'var(--accent)':'transparent';
+  document.getElementById('modeBusiness').style.color = m==='business'?'#000':'var(--text2)';
+  document.getElementById('modeBusiness').style.borderColor = m==='business'?'var(--accent)':'var(--border)';
+  loadUsers();
+  loadGroups();
+}
+
 // ── LOAD ALL ──
 async function loadAll(){
   loadUsers();
@@ -351,7 +369,10 @@ function startUsersAutoRefresh(){
 
 // ── USERS ──
 async function loadUsers(silent=false){
-  const {data}=await sb.from('profiles').select('*').order('last_seen_at',{ascending:false,nullsFirst:false});
+  let q=sb.from('profiles').select('*').order('last_seen_at',{ascending:false,nullsFirst:false});
+  if(_mode==='business') q=q.eq('account_type','business');
+  else q=q.or('account_type.eq.personal,account_type.is.null');
+  const {data}=await q;
   const users=data||[];
   document.getElementById('statUsers').textContent=users.length;
   document.getElementById('statAdmins').textContent=users.filter(u=>u.is_super_admin).length;
@@ -399,9 +420,13 @@ async function deleteUser(userId,email){
 
 // ── GROUPS ──
 async function loadGroups(){
-  const {data:groups}=await sb.from('groups').select('*, profiles(name,email)').order('created_at',{ascending:false});
+  let q=sb.from('groups').select('*, profiles(name,email,account_type)').order('created_at',{ascending:false});
+  const {data:allGroups}=await q;
+  const groups=_mode==='business'
+    ? (allGroups||[]).filter(g=>g.profiles?.account_type==='business')
+    : (allGroups||[]).filter(g=>g.profiles?.account_type!=='business');
   const {data:members}=await sb.from('group_members').select('group_id');
-  const gs=groups||[];
+  const gs=groups;
   const ms=members||[];
   document.getElementById('statGroups').textContent=gs.length;
   document.getElementById('statMembers').textContent=ms.length;
