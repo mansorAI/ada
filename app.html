@@ -6244,90 +6244,100 @@ async function sendAiMessage(){
     goPage('inventory'); scrollToTop(); await wait(900);
     await showLabel('🗃️ المخزون الذكي<br><span style="font-size:13px;color:#7e7c8e">أصناف قوائمك تُجمع هنا تلقائياً</span>', 2500);
 
-    // ── الأصناف وتحديث المخزون ───────────────
+    // ── دالة مساعدة: يحدد صنف بحالة معينة ──
+    async function markStock(item, val){
+      if(!item) return;
+      item.scrollIntoView({behavior:'smooth', block:'nearest'}); await wait(300);
+      highlight(item); await moveCursor(item); await wait(250);
+      item.click(); await wait(600);
+      const btn = document.querySelector(`#stockOverlay [onclick*="setStock('${val}')"]`);
+      if(btn){ highlight(btn); await moveCursor(btn); await wait(300); btn.click(); await wait(900); }
+      else { closeSheet('stockOverlay'); await wait(400); }
+    }
+
     const invItems = document.querySelectorAll('.inv-item-row');
     if(invItems.length > 0){
-      // اظهر أول صنف
-      highlight(invItems[0]); await moveCursor(invItems[0]); await wait(500);
-      await showLabel('🟢 الأصناف مرتبة — اضغط على أي صنف لتحديث كميته', 2000);
+
+      // ── أولاً: اشرح نظام الألوان ────────────
+      highlight(invItems[0]);
+      await showLabel('📦 كل الأصناف من قوائمك — اضغط أي صنف لتحديث حالته', 2000);
       await wait(300);
 
-      // انقر على الصنف الأول — يفتح stockOverlay
+      // ── اختر صنف وأظهر الخيارات الأربعة ────
       invItems[0].click(); await wait(700);
-      await showLabel('🔢 حدد الكمية المتبقية', 1500);
-      const outBtn = document.querySelector('#stockOverlay [onclick*="setStock(\'out\')"]');
+      await showLabel('🟢 كامل — 🟡 النصف — 🟠 الربع — 🔴 نفذ', 2000);
       const halfBtn = document.querySelector('#stockOverlay [onclick*="setStock(\'half\')"]');
-      if(outBtn){ highlight(outBtn); await moveCursor(outBtn); await wait(400); outBtn.click(); await wait(1000); }
-      else { closeSheet('stockOverlay'); await wait(600); }
+      if(halfBtn){ highlight(halfBtn); await moveCursor(halfBtn); await wait(500); halfBtn.click(); await wait(900); }
+      else { closeSheet('stockOverlay'); await wait(400); }
 
-      // صنف ثانٍ
-      if(invItems.length > 1){
-        await wait(300);
-        invItems[1].scrollIntoView({behavior:'smooth', block:'nearest'}); await wait(400);
-        highlight(invItems[1]); await moveCursor(invItems[1]); await wait(400);
-        invItems[1].click(); await wait(700);
-        if(halfBtn){
-          const halfBtn2 = document.querySelector('#stockOverlay [onclick*="setStock(\'half\')"]');
-          if(halfBtn2){ highlight(halfBtn2); await moveCursor(halfBtn2); await wait(400); halfBtn2.click(); await wait(1000); }
-          else { closeSheet('stockOverlay'); await wait(600); }
-        } else { closeSheet('stockOverlay'); await wait(600); }
+      // ── حدد 5 أصناف كـ"نفذ" لإظهار قائمة مكتملة ──
+      await showLabel('🔴 بعض الأصناف خلصت — نحددها "نفذ"', 1800);
+      await wait(200);
+      const toMarkOut = Math.min(5, invItems.length - 1);
+      for(let i = 1; i <= toMarkOut; i++){
+        if(stopped) return;
+        await markStock(invItems[i], 'out');
       }
 
-      // تمرير لإظهار المزيد من الأصناف
-      await showLabel('📦 كل الأصناف من قوائمك في مكان واحد', 2000);
-      await wait(200);
-      window.scrollBy({top:300, behavior:'smooth'}); await wait(600);
-      window.scrollBy({top:300, behavior:'smooth'}); await wait(600);
+      // ── تمرير لإظهار باقي الأصناف ──────────
+      highlight(null);
+      await showLabel('📋 المخزون كامل في مكان واحد', 1800);
+      window.scrollBy({top:350, behavior:'smooth'}); await wait(600);
+      window.scrollBy({top:350, behavior:'smooth'}); await wait(600);
     }
 
     // ── استخراج قائمة التسوق ────────────────
-    highlight(null); scrollToTop(); await wait(400);
+    highlight(null); scrollToTop(); await wait(500);
     const extractBtn = document.querySelector('[onclick*="openExtractFilter"],[onclick*="extractFilter"]');
     if(extractBtn){
       extractBtn.scrollIntoView({behavior:'smooth', block:'center'}); await wait(400);
       highlight(extractBtn); await moveCursor(extractBtn);
-      await showLabel('🛒 استخراج قائمة التسوق<br><span style="font-size:13px;color:#7e7c8e">اختر الأصناف التي تريد شراءها</span>', 2200);
-      await wait(300); extractBtn.click(); await wait(800);
+      await showLabel('🛒 استخراج قائمة التسوق', 1500);
+      await wait(200); extractBtn.click(); await wait(800);
 
-      // ── في overlay الفلتر: اختر "نفذ" ───────
-      await showLabel('🔴 اختر "نفذ" ← يستخرج كل ما خلص', 2000);
-      const outCheckbox = document.querySelector('#extractFilterOverlay input[value="out"]');
-      if(outCheckbox && !outCheckbox.checked){
-        highlight(document.getElementById('ef-out')); await moveCursor(document.getElementById('ef-out')); await wait(400);
-        outCheckbox.checked = true;
-        outCheckbox.dispatchEvent(new Event('change', {bubbles:true}));
-        await wait(400);
+      // ── اختر "نفذ" في الفلتر ─────────────
+      await showLabel('🔴 اختر "نفذ" ← يستخرج كل الأصناف التي خلصت', 2200);
+      const outCb = document.querySelector('#extractFilterOverlay input[value="out"]');
+      const efOut = document.getElementById('ef-out');
+      if(outCb && efOut){
+        highlight(efOut); await moveCursor(efOut); await wait(400);
+        if(!outCb.checked){
+          outCb.checked = true;
+          outCb.dispatchEvent(new Event('change', {bubbles:true}));
+        }
+        await wait(500);
       }
       const applyBtn = document.querySelector('#extractFilterOverlay .btn-primary');
-      if(applyBtn){ highlight(applyBtn); await moveCursor(applyBtn); await wait(400); applyBtn.click(); await wait(900); }
+      if(applyBtn){ highlight(applyBtn); await moveCursor(applyBtn); await wait(400); applyBtn.click(); await wait(1000); }
     }
 
-    // ── صفحة قائمة التسوق ───────────────────
-    // تأكد أننا في pg-extract
-    if(document.getElementById('pg-extract')?.classList.contains('active') ||
-       document.querySelector('.page.active')?.id === 'pg-extract' ||
-       !document.getElementById('extractFilterOverlay')?.classList.contains('open')){
-      scrollToTop(); await wait(500);
-    }
-    await showLabel('🛒 قائمة التسوق<br><span style="font-size:13px;color:#7e7c8e">الأصناف التي نفذت — جاهزة للشراء</span>', 2500);
+    // ── صفحة قائمة التسوق 🛒 ─────────────────
+    scrollToTop(); await wait(500);
+    await showLabel('🛒 قائمة التسوق<br><span style="font-size:13px;color:#7e7c8e">الأصناف التي نفذت جاهزة للشراء</span>', 2500);
     const extractList = document.getElementById('extractList');
     if(extractList){
       const rows = extractList.querySelectorAll('.extract-row');
       if(rows.length > 0){
-        rows.forEach((r,i)=>{ if(i<4){ r.scrollIntoView({behavior:'smooth', block:'nearest'}); } });
-        highlight(rows[0]); await wait(1000);
-        await showLabel(`📋 ${rows.length} صنف بحاجة للشراء هذا الشهر`, 2000);
+        // تمرير تدريجي عبر الأصناف
+        for(let i = 0; i < Math.min(rows.length, 5); i++){
+          rows[i].scrollIntoView({behavior:'smooth', block:'nearest'});
+          highlight(rows[i]); await wait(350);
+        }
+        await showLabel(`🔴 ${rows.length} صنف نفذ — كلها في القائمة`, 2000);
+        await wait(400);
+      } else {
+        await showLabel('القائمة ستظهر هنا بعد تحديد الأصناف', 1800);
         await wait(400);
       }
     }
 
     // ── إضافة صنف يدوي للشراء ───────────────
     highlight(null);
-    const addToBuyBtn = document.querySelector('#pg-extract .btn-primary, [onclick*="openAddExtractItem"]');
+    const addToBuyBtn = document.querySelector('#pg-extract .btn-primary,[onclick*="openAddExtractItem"]');
     if(addToBuyBtn){
       addToBuyBtn.scrollIntoView({behavior:'smooth', block:'center'}); await wait(400);
       highlight(addToBuyBtn); await moveCursor(addToBuyBtn);
-      await showLabel('➕ تقدر تضيف صنف غير موجود في قائمتك', 2000);
+      await showLabel('➕ تقدر تضيف صنف يدوي للقائمة', 1800);
       await wait(300); addToBuyBtn.click(); await wait(700);
       const extNameInp = document.getElementById('extractItemName');
       if(extNameInp){
@@ -6336,20 +6346,19 @@ async function sendAiMessage(){
         const confirmBtn = document.querySelector('#addExtractOverlay .btn-primary');
         if(confirmBtn){ highlight(confirmBtn); await moveCursor(confirmBtn); await wait(300); confirmBtn.click(); await wait(800); }
       }
-      await showLabel('✅ صنف مضاف — سيظهر في قائمة التسوق', 1800);
+      await showLabel('✅ الصنف أُضيف للقائمة', 1500);
       await wait(400);
     }
 
     // ── تصدير PDF ─────────────────────────────
-    highlight(null);
+    highlight(null); scrollToTop(); await wait(300);
     const pdfBtn = document.querySelector('[onclick*="exportExtractPDF"]');
     if(pdfBtn){
-      pdfBtn.scrollIntoView({behavior:'smooth', block:'center'}); await wait(400);
       highlight(pdfBtn); await moveCursor(pdfBtn);
-      await showLabel('📄 PDF<br><span style="font-size:13px;color:#7e7c8e">اضغط ← تتحول لقائمة جاهزة للطباعة</span>', 2200);
-      await wait(500); pdfBtn.click(); await wait(600);
-      await showLabel('🛍️ هذه الأغراض اللي تحتاجها هذا الشهر<br><span style="font-size:13px;color:#f5a623">تقدر تشاركها أو تطبعها مباشرة</span>', 3200);
-      await wait(800);
+      await showLabel('📄 PDF — اضغط وتطلع ورقة قائمة التسوق', 2000);
+      await wait(400); pdfBtn.click(); await wait(700);
+      await showLabel('🛍️ هذه الأغراض اللي تحتاجها هذا الشهر<br><span style="font-size:13px;color:#f5a623">شاركها أو اطبعها مباشرة</span>', 3500);
+      await wait(1000);
     }
     highlight(null); await wait(500);
   }
