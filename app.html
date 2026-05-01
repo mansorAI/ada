@@ -6244,44 +6244,51 @@ async function sendAiMessage(){
     goPage('inventory'); scrollToTop(); await wait(900);
     await showLabel('🗃️ المخزون الذكي<br><span style="font-size:13px;color:#7e7c8e">أصناف قوائمك تُجمع هنا تلقائياً</span>', 2500);
 
-    // ── دالة مساعدة: يحدد صنف بحالة معينة ──
-    async function markStock(item, val){
-      if(!item) return;
-      item.scrollIntoView({behavior:'smooth', block:'nearest'}); await wait(300);
-      highlight(item); await moveCursor(item); await wait(250);
-      item.click(); await wait(600);
+    // ── دالة: تحديد صنف عبر openInvStockPicker مباشرة ──
+    async function markByName(name, val){
+      // ابحث عن الصف في DOM للتمييز البصري
+      let row = null;
+      document.querySelectorAll('.inv-item-row').forEach(r=>{
+        if(r.querySelector('.inv-item-name')?.textContent.trim()===name) row=r;
+      });
+      if(row){ row.scrollIntoView({behavior:'smooth',block:'nearest'}); await wait(250); highlight(row); await wait(300); }
+      // افتح منتقي المخزون مباشرة بالاسم
+      if(typeof openInvStockPicker==='function') openInvStockPicker(name);
+      await wait(650);
       const btn = document.querySelector(`#stockOverlay [onclick*="setStock('${val}')"]`);
-      if(btn){ highlight(btn); await moveCursor(btn); await wait(300); btn.click(); await wait(900); }
+      if(btn){ highlight(btn); await moveCursor(btn); await wait(300); btn.click(); await wait(1100); }
       else { closeSheet('stockOverlay'); await wait(400); }
     }
 
+    // الأصناف التي نريد تحديدها (من بيانات الديمو)
+    const outItems = ['مسحوق غسيل أريال','منظف أرضيات دومستوس','شامبو هيد آند شولدرز','معجون أسنان كولجيت','ورق حمام','كلور'];
     const invItems = document.querySelectorAll('.inv-item-row');
-    if(invItems.length > 0){
 
-      // ── أولاً: اشرح نظام الألوان ────────────
+    if(invItems.length > 0){
       highlight(invItems[0]);
-      await showLabel('📦 كل الأصناف من قوائمك — اضغط أي صنف لتحديث حالته', 2000);
+      await showLabel('📦 كل الأصناف من قوائمك هنا<br><span style="font-size:13px;color:#7e7c8e">اضغط أي صنف لتحديث كميته</span>', 2200);
       await wait(300);
 
-      // ── اختر صنف وأظهر الخيارات الأربعة ────
-      invItems[0].click(); await wait(700);
+      // ── أظهر الخيارات الأربعة على أول صنف ──
+      const firstStockBtn = invItems[0].querySelector('.inv-stock-btn');
+      if(firstStockBtn){ firstStockBtn.click(); await wait(700); }
       await showLabel('🟢 كامل — 🟡 النصف — 🟠 الربع — 🔴 نفذ', 2000);
-      const halfBtn = document.querySelector('#stockOverlay [onclick*="setStock(\'half\')"]');
-      if(halfBtn){ highlight(halfBtn); await moveCursor(halfBtn); await wait(500); halfBtn.click(); await wait(900); }
+      const halfBtnDemo = document.querySelector('#stockOverlay [onclick*="setStock(\'half\')"]');
+      if(halfBtnDemo){ highlight(halfBtnDemo); await moveCursor(halfBtnDemo); await wait(400); halfBtnDemo.click(); await wait(900); }
       else { closeSheet('stockOverlay'); await wait(400); }
 
-      // ── حدد 5 أصناف كـ"نفذ" لإظهار قائمة مكتملة ──
-      await showLabel('🔴 بعض الأصناف خلصت — نحددها "نفذ"', 1800);
+      // ── حدد 6 أصناف كـ"نفذ" ──────────────
+      await showLabel('🔴 بعض الأصناف خلصت — نحددها "نفذ"', 1600);
       await wait(200);
-      const toMarkOut = Math.min(5, invItems.length - 1);
-      for(let i = 1; i <= toMarkOut; i++){
+      for(const name of outItems){
         if(stopped) return;
-        await markStock(invItems[i], 'out');
+        await markByName(name, 'out');
       }
 
-      // ── تمرير لإظهار باقي الأصناف ──────────
+      // ── تمرير لإظهار الأصناف المحدّثة ──────
       highlight(null);
-      await showLabel('📋 المخزون كامل في مكان واحد', 1800);
+      await showLabel('✅ الأصناف التي نفذت تظهر بـ 🔴<br><span style="font-size:13px;color:#7e7c8e">جاهزة للاستخراج كقائمة تسوق</span>', 2200);
+      scrollToTop(); await wait(400);
       window.scrollBy({top:350, behavior:'smooth'}); await wait(600);
       window.scrollBy({top:350, behavior:'smooth'}); await wait(600);
     }
