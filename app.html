@@ -888,33 +888,38 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
     <div class="sh-title">صلاحيات العضو</div>
     <div id="memberPermsName" style="text-align:center;background:var(--surface2);border-radius:12px;padding:10px;margin-bottom:16px;font-size:15px;font-weight:700;color:var(--accent)"></div>
 
-    <div class="perm-section">
-      <div class="perm-section-title">💸 المصروفات</div>
-      <label class="perm-row"><span>رؤية المصروفات</span><input type="checkbox" id="permViewExp" class="perm-check"></label>
-      <label class="perm-row"><span>إضافة وتعديل المصروفات</span><input type="checkbox" id="permEditExp" class="perm-check"></label>
-      <label class="perm-row"><span>حذف المصروفات</span><input type="checkbox" id="permDelExp" class="perm-check"></label>
-    </div>
-
-    <div class="perm-section">
-      <div class="perm-section-title">📌 الالتزامات الشهرية</div>
-      <label class="perm-row"><span>رؤية الالتزامات</span><input type="checkbox" id="permViewCom" class="perm-check"></label>
-      <label class="perm-row"><span>إضافة وتعديل الالتزامات</span><input type="checkbox" id="permEditCom" class="perm-check"></label>
-      <label class="perm-row"><span>حذف الالتزامات</span><input type="checkbox" id="permDelCom" class="perm-check"></label>
-    </div>
-
-    <div class="perm-section">
-      <div class="perm-section-title">📋 المهام</div>
-      <label class="perm-row"><span>رؤية المهام</span><input type="checkbox" id="permViewTasks" class="perm-check"></label>
-      <label class="perm-row"><span>إضافة وتعديل المهام</span><input type="checkbox" id="permEditTasks" class="perm-check"></label>
-      <label class="perm-row"><span>حذف المهام</span><input type="checkbox" id="permDelTasks" class="perm-check"></label>
-    </div>
-
-    <div class="perm-section">
-      <div class="perm-section-title">👤 دور العضو</div>
-      <div class="role-btns">
-        <button class="role-btn" id="roleBtnViewer" onclick="selectMemberRole('viewer')">👁️ مشاهد فقط</button>
-        <button class="role-btn" id="roleBtnEditor" onclick="selectMemberRole('editor')">✏️ محرر</button>
+    <div id="memberManageSection">
+      <div class="perm-section">
+        <div class="perm-section-title">💸 المصروفات</div>
+        <label class="perm-row"><span>رؤية المصروفات</span><input type="checkbox" id="permViewExp" class="perm-check"></label>
+        <label class="perm-row"><span>إضافة وتعديل المصروفات</span><input type="checkbox" id="permEditExp" class="perm-check"></label>
+        <label class="perm-row"><span>حذف المصروفات</span><input type="checkbox" id="permDelExp" class="perm-check"></label>
       </div>
+
+      <div class="perm-section">
+        <div class="perm-section-title">📌 الالتزامات الشهرية</div>
+        <label class="perm-row"><span>رؤية الالتزامات</span><input type="checkbox" id="permViewCom" class="perm-check"></label>
+        <label class="perm-row"><span>إضافة وتعديل الالتزامات</span><input type="checkbox" id="permEditCom" class="perm-check"></label>
+        <label class="perm-row"><span>حذف الالتزامات</span><input type="checkbox" id="permDelCom" class="perm-check"></label>
+      </div>
+
+      <div class="perm-section">
+        <div class="perm-section-title">📋 المهام</div>
+        <label class="perm-row"><span>رؤية المهام</span><input type="checkbox" id="permViewTasks" class="perm-check"></label>
+        <label class="perm-row"><span>إضافة وتعديل المهام</span><input type="checkbox" id="permEditTasks" class="perm-check"></label>
+        <label class="perm-row"><span>حذف المهام</span><input type="checkbox" id="permDelTasks" class="perm-check"></label>
+      </div>
+
+      <div class="perm-section">
+        <div class="perm-section-title">👤 دور العضو</div>
+        <div class="role-btns">
+          <button class="role-btn" id="roleBtnViewer" onclick="selectMemberRole('viewer')">👁️ مشاهد فقط</button>
+          <button class="role-btn" id="roleBtnEditor" onclick="selectMemberRole('editor')">✏️ محرر</button>
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="saveMemberPerms()">✅ حفظ الصلاحيات</button>
+      <button class="btn-remove" onclick="removeMemberFromGroup()">🗑️ إزالة من المجموعة</button>
     </div>
 
     <div class="perm-section">
@@ -929,8 +934,6 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min
       </div>
     </div>
 
-    <button class="btn-primary" onclick="saveMemberPerms()">✅ حفظ الصلاحيات</button>
-    <button class="btn-remove" onclick="removeMemberFromGroup()">🗑️ إزالة من المجموعة</button>
     <button class="btn-muted" onclick="closeSheet('memberPermsOverlay')">إلغاء</button>
   </div>
 </div>
@@ -4973,6 +4976,7 @@ async function renderMembersList() {
       const email = m.profiles?.email || '';
       const isMe  = m.user_id === currentUser.id;
       const canManage = viewingGroupIsOwner && m.role !== 'owner';
+      const canClick = viewingGroupIsOwner;
       const ve = m.can_view_expenses      ?? true;
       const ee = m.can_edit_expenses      ?? false;
       const de = m.can_delete_expenses    ?? false;
@@ -4984,14 +4988,14 @@ async function renderMembersList() {
       const dt = m.can_delete_tasks       ?? false;
       const perms = `مصروفات:${yn(ve)}${yn(ee)}${yn(de)} التزامات:${yn(vc)}${yn(ec)}${yn(dc)} مهام:${yn(vt)}${yn(et)}${yn(dt)}`;
       const analyses = m.profiles?.image_analyses_used ?? 0;
-      const quotaBadge = canManage
+      const quotaBadge = viewingGroupIsOwner
         ? (analyses === -1
             ? `<span style="font-size:10px;background:rgba(37,211,102,.15);color:#25d366;border:1px solid rgba(37,211,102,.4);border-radius:6px;padding:2px 6px;margin-right:4px">♾️ لا محدود</span>`
             : analyses >= 1
               ? `<span style="font-size:10px;background:rgba(239,68,68,.15);color:var(--danger);border:1px solid rgba(239,68,68,.35);border-radius:6px;padding:2px 6px;margin-right:4px">📸 استنفذ</span>`
               : '')
         : '';
-      return `<div class="exp-card" style="margin-bottom:8px${canManage?';cursor:pointer':''}" ${canManage ? `onclick="openMemberPerms('${m.id}','${m.user_id}','${name.replace(/'/g,"\\'")}','${m.role}',${ve},${ee},${de},${vc},${ec},${dc},${vt},${et},${dt},${analyses})"` : ''}>
+      return `<div class="exp-card" style="margin-bottom:8px${canClick?';cursor:pointer':''}" ${canClick ? `onclick="openMemberPerms('${m.id}','${m.user_id}','${name.replace(/'/g,"\\'")}','${m.role}',${ve},${ee},${de},${vc},${ec},${dc},${vt},${et},${dt},${analyses})"` : ''}>
         <div class="ec-icon">${m.role==='owner'?'👑':'👤'}</div>
         <div class="ec-body">
           <div class="ec-name">${name}${isMe?' (أنت)':''} ${quotaBadge}</div>
@@ -5000,7 +5004,7 @@ async function renderMembersList() {
             ${m.role!=='owner' ? `<span class="ec-count" style="font-size:10px">${perms}</span>` : ''}
           </div>
         </div>
-        ${canManage ? '<span class="arrow-icon">›</span>' : ''}
+        ${canClick ? '<span class="arrow-icon">›</span>' : ''}
       </div>`;
     }).join('');
 }
@@ -5080,7 +5084,8 @@ function openMemberPerms(memberId, userId, name, role, ve, ee, de, vc, ec, dc, v
   document.getElementById('permViewTasks').checked = vt;
   document.getElementById('permEditTasks').checked = et;
   document.getElementById('memberAnalysesUsed').textContent = analyses === -1 ? '♾️ لا محدود' : analyses;
-  selectMemberRole(role);
+  document.getElementById('memberManageSection').style.display = role === 'owner' ? 'none' : '';
+  if (role !== 'owner') selectMemberRole(role);
   document.getElementById('memberPermsOverlay').classList.add('open');
 }
 
