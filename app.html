@@ -3579,55 +3579,82 @@ async function saveApiKey(){
 
 async function analyzePhoto(file){
   if(!file) return;
-  if(!getApiKey()){toast('أدخل مفتاح API أولاً','bad');return;}
+  // فحص حصة تحليل الصور
+  const {data:profCheck}=await sb.from('profiles').select('image_analyses_used').eq('id',currentUser.id).single();
+  if((profCheck?.image_analyses_used||0) >= 1){
+    toast('❌ استنفدت حصتك من تحليل الصور — تواصل مع الإدارة لفتح الميزة','bad',5000);
+    return;
+  }
   const overlay=document.getElementById('photoAnalyzeOverlay');
   overlay.classList.add('open');
-  document.getElementById('analyzeStatus').textContent='جار تحليل الصورة...';
+  document.getElementById('analyzeStatus').textContent='جار معالجة الصورة...';
   document.getElementById('analyzeSpinner').style.display='block';
   document.getElementById('analyzeResult').innerHTML='';
   document.getElementById('analyzeSaveBtn').style.display='none';
   document.getElementById('photoInput').value='';
-  const reader=new FileReader();
-  reader.onload=async(e)=>{
-    const b64=e.target.result.split(',')[1];
-    const mt=file.type||'image/jpeg';
-    try{
-      const resp=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{
-          'x-api-key':getApiKey(),
-          'anthropic-version':'2023-06-01',
-          'content-type':'application/json',
-          'anthropic-dangerous-direct-browser-access':'true'
-        },
-        body:JSON.stringify({
-          model:'claude-haiku-4-5-20251001',
-          max_tokens:2048,
-          messages:[{role:'user',content:[
-            {type:'image',source:{type:'base64',media_type:mt,data:b64}},
-            {type:'text',text:`استخرج قائمة المشتريات من هذه الصورة. أرجع JSON فقط بهذا الشكل بدون أي نص إضافي:\n{"items":[{"name":"اسم الصنف","category":"الفئة","qty":1,"price":0.00}]}\nالفئات المتاحة: مواد غذائية، منظفات، مشروبات، خضروات وفاكهة، ألبان وبيض، لحوم وأسماك، مخبوزات، أجهزة، ملابس، أدوية، أخرى. السعر يكون سعر الوحدة.`}
-          ]}]
-        })
-      });
-      if(!resp.ok){const err=await resp.json();throw new Error(err.error?.message||'خطأ في API');}
-      const data=await resp.json();
-      const text=data.content[0].text;
-      const jm=text.match(/\{[\s\S]*\}/);
-      if(!jm) throw new Error('لم يمكن استخراج البيانات');
-      const parsed=JSON.parse(jm[0]);
-      const items=parsed.items||[];
-      if(!items.length) throw new Error('لم أجد أصنافاً في الصورة');
-      window._analyzedItems=items;
-      renderAnalyzeResults(items);
-      document.getElementById('analyzeStatus').textContent=`✅ تم استخراج ${items.length} صنف`;
-      document.getElementById('analyzeSpinner').style.display='none';
-      document.getElementById('analyzeSaveBtn').style.display='block';
-    }catch(err){
-      document.getElementById('analyzeStatus').textContent='❌ '+err.message;
-      document.getElementById('analyzeSpinner').style.display='none';
-    }
-  };
-  reader.readAsDataURL(file);
+  // ضغط الصورة (يحل مشكلة Load failed على iOS بسبب حجم الصورة الكبير)
+  function compressImage(f){
+    return new Promise((resolve,reject)=>{
+      const img=new Image();
+      const url=URL.createObjectURL(f);
+      img.onload=()=>{
+        URL.revokeObjectURL(url);
+        const MAX=1024;
+        let w=img.width,h=img.height;
+        if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+        const cv=document.createElement('canvas');
+        cv.width=w;cv.height=h;
+        cv.getContext('2d').drawImage(img,0,0,w,h);
+        cv.toBlob(blob=>{
+          if(!blob){reject(new Error('فشل ضغط الصورة'));return;}
+          const rd=new FileReader();
+          rd.onload=e=>resolve({b64:e.target.result.split(',')[1],mt:'image/jpeg'});
+          rd.onerror=()=>reject(new Error('فشل قراءة الصورة'));
+          rd.readAsDataURL(blob);
+        },'image/jpeg',0.82);
+      };
+      img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('فشل تحميل الصورة'));};
+      img.src=url;
+    });
+  }
+  try{
+    const {b64,mt}=await compressImage(file);
+    document.getElementById('analyzeStatus').textContent='جار تحليل الصورة...';
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'x-api-key':getApiKey(),
+        'anthropic-version':'2023-06-01',
+        'content-type':'application/json',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:2048,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:mt,data:b64}},
+          {type:'text',text:`استخرج قائمة المشتريات من هذه الصورة. أرجع JSON فقط بهذا الشكل بدون أي نص إضافي:\n{"items":[{"name":"اسم الصنف","category":"الفئة","qty":1,"price":0.00}]}\nالفئات المتاحة: مواد غذائية، منظفات، مشروبات، خضروات وفاكهة، ألبان وبيض، لحوم وأسماك، مخبوزات، أجهزة، ملابس، أدوية، أخرى. السعر يكون سعر الوحدة.`}
+        ]}]
+      })
+    });
+    if(!resp.ok){const er=await resp.json();throw new Error(er.error?.message||'خطأ في API');}
+    const data=await resp.json();
+    const text=data.content[0].text;
+    const jm=text.match(/\{[\s\S]*\}/);
+    if(!jm) throw new Error('لم يمكن استخراج البيانات');
+    const parsed=JSON.parse(jm[0]);
+    const items=parsed.items||[];
+    if(!items.length) throw new Error('لم أجد أصنافاً في الصورة');
+    window._analyzedItems=items;
+    renderAnalyzeResults(items);
+    document.getElementById('analyzeStatus').textContent=`✅ تم استخراج ${items.length} صنف`;
+    document.getElementById('analyzeSpinner').style.display='none';
+    document.getElementById('analyzeSaveBtn').style.display='block';
+    await sb.from('profiles').update({image_analyses_used:(profCheck?.image_analyses_used||0)+1}).eq('id',currentUser.id);
+  }catch(err){
+    document.getElementById('analyzeStatus').textContent='❌ '+err.message;
+    document.getElementById('analyzeSpinner').style.display='none';
+  }
 }
 
 function renderAnalyzeResults(items){
