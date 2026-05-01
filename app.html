@@ -5723,6 +5723,105 @@ async function sendAiMessage(){
     document.getElementById('aiSendBtn').disabled = false;
   }
 }
+
+// ══════════════════════════════════════════
+// 🎬 DEMO DATA SEEDER — يظهر فقط عند ?demo=1
+// ══════════════════════════════════════════
+(function(){
+  if(!new URLSearchParams(location.search).has('demo')) return;
+  const btn = document.createElement('button');
+  btn.id = 'demoBtn';
+  btn.innerHTML = '🎬 تحميل بيانات التصوير';
+  btn.style.cssText = `
+    position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    z-index:9999;background:linear-gradient(135deg,#f5a623,#e8441a);
+    color:#fff;font-family:'Tajawal',sans-serif;font-size:17px;font-weight:900;
+    border:none;border-radius:18px;padding:18px 32px;cursor:pointer;
+    box-shadow:0 8px 32px rgba(245,166,35,.5);letter-spacing:.3px;
+  `;
+  document.body.appendChild(btn);
+  btn.onclick = async () => {
+    if(!currentGroupId){ toast('سجّل دخول واختر مجموعة أولاً','bad'); return; }
+    btn.textContent = '⏳ جاري التحميل...';
+    btn.disabled = true;
+    try {
+      const mk = getCurrentMonthKey();
+      const now = new Date();
+      const y = now.getFullYear();
+      const mo = now.getMonth();
+
+      // ── الميزانية ──────────────────────────
+      await sb.from('budget_entries').insert([
+        { group_id:currentGroupId, added_by:currentUser.id, amount:8500, note:'راتب شهر '+(now.toLocaleString('ar',{month:'long'})), month_key:mk },
+        { group_id:currentGroupId, added_by:currentUser.id, amount:1200, note:'دخل إضافي — مشروع جانبي', month_key:mk },
+      ]);
+
+      // ── المصروفات ──────────────────────────
+      const days = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
+      const expenses = [
+        { name:'قهوة ستاربكس',    amount:28,  d:1  },
+        { name:'بنزين',           amount:180, d:2  },
+        { name:'مطعم البيك',      amount:95,  d:3  },
+        { name:'سوبرماركت',       amount:320, d:4  },
+        { name:'مقهى تيم هورتنز', amount:35,  d:5  },
+        { name:'صيدلية',          amount:85,  d:6  },
+        { name:'قهوة قيمة',       amount:22,  d:7  },
+        { name:'تسوق H&M',        amount:240, d:8  },
+        { name:'بنزين',           amount:160, d:9  },
+        { name:'مطعم كودو',       amount:75,  d:10 },
+        { name:'سوبرماركت',       amount:185, d:11 },
+        { name:'قهوة ستاربكس',    amount:32,  d:12 },
+        { name:'ايكيا',           amount:450, d:13 },
+        { name:'مطعم عبدالرحمن', amount:130, d:14 },
+        { name:'صيدلية',          amount:60,  d:15 },
+        { name:'قهوة',            amount:18,  d:16 },
+        { name:'بنزين',           amount:200, d:17 },
+        { name:'سوبرماركت',       amount:275, d:18 },
+      ];
+      await sb.from('expenses').insert(expenses.map(e=>({
+        group_id:currentGroupId, added_by:currentUser.id,
+        name:e.name, amount:e.amount, src:'manual', category:'',
+        created_at: new Date(y,mo,e.d,10,0,0).toISOString()
+      })));
+
+      // ── الالتزامات ─────────────────────────
+      const commits = [
+        { name:'إيجار',         budget:2500, type:'أخرى' },
+        { name:'اشتراك STC',    budget:185,  type:'اشتراكات' },
+        { name:'نت stc',        budget:350,  type:'اشتراكات' },
+        { name:'كهرباء',        budget:280,  type:'فواتير' },
+        { name:'تأمين سيارة',   budget:420,  type:'أخرى' },
+        { name:'جيم',           budget:150,  type:'اشتراكات' },
+      ];
+      const { data: insertedCommits } = await sb.from('commitments').insert(
+        commits.map(c=>({ group_id:currentGroupId, name:c.name, budget:c.budget, type:c.type, month_key:mk, is_paid:false }))
+      ).select();
+
+      // ── أهداف الادخار ──────────────────────
+      const { data: goalsInserted } = await sb.from('savings_goals').insert([
+        { group_id:currentGroupId, user_id:currentUser.id, name:'سيارة لاند كروزر', icon:'🚗', target_amount:250000, monthly_amount:2000, saved_so_far:47000, start_month:mk },
+        { group_id:currentGroupId, user_id:currentUser.id, name:'رحلة أوروبا',       icon:'✈️', target_amount:18000,  monthly_amount:1500, saved_so_far:6000,  start_month:mk },
+        { group_id:currentGroupId, user_id:currentUser.id, name:'شاشة OLED',         icon:'📺', target_amount:4500,   monthly_amount:500,  saved_so_far:1500,  start_month:mk },
+      ]).select();
+
+      // ── المهام ─────────────────────────────
+      await sb.from('tasks').insert([
+        { group_id:currentGroupId, name:'دفع فاتورة الكهرباء',         type:'urgent', status:'pending',     added_by:currentUser.id },
+        { group_id:currentGroupId, name:'تجديد تأمين السيارة',         type:'urgent', status:'in_progress',  added_by:currentUser.id },
+        { group_id:currentGroupId, name:'شراء هدية عيد ميلاد أمي',    type:'normal', status:'pending',     added_by:currentUser.id },
+        { group_id:currentGroupId, name:'مراجعة ميزانية الشهر القادم', type:'normal', status:'done',        added_by:currentUser.id },
+      ]);
+
+      btn.remove();
+      toast('🎬 تم تحميل بيانات التصوير بنجاح!','ok',3500);
+      setTimeout(()=>location.href=location.pathname,1500);
+    } catch(e) {
+      btn.textContent = '🎬 تحميل بيانات التصوير';
+      btn.disabled = false;
+      toast('خطأ: '+e.message,'bad');
+    }
+  };
+})();
 </script>
 </body>
 </html>
