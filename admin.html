@@ -186,6 +186,7 @@ tr.clickable:hover td{background:rgba(245,166,35,.05)!important}
       <div class="page-sub">جميع الحسابات المسجّلة في التطبيق</div>
       <div class="stats-row">
         <div class="stat-box"><div class="stat-box-val" id="statUsers">—</div><div class="stat-box-lbl">إجمالي المستخدمين</div></div>
+        <div class="stat-box"><div class="stat-box-val" id="statOnline" style="color:var(--success)">—</div><div class="stat-box-lbl">🟢 نشطون الآن</div></div>
         <div class="stat-box"><div class="stat-box-val" id="statAdmins">—</div><div class="stat-box-lbl">المدراء</div></div>
       </div>
       <div class="tbl-wrap">
@@ -308,12 +309,21 @@ async function doLogin(){
   document.getElementById('adminName').textContent=profile.name||email;
   document.getElementById('authScreen').style.display='none';
   document.getElementById('appScreen').style.display='flex';
+  startAdminHeartbeat(adminUser.id);
   loadAll();
 }
 
 async function doLogout(){
+  clearInterval(_adminHeartbeat);
   await sb.auth.signOut();
   location.reload();
+}
+
+let _adminHeartbeat = null;
+function startAdminHeartbeat(userId){
+  const ping = () => sb.from('profiles').update({last_seen_at: new Date().toISOString()}).eq('id', userId);
+  ping();
+  _adminHeartbeat = setInterval(ping, 3 * 60 * 1000);
 }
 
 // ── TABS ──
@@ -330,25 +340,36 @@ async function loadAll(){
   loadGroups();
   loadCategories();
   loadSettings();
+  startUsersAutoRefresh();
+}
+
+let _usersRefreshTimer = null;
+function startUsersAutoRefresh(){
+  clearInterval(_usersRefreshTimer);
+  _usersRefreshTimer = setInterval(() => loadUsers(true), 30000);
 }
 
 // ── USERS ──
-async function loadUsers(){
-  const {data}=await sb.from('profiles').select('*').order('created_at',{ascending:false});
+async function loadUsers(silent=false){
+  const {data}=await sb.from('profiles').select('*').order('last_seen_at',{ascending:false,nullsFirst:false});
   const users=data||[];
   document.getElementById('statUsers').textContent=users.length;
   document.getElementById('statAdmins').textContent=users.filter(u=>u.is_super_admin).length;
-  document.getElementById('usersBadge').textContent=users.length;
+  const onlineCount = users.filter(u=>u.last_seen_at && (Date.now()-new Date(u.last_seen_at).getTime())<10*60*1000).length;
+  document.getElementById('statOnline').textContent=onlineCount;
+  document.getElementById('usersBadge').textContent=`${users.length} | ${onlineCount} نشط`;
   if(!users.length){document.getElementById('usersTable').innerHTML='<div class="loading">لا يوجد مستخدمون</div>';return;}
   const now = Date.now();
-  let html=`<table><thead><tr><th>الاسم</th><th>الحالة</th><th>البريد الإلكتروني</th><th>تاريخ التسجيل</th><th>الصلاحية</th><th>إجراءات</th></tr></thead><tbody>`;
+  let html=`<table><thead><tr><th>الاسم</th><th>الحالة</th><th>آخر نشاط</th><th>البريد الإلكتروني</th><th>تاريخ التسجيل</th><th>الصلاحية</th><th>إجراءات</th></tr></thead><tbody>`;
   users.forEach(u=>{
     const d=new Date(u.created_at).toLocaleDateString('ar-SA',{day:'numeric',month:'short',year:'numeric'});
     const isOnline = u.last_seen_at && (now - new Date(u.last_seen_at).getTime()) < 10*60*1000;
     const statusCell = isOnline ? '<span class="badge-online">نشط</span>' : '<span style="color:var(--text2);font-size:12px">—</span>';
+    const lastSeenCell = u.last_seen_at ? `<span style="font-size:12px;color:${isOnline?'var(--success)':'var(--text2)'}">${fmtRelTime(u.last_seen_at)}</span>` : '<span style="color:var(--text2);font-size:12px">—</span>';
     html+=`<tr class="clickable" onclick="openUserModal('${u.id}','${(u.name||'—').replace(/'/g,'\\'')}')">
       <td style="font-weight:700">${u.name||'—'}</td>
       <td>${statusCell}</td>
+      <td>${lastSeenCell}</td>
       <td style="color:var(--text2);direction:ltr;text-align:right">${u.email}</td>
       <td style="color:var(--text2)">${d}</td>
       <td>${u.is_super_admin?'<span class="badge-admin">👑 مدير</span>':'<span style="color:var(--text2);font-size:12px">عضو عادي</span>'}</td>
@@ -631,6 +652,7 @@ sb.auth.getSession().then(({data})=>{
         document.getElementById('adminName').textContent=p.name||data.session.user.email;
         document.getElementById('authScreen').style.display='none';
         document.getElementById('appScreen').style.display='flex';
+        startAdminHeartbeat(adminUser.id);
         loadAll();
       }
     });
