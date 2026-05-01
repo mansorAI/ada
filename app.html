@@ -5816,31 +5816,38 @@ async function sendAiMessage(){
       const listCommit = insertedCommits?.find(c=>c.name==='مستلزمات المنزل');
       if(listCommit){
         const homeItems = [
-          { name:'شامبو هيد آند شولدرز', qty:2, price:32  },
-          { name:'بلسم الشعر',            qty:1, price:28  },
-          { name:'صابون لوكس',            qty:4, price:18  },
-          { name:'معجون أسنان كولجيت',    qty:2, price:22  },
-          { name:'فرشاة أسنان',           qty:3, price:15  },
-          { name:'منظف أطباق صاني',       qty:2, price:24  },
-          { name:'منظف أرضيات دومستوس',   qty:1, price:38  },
-          { name:'مناديل كلينكس',         qty:5, price:16  },
-          { name:'ورق حمام',              qty:12, price:42 },
-          { name:'مسحوق غسيل أريال',      qty:1, price:85  },
-          { name:'معطر ملابس كومفورت',    qty:1, price:55  },
-          { name:'كيس قمامة',            qty:2, price:20  },
-          { name:'إسفنجة 3M',            qty:4, price:14  },
-          { name:'كلور',                 qty:2, price:18  },
-          { name:'منظف حمام هاربيك',     qty:1, price:32  },
-          { name:'زيت طعام عافية',       qty:2, price:65  },
-          { name:'ملح',                  qty:1, price:8   },
-          { name:'سكر',                  qty:2, price:22  },
-          { name:'أرز بسمتي',            qty:2, price:45  },
-          { name:'قهوة عربية',           qty:1, price:75  },
+          { name:'شامبو هيد آند شولدرز',  qty:2,  price:32,  category:'عناية شخصية' },
+          { name:'بلسم الشعر',             qty:1,  price:28,  category:'عناية شخصية' },
+          { name:'صابون لوكس',             qty:4,  price:18,  category:'عناية شخصية' },
+          { name:'معجون أسنان كولجيت',     qty:2,  price:22,  category:'عناية شخصية' },
+          { name:'فرشاة أسنان',            qty:3,  price:15,  category:'عناية شخصية' },
+          { name:'مناديل كلينكس',          qty:5,  price:16,  category:'عناية شخصية' },
+          { name:'ورق حمام',               qty:12, price:42,  category:'عناية شخصية' },
+          { name:'منظف أطباق صاني',        qty:2,  price:24,  category:'منظفات'      },
+          { name:'منظف أرضيات دومستوس',    qty:1,  price:38,  category:'منظفات'      },
+          { name:'مسحوق غسيل أريال',       qty:1,  price:85,  category:'منظفات'      },
+          { name:'معطر ملابس كومفورت',     qty:1,  price:55,  category:'منظفات'      },
+          { name:'كيس قمامة',              qty:2,  price:20,  category:'منظفات'      },
+          { name:'إسفنجة 3M',              qty:4,  price:14,  category:'منظفات'      },
+          { name:'كلور',                   qty:2,  price:18,  category:'منظفات'      },
+          { name:'منظف حمام هاربيك',       qty:1,  price:32,  category:'منظفات'      },
+          { name:'زيت طعام عافية',         qty:2,  price:65,  category:'مواد غذائية' },
+          { name:'ملح',                    qty:1,  price:8,   category:'مواد غذائية' },
+          { name:'سكر',                    qty:2,  price:22,  category:'مواد غذائية' },
+          { name:'أرز بسمتي',              qty:2,  price:45,  category:'مواد غذائية' },
+          { name:'قهوة عربية',             qty:1,  price:75,  category:'مواد غذائية' },
+          { name:'حليب نادك',              qty:4,  price:28,  category:'ألبان وأجبان' },
+          { name:'جبنة شيدر كيري',         qty:1,  price:38,  category:'ألبان وأجبان' },
+          { name:'لبن زبادي',              qty:6,  price:12,  category:'ألبان وأجبان' },
+          { name:'زبدة لورباك',            qty:1,  price:45,  category:'ألبان وأجبان' },
+          { name:'دجاج مجمد',              qty:2,  price:95,  category:'دجاج ولحوم'  },
+          { name:'لحم بقري مفروم',         qty:1,  price:120, category:'دجاج ولحوم'  },
+          { name:'سمك سلمون',              qty:1,  price:85,  category:'دجاج ولحوم'  },
         ];
         await sb.from('commitment_items').insert(
           homeItems.map(i=>({
             commitment_id:listCommit.id,
-            name:i.name, qty:i.qty, price:i.price, category:'مستلزمات', src:'manual'
+            name:i.name, qty:i.qty, price:i.price, category:i.category, src:'manual'
           }))
         );
       }
@@ -6165,14 +6172,12 @@ async function sendAiMessage(){
     }
 
     // ── زر إضافة التزام ─────────────────────
-    highlight(null); closeAllOverlays(); scrollToTop(); await wait(400);
+    highlight(null); scrollToTop(); await wait(300);
     const addFixedBtn = document.querySelector('[onclick*="openAddFixed"]');
     if(addFixedBtn){
       highlight(addFixedBtn); await moveCursor(addFixedBtn);
       await showLabel('➕ هكذا تضيف التزام جديد', 1500);
       addFixedBtn.click(); await wait(700);
-
-      // ── تعبئة النموذج — نوع قائمة ──────────
       const typeSelect = document.getElementById('fxInpType');
       const nameInpFx  = document.getElementById('fxInpName');
       const budgetInpFx = document.getElementById('fxInpBudget');
@@ -6183,65 +6188,94 @@ async function sendAiMessage(){
         await showLabel('📋 اختر "قائمة" للأصناف التفصيلية<br><span style="font-size:13px;color:#7e7c8e">مستلزمات المنزل، السوبرماركت، الصيدلية...</span>', 2500);
         await wait(400);
       }
-      if(nameInpFx){
-        highlight(nameInpFx); await moveCursor(nameInpFx);
-        await typeInto(nameInpFx, 'مستلزمات المنزل');
-      }
-      if(budgetInpFx){
-        highlight(budgetInpFx); await moveCursor(budgetInpFx);
-        await typeInto(budgetInpFx, '850');
-      }
-      // أغلق النموذج بدون حفظ (البيانات موجودة من الديمو)
+      if(nameInpFx){ highlight(nameInpFx); await moveCursor(nameInpFx); await typeInto(nameInpFx, 'مستلزمات المنزل'); }
+      if(budgetInpFx){ highlight(budgetInpFx); await moveCursor(budgetInpFx); await typeInto(budgetInpFx, '850'); }
       closeSheet('addFixedOverlay'); await wait(500);
     }
 
     // ── قائمة مستلزمات المنزل الموجودة ───────
     let qaimaCard = null;
     document.querySelectorAll('.fix-card').forEach(card=>{
-      if(card.textContent.includes('مستلزمات') || card.textContent.includes('قائمة')) qaimaCard = card;
+      if(card.textContent.includes('مستلزمات')) qaimaCard = card;
     });
     if(!qaimaCard && firstCard) qaimaCard = firstCard;
-    if(qaimaCard){
-      qaimaCard.scrollIntoView({behavior:'smooth', block:'center'}); await wait(600);
-      highlight(qaimaCard); await moveCursor(qaimaCard);
-      await showLabel('🗃️ التزام "مستلزمات المنزل" — نوع قائمة<br><span style="font-size:13px;color:#7e7c8e">يرفع الأصناف للمخزون تلقائياً</span>', 2500);
-      qaimaCard.click(); await wait(1000);
+    if(!qaimaCard){ highlight(null); scrollToTop(); return; }
 
-      // ── أصناف داخل الالتزام ─────────────────
-      const items = document.querySelectorAll('.commit-item, .ci-row, [class*="item-row"], .ci-item');
-      if(items.length > 0){
-        await showLabel(`📦 ${items.length} صنف بالتفصيل<br><span style="font-size:13px;color:#7e7c8e">الاسم — الكمية — السعر لكل منتج</span>`, 2200);
-        await wait(300);
-        // تمرير تدريجي لإظهار جميع الأصناف
-        for(let i = 0; i < Math.min(items.length, 6); i++){
-          if(stopped) return;
-          items[i].scrollIntoView({behavior:'smooth', block:'nearest'});
-          highlight(items[i]); await wait(400);
-        }
-        await wait(400);
-        // اذهب للنهاية لإظهار آخر الأصناف
-        items[items.length-1].scrollIntoView({behavior:'smooth', block:'center'}); await wait(700);
-        highlight(items[items.length-1]);
-        await showLabel(`✅ كل أصناف قائمتك موثقة هنا`, 1800);
-        await wait(400);
-      } else {
-        await showLabel('📦 الأصناف تظهر هنا بعد إضافتها', 2000);
-        await wait(400);
-      }
+    qaimaCard.scrollIntoView({behavior:'smooth', block:'center'}); await wait(600);
+    highlight(qaimaCard); await moveCursor(qaimaCard);
+    await showLabel('🗃️ التزام "مستلزمات المنزل" — نوع قائمة', 1800);
+    qaimaCard.click(); await wait(1200);
 
-      // ── زر تحليل الفاتورة ───────────────────
-      highlight(null);
-      const photoBtn = document.querySelector('[onclick*="analyzePhoto"],[onclick*="analyze"],[id*="imgBtn"],[class*="photo-btn"],[class*="scan-btn"]');
-      if(photoBtn){
-        photoBtn.scrollIntoView({behavior:'smooth', block:'center'}); await wait(500);
-        highlight(photoBtn); await moveCursor(photoBtn);
-        await showLabel('📸 صوّر الفاتورة بالذكاء الاصطناعي<br><span style="font-size:13px;color:#7e7c8e">يستخرج الأصناف والأسعار تلقائياً</span>', 3000);
-        await wait(500);
-      }
-      highlight(null);
-      const backBtn = document.querySelector('#pg-commit-detail .back-btn, .back-btn');
-      if(backBtn){ await moveCursor(backBtn); backBtn.click(); await wait(600); }
+    // ── داخل صفحة تفاصيل الالتزام ──────────
+
+    // زر يدوي
+    const manualBtn = document.querySelector('#pg-commit-detail .action-btn[onclick*="Manual"]');
+    if(manualBtn){
+      highlight(manualBtn); await moveCursor(manualBtn);
+      await showLabel('✏️ إضافة يدوية<br><span style="font-size:13px;color:#7e7c8e">أدخل اسم الصنف والكمية والسعر بنفسك</span>', 2200);
+      manualBtn.click(); await wait(800);
+      highlight(document.getElementById('addItemManualOverlay')||manualBtn); await wait(600);
+      closeSheet('addItemManualOverlay'); await wait(400);
     }
+
+    // زر صوتي
+    const voiceBtn = document.querySelector('#pg-commit-detail .action-btn[onclick*="Voice"]');
+    if(voiceBtn){
+      highlight(voiceBtn); await moveCursor(voiceBtn);
+      await showLabel('🎙️ إضافة صوتية<br><span style="font-size:13px;color:#7e7c8e">قل اسم الصنف والسعر — يُضاف تلقائياً بدون كتابة</span>', 2500);
+      await wait(500);
+    }
+
+    // زر تصوير الفاتورة — النجمة
+    highlight(null);
+    const photoBtn = document.querySelector('#pg-commit-detail .action-btn.ab-photo, #pg-commit-detail .action-btn[onclick*="Photo"]');
+    if(photoBtn){
+      photoBtn.scrollIntoView({behavior:'smooth', block:'center'}); await wait(400);
+      highlight(photoBtn); await moveCursor(photoBtn);
+      await showLabel('📷 تصوير الفاتورة بالذكاء الاصطناعي<br><span style="font-size:13px;color:#7e7c8e">صوّر فاتورة السوبرماركت — تظهر جميع الأصناف والأسعار تلقائياً ✨</span>', 3500);
+      await wait(600);
+    }
+
+    // ── جدول الأصناف — تمرير تدريجي ─────────
+    highlight(null);
+    const tbody = document.getElementById('commitItemsTbody');
+    const itemRows = tbody ? Array.from(tbody.querySelectorAll('tr')).filter(r=>!r.querySelector('.empty-table')&&r.cells.length>1) : [];
+    if(itemRows.length > 0){
+      await showLabel(`📦 ${itemRows.length} صنف في القائمة<br><span style="font-size:13px;color:#7e7c8e">مواد غذائية • منظفات • ألبان وأجبان • دجاج ولحوم</span>`, 2500);
+      await wait(300);
+      const step = Math.max(1, Math.floor(itemRows.length / 7));
+      for(let i=0; i<itemRows.length; i+=step){
+        if(stopped) return;
+        itemRows[i].scrollIntoView({behavior:'smooth', block:'nearest'});
+        highlight(itemRows[i]); await wait(360);
+      }
+      itemRows[itemRows.length-1].scrollIntoView({behavior:'smooth', block:'center'});
+      highlight(itemRows[itemRows.length-1]); await wait(700);
+      await showLabel('✅ كل أصناف قائمتك موثقة بالتفصيل', 1800);
+      await wait(400);
+    }
+
+    // ── تقرير الفئات — المقارنة ──────────────
+    highlight(null);
+    const catTbl = document.getElementById('commitCatRptTbody');
+    if(catTbl){
+      const tbl = catTbl.closest('table') || catTbl;
+      tbl.scrollIntoView({behavior:'smooth', block:'center'}); await wait(700);
+      highlight(tbl);
+      await showLabel('📊 مقارنة الفئات<br><span style="font-size:13px;color:#7e7c8e">كم أنفقت على المنظفات؟ المواد الغذائية؟ الألبان والبروتين؟</span>', 3000);
+      await wait(600);
+    }
+
+    // ── ختام: الأصناف تذهب للمخزن تلقائياً ──
+    highlight(null);
+    const heroEl = document.querySelector('#pg-commit-detail .commit-hero');
+    if(heroEl){ heroEl.scrollIntoView({behavior:'smooth', block:'start'}); await wait(500); }
+    await showLabel('🏪 كل الأصناف المضافة هنا<br><span style="font-size:13px;color:#7e7c8e">تنتقل تلقائياً إلى المخزن لمتابعة الكميات والمخزون 🚀</span>', 3500);
+    await wait(800);
+
+    highlight(null);
+    const backBtn = document.querySelector('#pg-commit-detail .back-btn');
+    if(backBtn){ await moveCursor(backBtn); backBtn.click(); await wait(700); }
     highlight(null); scrollToTop(); await wait(500);
   }
 
