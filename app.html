@@ -5794,13 +5794,13 @@ async function sendAiMessage(){
 
       // ── الالتزامات ─────────────────────────
       const commits = [
-        { name:'إيجار',              budget:2500, type:'أخرى',        isPaid:true  },
-        { name:'اشتراك STC',         budget:185,  type:'اشتراكات',    isPaid:true  },
-        { name:'نت STC',             budget:350,  type:'اشتراكات',    isPaid:false },
-        { name:'كهرباء',             budget:280,  type:'فواتير',      isPaid:false },
-        { name:'تأمين سيارة',        budget:420,  type:'أخرى',        isPaid:false },
-        { name:'جيم',                budget:150,  type:'اشتراكات',    isPaid:true  },
-        { name:'مستلزمات المنزل',    budget:850,  type:'قائمة',       isPaid:false },
+        { name:'إيجار',              budget:2500, type:'simple', isPaid:true  },
+        { name:'اشتراك STC',         budget:185,  type:'simple', isPaid:true  },
+        { name:'نت STC',             budget:350,  type:'simple', isPaid:false },
+        { name:'كهرباء',             budget:280,  type:'simple', isPaid:false },
+        { name:'تأمين سيارة',        budget:420,  type:'simple', isPaid:false },
+        { name:'جيم',                budget:150,  type:'simple', isPaid:true  },
+        { name:'مستلزمات المنزل',    budget:850,  type:'list',   isPaid:false },
       ];
       const { data: insertedCommits } = await sb.from('commitments').insert(
         commits.map(c=>({ group_id:currentGroupId, name:c.name, budget:c.budget, type:c.type, month_key:mk, is_paid:c.isPaid||false }))
@@ -5833,8 +5833,8 @@ async function sendAiMessage(){
         ];
         await sb.from('commitment_items').insert(
           homeItems.map(i=>({
-            group_id:currentGroupId, commitment_id:listCommit.id,
-            name:i.name, quantity:i.qty, price:i.price, month_key:mk
+            commitment_id:listCommit.id,
+            name:i.name, qty:i.qty, price:i.price, category:'مستلزمات', src:'manual'
           }))
         );
       }
