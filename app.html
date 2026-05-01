@@ -5794,16 +5794,50 @@ async function sendAiMessage(){
 
       // ── الالتزامات ─────────────────────────
       const commits = [
-        { name:'إيجار',         budget:2500, type:'أخرى' },
-        { name:'اشتراك STC',    budget:185,  type:'اشتراكات' },
-        { name:'نت stc',        budget:350,  type:'اشتراكات' },
-        { name:'كهرباء',        budget:280,  type:'فواتير' },
-        { name:'تأمين سيارة',   budget:420,  type:'أخرى' },
-        { name:'جيم',           budget:150,  type:'اشتراكات' },
+        { name:'إيجار',              budget:2500, type:'أخرى',        isPaid:true  },
+        { name:'اشتراك STC',         budget:185,  type:'اشتراكات',    isPaid:true  },
+        { name:'نت STC',             budget:350,  type:'اشتراكات',    isPaid:false },
+        { name:'كهرباء',             budget:280,  type:'فواتير',      isPaid:false },
+        { name:'تأمين سيارة',        budget:420,  type:'أخرى',        isPaid:false },
+        { name:'جيم',                budget:150,  type:'اشتراكات',    isPaid:true  },
+        { name:'مستلزمات المنزل',    budget:850,  type:'قائمة',       isPaid:false },
       ];
       const { data: insertedCommits } = await sb.from('commitments').insert(
-        commits.map(c=>({ group_id:currentGroupId, name:c.name, budget:c.budget, type:c.type, month_key:mk, is_paid:false }))
+        commits.map(c=>({ group_id:currentGroupId, name:c.name, budget:c.budget, type:c.type, month_key:mk, is_paid:c.isPaid||false }))
       ).select();
+
+      // ── أصناف قائمة المنزل ─────────────────
+      const listCommit = insertedCommits?.find(c=>c.name==='مستلزمات المنزل');
+      if(listCommit){
+        const homeItems = [
+          { name:'شامبو هيد آند شولدرز', qty:2, price:32  },
+          { name:'بلسم الشعر',            qty:1, price:28  },
+          { name:'صابون لوكس',            qty:4, price:18  },
+          { name:'معجون أسنان كولجيت',    qty:2, price:22  },
+          { name:'فرشاة أسنان',           qty:3, price:15  },
+          { name:'منظف أطباق صاني',       qty:2, price:24  },
+          { name:'منظف أرضيات دومستوس',   qty:1, price:38  },
+          { name:'مناديل كلينكس',         qty:5, price:16  },
+          { name:'ورق حمام',              qty:12, price:42 },
+          { name:'مسحوق غسيل أريال',      qty:1, price:85  },
+          { name:'معطر ملابس كومفورت',    qty:1, price:55  },
+          { name:'كيس قمامة',            qty:2, price:20  },
+          { name:'إسفنجة 3M',            qty:4, price:14  },
+          { name:'كلور',                 qty:2, price:18  },
+          { name:'منظف حمام هاربيك',     qty:1, price:32  },
+          { name:'زيت طعام عافية',       qty:2, price:65  },
+          { name:'ملح',                  qty:1, price:8   },
+          { name:'سكر',                  qty:2, price:22  },
+          { name:'أرز بسمتي',            qty:2, price:45  },
+          { name:'قهوة عربية',           qty:1, price:75  },
+        ];
+        await sb.from('commitment_items').insert(
+          homeItems.map(i=>({
+            group_id:currentGroupId, commitment_id:listCommit.id,
+            name:i.name, quantity:i.qty, price:i.price, month_key:mk
+          }))
+        );
+      }
 
       // ── أهداف الادخار ──────────────────────
       const { data: goalsInserted } = await sb.from('savings_goals').insert([
@@ -5833,7 +5867,7 @@ async function sendAiMessage(){
 })();
 
 // ══════════════════════════════════════════
-// 🎥 CINEMA MODE — جولة تلقائية عند ?cinema=1
+// 🎥 CINEMA MODE — استوديو التصوير ?cinema=1
 // ══════════════════════════════════════════
 (function(){
   if(!new URLSearchParams(location.search).has('cinema')) return;
@@ -5848,37 +5882,50 @@ async function sendAiMessage(){
   // ── CSS ─────────────────────────────────
   const style = document.createElement('style');
   style.textContent = `
-    #cinemaSpotlight{position:fixed;inset:0;z-index:8000;pointer-events:none;transition:all .4s}
-    .cinema-label{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);z-index:8100;
-      background:rgba(10,10,15,.92);border:1px solid rgba(245,166,35,.4);border-radius:16px;
-      padding:14px 24px;font-family:'Tajawal',sans-serif;font-size:16px;font-weight:700;
-      color:#f0eeea;text-align:center;max-width:320px;width:90%;
-      box-shadow:0 8px 32px rgba(0,0,0,.6);backdrop-filter:blur(12px);
-      animation:labelPop .3s ease;line-height:1.6}
-    @keyframes labelPop{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-    .cinema-highlight{outline:3px solid #f5a623 !important;outline-offset:4px !important;
-      box-shadow:0 0 0 6px rgba(245,166,35,.25) !important;
-      border-radius:14px !important;transition:all .3s !important;position:relative;z-index:8050}
-    .cinema-cursor{position:fixed;width:32px;height:32px;background:rgba(245,166,35,.9);
+    .cinema-label{position:fixed;bottom:92px;left:50%;transform:translateX(-50%);z-index:8100;
+      background:rgba(10,10,15,.93);border:1px solid rgba(245,166,35,.45);border-radius:18px;
+      padding:14px 22px;font-family:'Tajawal',sans-serif;font-size:15px;font-weight:700;
+      color:#f0eeea;text-align:center;max-width:300px;width:88%;
+      box-shadow:0 8px 32px rgba(0,0,0,.7);backdrop-filter:blur(16px);
+      animation:labelPop .3s ease;line-height:1.7;pointer-events:none}
+    @keyframes labelPop{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+    .cinema-hl,.cinema-highlight{outline:3px solid #f5a623 !important;outline-offset:5px !important;
+      box-shadow:0 0 0 8px rgba(245,166,35,.2) !important;
+      border-radius:14px !important;transition:all .3s !important;z-index:8050 !important;position:relative !important}
+    .cinema-cursor{position:fixed;width:28px;height:28px;background:rgba(245,166,35,.92);
       border-radius:50%;z-index:8200;pointer-events:none;transform:translate(-50%,-50%);
-      box-shadow:0 0 0 6px rgba(245,166,35,.3);transition:all .4s cubic-bezier(.4,0,.2,1)}
-    .cinema-typing{border-left:2px solid #f5a623 !important;animation:blinkCursor .6s infinite}
-    @keyframes blinkCursor{0%,100%{border-color:#f5a623}50%{border-color:transparent}}
-    #cinemaCtrl{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:8300;
-      display:flex;gap:8px;background:rgba(10,10,15,.95);border:1px solid rgba(245,166,35,.3);
-      border-radius:40px;padding:8px 16px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
-    #cinemaPlayBtn{background:linear-gradient(135deg,#f5a623,#e8441a);color:#fff;
-      border:none;border-radius:30px;padding:10px 24px;font-family:'Tajawal',sans-serif;
-      font-size:15px;font-weight:900;cursor:pointer;display:flex;align-items:center;gap:8px}
-    #cinemaSkipBtn{background:rgba(255,255,255,.08);color:#7e7c8e;border:1px solid #2a2a3a;
-      border-radius:30px;padding:10px 16px;font-family:'Tajawal',sans-serif;
-      font-size:13px;cursor:pointer}
+      box-shadow:0 0 0 5px rgba(245,166,35,.28);transition:all .45s cubic-bezier(.4,0,.2,1)}
+    .cinema-typing{caret-color:#f5a623 !important}
     .cinema-progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,#f5a623,#e8441a);
-      z-index:8400;transition:width .5s ease;width:0}
+      z-index:8400;transition:width .6s ease;width:0}
+    #cinemaPanel{position:fixed;inset:0;z-index:9000;background:rgba(10,10,15,.97);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      font-family:'Tajawal',sans-serif;padding:24px;overflow-y:auto}
+    #cinemaPanel h1{font-size:22px;font-weight:900;color:#f5a623;margin-bottom:4px}
+    #cinemaPanel p{font-size:13px;color:#7e7c8e;margin-bottom:20px}
+    .cp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:360px;margin-bottom:20px}
+    .cp-sec{background:#13131a;border:1.5px solid #2a2a3a;border-radius:14px;
+      padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .2s}
+    .cp-sec.selected{border-color:#f5a623;background:rgba(245,166,35,.1)}
+    .cp-sec .cs-icon{font-size:22px}
+    .cp-sec .cs-label{font-size:13px;font-weight:700;color:#f0eeea}
+    .cp-sec .cs-desc{font-size:11px;color:#7e7c8e;margin-top:2px}
+    .cp-actions{display:flex;gap:10px;width:100%;max-width:360px}
+    #cpStartBtn{flex:1;background:linear-gradient(135deg,#f5a623,#e8441a);color:#fff;
+      border:none;border-radius:14px;padding:14px;font-family:'Tajawal',sans-serif;
+      font-size:16px;font-weight:900;cursor:pointer}
+    #cpStartBtn:disabled{opacity:.5}
+    #cpCloseBtn{background:#1c1c26;color:#7e7c8e;border:1px solid #2a2a3a;
+      border-radius:14px;padding:14px 18px;font-family:'Tajawal',sans-serif;
+      font-size:14px;cursor:pointer}
+    #cinemaStopBtn{position:fixed;bottom:90px;left:16px;z-index:8500;
+      background:rgba(239,68,68,.9);color:#fff;border:none;border-radius:30px;
+      padding:8px 16px;font-family:'Tajawal',sans-serif;font-size:13px;
+      font-weight:700;cursor:pointer;display:none}
   `;
   document.head.appendChild(style);
 
-  // ── العناصر ──────────────────────────────
+  // ── العناصر الثابتة ──────────────────────
   const cursor = document.createElement('div');
   cursor.className = 'cinema-cursor';
   cursor.style.display = 'none';
@@ -5888,23 +5935,53 @@ async function sendAiMessage(){
   progressBar.className = 'cinema-progress';
   document.body.appendChild(progressBar);
 
-  const ctrl = document.createElement('div');
-  ctrl.id = 'cinemaCtrl';
-  ctrl.innerHTML = `
-    <button id="cinemaPlayBtn">▶️ ابدأ الجولة التلقائية</button>
-    <button id="cinemaSkipBtn">✕ إغلاق</button>
+  const stopBtn = document.createElement('button');
+  stopBtn.id = 'cinemaStopBtn';
+  stopBtn.textContent = '⏹ إيقاف';
+  document.body.appendChild(stopBtn);
+
+  // ── لوحة الاختيار ────────────────────────
+  const SECTIONS = [
+    { id:'home',        icon:'🏠', label:'الرئيسية',    desc:'أهداف الادخار + AI' },
+    { id:'expenses',    icon:'💸', label:'المصروفات',   desc:'إضافة + تثبيت + أرشيف' },
+    { id:'commitments', icon:'📌', label:'الالتزامات',  desc:'كروت + قائمة + فاتورة' },
+    { id:'inventory',   icon:'🗃️', label:'المخزون',     desc:'كميات + استخراج PDF' },
+    { id:'tasks',       icon:'📋', label:'المهام',       desc:'مؤقت حي + حالات' },
+    { id:'stats',       icon:'📊', label:'التقارير',    desc:'إحصائيات شاملة' },
+    { id:'ai',          icon:'🤖', label:'المساعد',     desc:'تقييم + خطة شراء' },
+    { id:'groups',      icon:'👥', label:'المجموعات',   desc:'أعضاء + صلاحيات' },
+  ];
+
+  const panel = document.createElement('div');
+  panel.id = 'cinemaPanel';
+  panel.innerHTML = `
+    <h1>🎬 استوديو التصوير</h1>
+    <p>اختر الأقسام التي تريد تصويرها</p>
+    <div class="cp-grid">
+      ${SECTIONS.map(s=>`
+        <div class="cp-sec selected" data-sec="${s.id}">
+          <span class="cs-icon">${s.icon}</span>
+          <div><div class="cs-label">${s.label}</div><div class="cs-desc">${s.desc}</div></div>
+        </div>`).join('')}
+    </div>
+    <div class="cp-actions">
+      <button id="cpStartBtn">▶️ ابدأ التصوير</button>
+      <button id="cpCloseBtn">✕</button>
+    </div>
   `;
-  document.body.appendChild(ctrl);
+  document.body.appendChild(panel);
+
+  // toggle section selection
+  panel.querySelectorAll('.cp-sec').forEach(el=>{
+    el.onclick = ()=> el.classList.toggle('selected');
+  });
 
   let labelEl = null;
   let currentHighlight = null;
   let stopped = false;
 
-  document.getElementById('cinemaSkipBtn').onclick = () => {
-    stopped = true;
-    cleanup();
-    ctrl.remove();
-  };
+  document.getElementById('cpCloseBtn').onclick = ()=>{ panel.remove(); stopBtn.remove(); };
+  stopBtn.onclick = ()=>{ stopped=true; cleanup(); stopBtn.style.display='none'; panel.style.display='flex'; progressBar.style.width='0'; };
 
   // ── الأدوات ──────────────────────────────
   const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -5973,273 +6050,233 @@ async function sendAiMessage(){
     return found;
   }
 
-  // ── سكريبت الجولة الاحترافية ─────────────
-  async function runCinema(){
-    if(stopped) return;
-    const playBtn = document.getElementById('cinemaPlayBtn');
-    playBtn.disabled = true;
-    playBtn.textContent = '🎬 جارٍ التصوير...';
+  // ── جولات الأقسام ────────────────────────
+  async function tourHome(){
+    goPage('home'); closeAllOverlays(); scrollToTop(); await wait(700);
+    await showLabel('🏠 الرئيسية<br><span style="font-size:13px;color:#7e7c8e">ملخص مالي شامل — ميزانيتك ومصروفاتك دفعة واحدة</span>', 2500);
+    const hero = document.querySelector('#pg-home .hero-amount, #pg-home [class*="hero"]');
+    if(hero){ highlight(hero); await moveCursor(hero); await wait(1500); }
+    const savSection = document.querySelector('#pg-home [class*="sav"], #pg-home [class*="goal"]');
+    if(savSection){
+      highlight(null);
+      savSection.scrollIntoView({behavior:'smooth', block:'center'}); await wait(700);
+      highlight(savSection);
+      await showLabel('🎯 أهداف الادخار<br><span style="font-size:13px;color:#7e7c8e">حدد هدفك وتابع التقدم خطوة بخطوة</span>', 2500);
+      await wait(500);
+    }
+    highlight(null); scrollToTop(); await wait(500);
+  }
+
+  async function tourExpenses(){
+    const dailyBtn = document.getElementById('nav-daily');
+    highlight(null); closeAllOverlays();
+    await moveCursor(dailyBtn); dailyBtn.click(); scrollToTop(); await wait(700);
+    await showLabel('💸 مصروفاتك اليومية<br><span style="font-size:13px;color:#7e7c8e">ميزانيتك الشهرية ومتابعة كل ريال</span>', 2200);
+    const heroAmt = document.querySelector('.hero-amount');
+    if(heroAmt){ highlight(heroAmt); await wait(1500); }
+    highlight(null); closeAllOverlays();
     const nameInp = document.getElementById('inpName');
     const amtInp  = document.getElementById('inpAmt');
-
-    // ══ 1. الرئيسية — أهداف الادخار ══════════
-    setProgress(4);
-    goPage('home'); scrollToTop(); closeAllOverlays();
-    await wait(800);
-    await showLabel('🏠 الرئيسية<br><span style="font-size:13px;color:#7e7c8e">أهداف الادخار والمساعد المالي الذكي</span>', 2500);
-    const savSection = document.querySelector('#pg-home .sav-section, #pg-home .savings-wrap, #pg-home') ;
-    highlight(savSection);
-    await wait(2200);
-
-    // ══ 2. صفحة المصروفات ════════════════════
-    setProgress(9);
-    if(stopped) return;
-    highlight(null); closeAllOverlays();
-    const dailyBtn = document.getElementById('nav-daily');
-    await moveCursor(dailyBtn);
-    dailyBtn.click(); scrollToTop();
-    await wait(700);
-    await showLabel('💸 مصروف يومي<br><span style="font-size:13px;color:#7e7c8e">ميزانيتك الشهرية ومصروفاتك</span>', 2000);
-    highlight(document.querySelector('.hero-amount'));
-    await wait(1800);
-
-    // ══ 3. إضافة قهوة (أول مصروف) ═══════════
-    setProgress(14);
-    if(stopped) return;
-    highlight(null); closeAllOverlays();
-    await showLabel('➕ إضافة مصروف — قهوة<br><span style="font-size:13px;color:#7e7c8e">يدوي أو صوتي أو رسالة البنك</span>', 1800);
-    openAdd(); await wait(700);
-    highlight(nameInp); await moveCursor(nameInp);
-    await typeInto(nameInp, 'قهوة ستاربكس');
-    highlight(amtInp); await moveCursor(amtInp);
-    await typeInto(amtInp, '28');
+    await showLabel('➕ إضافة مصروف — قهوة', 1200);
+    openAdd(); await wait(600);
+    highlight(nameInp); await moveCursor(nameInp); await typeInto(nameInp, 'قهوة ستاربكس');
+    highlight(amtInp);  await moveCursor(amtInp);  await typeInto(amtInp, '28');
     const addBtn1 = document.querySelector('#addOverlay .btn-primary');
-    highlight(addBtn1); await moveCursor(addBtn1); await wait(300);
-    addBtn1.click(); await wait(1000);
-
-    // ══ 4. إضافة بنزين ═══════════════════════
-    setProgress(18);
-    if(stopped) return;
-    await showLabel('⛽ إضافة بنزين', 1000);
-    openAdd(); await wait(600);
-    await typeInto(nameInp, 'بنزين أرامكو');
-    await typeInto(amtInp, '200');
-    document.querySelector('#addOverlay .btn-primary').click(); await wait(1000);
-
-    // ══ 5. إضافة مطعم ════════════════════════
-    setProgress(21);
-    if(stopped) return;
-    await showLabel('🍔 إضافة مطعم', 1000);
-    openAdd(); await wait(600);
-    await typeInto(nameInp, 'مطعم البيك');
-    await typeInto(amtInp, '95');
-    document.querySelector('#addOverlay .btn-primary').click(); await wait(1200);
-
-    // ══ 6. تثبيت فئة القهوة 📌 ═══════════════
-    setProgress(25);
-    if(stopped) return;
-    highlight(null); closeAllOverlays(); scrollToTop();
-    await showLabel('📌 تثبيت القهوة<br><span style="font-size:13px;color:#7e7c8e">تبقى دائماً في الأعلى حتى بدون مصروفات</span>', 2200);
-    await wait(300);
-    // Find pin button on قهوة card
-    let coffeePinBtn = null;
+    highlight(addBtn1); await moveCursor(addBtn1); await wait(300); addBtn1.click(); await wait(900);
+    await showLabel('⛽ بنزين', 800);
+    openAdd(); await wait(500);
+    await typeInto(nameInp, 'بنزين أرامكو'); await typeInto(amtInp, '200');
+    document.querySelector('#addOverlay .btn-primary').click(); await wait(900);
+    highlight(null); closeAllOverlays(); scrollToTop(); await wait(500);
+    let pinBtn = null;
     document.querySelectorAll('.exp-card').forEach(card=>{
-      if(card.querySelector('.ec-name')?.textContent.includes('قهوة')){
-        coffeePinBtn = card.querySelector('.pin-btn');
-      }
+      if(card.querySelector('.ec-name')?.textContent.includes('قهوة'))
+        pinBtn = card.querySelector('.pin-btn, [onclick*="pin"], [onclick*="Pin"]');
     });
-    if(!coffeePinBtn) coffeePinBtn = document.querySelector('.pin-btn');
-    if(coffeePinBtn){
-      highlight(coffeePinBtn); await moveCursor(coffeePinBtn); await wait(400);
-      coffeePinBtn.click(); await wait(1200);
-      await showLabel('✅ القهوة محاطة بإطار ذهبي — مثبّتة!', 1800);
-      await wait(500);
-      await showLabel('✕ للإلغاء اضغط مرة أخرى', 1500);
-      await moveCursor(coffeePinBtn);
-      coffeePinBtn.click(); await wait(900);
-      coffeePinBtn.click(); await wait(900);
+    if(!pinBtn) pinBtn = document.querySelector('.pin-btn');
+    if(pinBtn){
+      highlight(pinBtn); await moveCursor(pinBtn);
+      await showLabel('📌 تثبيت الفئة<br><span style="font-size:13px;color:#7e7c8e">تبقى في الأعلى دائماً — حتى لو ما سجلت مصروف</span>', 2500);
+      await wait(400);
     }
-
-    // ══ 7. الأرشيف 📅 ════════════════════════
-    setProgress(30);
-    if(stopped) return;
     highlight(null); closeAllOverlays();
-    await showLabel('📅 الأرشيف<br><span style="font-size:13px;color:#7e7c8e">مصروفاتك مرتبة بفترات 5 أيام</span>', 2000);
-    const archiveCard = document.querySelector('.archive-card');
+    const archiveCard = document.querySelector('.archive-card, .arch-card');
     if(archiveCard){
-      archiveCard.scrollIntoView({behavior:'smooth', block:'center'}); await wait(800);
-      highlight(archiveCard); await moveCursor(archiveCard); await wait(1000);
-      const archHd = archiveCard.querySelector('.archive-hd, .arch-hd');
-      if(archHd){ archHd.click(); await wait(900); }
-      await showLabel('📂 اضغط على الفترة ← اليوم ← تشوف التفاصيل', 2200);
-      await wait(500);
+      archiveCard.scrollIntoView({behavior:'smooth', block:'center'}); await wait(700);
+      highlight(archiveCard);
+      await showLabel('📅 الأرشيف<br><span style="font-size:13px;color:#7e7c8e">مصروفاتك مرتبة في فترات 5 أيام</span>', 2200);
+      await wait(400);
     }
-    scrollToTop(); await wait(600);
+    highlight(null); scrollToTop(); await wait(500);
+  }
 
-    // ══ 8. تفاصيل فئة القهوة ☕ ═══════════════
-    setProgress(36);
-    if(stopped) return;
-    highlight(null); closeAllOverlays();
-    await showLabel('☕ تفاصيل القهوة<br><span style="font-size:13px;color:#7e7c8e">كل مشترياتك من القهوة دفعة واحدة</span>', 2000);
-    const coffeeCard = findCard('.exp-card', 'قهوة');
-    if(coffeeCard){
-      highlight(coffeeCard); await moveCursor(coffeeCard); await wait(500);
-      coffeeCard.click(); await wait(1000);
-      // Note button
-      const noteBtn = document.querySelector('[id^="notebtn_"], [onclick*="openExpNote"]');
-      if(noteBtn){
-        await showLabel('💬 أضف ملاحظة لأي إدخال<br><span style="font-size:13px;color:#7e7c8e">تظهر فقط في التفاصيل</span>', 2200);
-        highlight(noteBtn); await moveCursor(noteBtn); await wait(1500);
-      }
-      // Back
-      const backBtn = document.querySelector('#pg-catdetail .back-btn');
-      if(backBtn){ backBtn.click(); await wait(700); }
-    }
-
-    // ══ 9. الالتزامات 📌 ══════════════════════
-    setProgress(44);
-    if(stopped) return;
-    highlight(null); closeAllOverlays();
+  async function tourCommitments(){
     const fixedBtn = document.getElementById('nav-fixed');
-    await moveCursor(fixedBtn);
-    fixedBtn.click(); scrollToTop(); await wait(800);
-    await showLabel('📌 الالتزامات الشهرية<br><span style="font-size:13px;color:#7e7c8e">إيجار، جوال، كهرباء، اشتراكات...</span>', 2200);
-    const firstCommit = document.querySelector('.fix-card');
-    if(firstCommit){
-      highlight(firstCommit); await wait(1500);
-      // Show save badge if exists
-      const saveBadge = firstCommit.querySelector('[class*="save"],[class*="budget-bar"],[class*="waffar"]');
-      if(saveBadge){
-        highlight(saveBadge);
-        await showLabel('💰 وفّرت من ميزانية هذا الالتزام!<br><span style="font-size:13px;color:#22c55e">الفرق بين الميزانية والمبلغ الفعلي</span>', 2500);
-      } else {
-        await showLabel('💰 كل كرت يعرض: الميزانية، المدفوع، والمتبقي', 2200);
-      }
-      await wait(500);
-    }
-
-    // ══ 10. تفاصيل التزام + تصوير الفاتورة ════
-    setProgress(51);
-    if(stopped) return;
     highlight(null); closeAllOverlays();
-    if(firstCommit){
-      firstCommit.click(); await wait(900);
-      await showLabel('📸 تحليل الفاتورة بالذكاء الاصطناعي<br><span style="font-size:13px;color:#7e7c8e">صوّر الفاتورة ← يستخرج الأصناف تلقائياً</span>', 3000);
-      const photoBtn = document.querySelector('[onclick*="analyzePhoto"],[onclick*="analyze"],[id*="imgBtn"],[class*="photo-btn"]');
-      if(photoBtn){ highlight(photoBtn); await moveCursor(photoBtn); await wait(2000); }
-      await showLabel('✅ الأصناف تُضاف تلقائياً للالتزام والمخزون', 2200);
-      await wait(500);
-      const backBtn2 = document.querySelector('#pg-commit-detail .back-btn, .back-btn');
-      if(backBtn2){ backBtn2.click(); await wait(600); }
+    await moveCursor(fixedBtn); fixedBtn.click(); scrollToTop(); await wait(800);
+    await showLabel('📌 الالتزامات الشهرية<br><span style="font-size:13px;color:#7e7c8e">إيجار، جوال، كهرباء، اشتراكات...</span>', 2200);
+    const firstCard = document.querySelector('.fix-card');
+    if(firstCard){ highlight(firstCard); await wait(1500); await showLabel('💰 كل كرت يعرض: الميزانية والمدفوع والمتبقي', 2000); await wait(400); }
+    let qaimaCard = null;
+    document.querySelectorAll('.fix-card').forEach(card=>{
+      if(card.textContent.includes('قائمة') || card.textContent.includes('مستلزمات')) qaimaCard = card;
+    });
+    if(!qaimaCard) qaimaCard = firstCard;
+    if(qaimaCard){
+      highlight(null); closeAllOverlays();
+      qaimaCard.scrollIntoView({behavior:'smooth', block:'center'}); await wait(700);
+      highlight(qaimaCard); await moveCursor(qaimaCard);
+      await showLabel('🗃️ التزام "قائمة"<br><span style="font-size:13px;color:#7e7c8e">يخزن الأصناف ويرفع للمخزون تلقائياً</span>', 2200);
+      qaimaCard.click(); await wait(900);
+      const items = document.querySelectorAll('.commit-item, .ci-row, [class*="item-row"]');
+      if(items.length > 0){
+        items[0].scrollIntoView({behavior:'smooth', block:'center'}); await wait(500);
+        highlight(items[0]);
+        await showLabel(`📦 ${items.length} صنف في القائمة<br><span style="font-size:13px;color:#7e7c8e">كميات وأسعار لكل منتج</span>`, 2000);
+        await wait(400);
+      }
+      const photoBtn = document.querySelector('[onclick*="analyzePhoto"],[onclick*="analyze"],[id*="imgBtn"],[class*="photo-btn"],[class*="scan-btn"]');
+      if(photoBtn){
+        highlight(photoBtn); await moveCursor(photoBtn);
+        await showLabel('📸 تحليل الفاتورة بالذكاء الاصطناعي<br><span style="font-size:13px;color:#7e7c8e">صوّر الفاتورة ← يستخرج الأصناف تلقائياً</span>', 3000);
+        await wait(500);
+      }
+      const backBtn = document.querySelector('.back-btn');
+      if(backBtn){ backBtn.click(); await wait(600); }
     }
+    highlight(null); scrollToTop(); await wait(500);
+  }
 
-    // ══ 11. المخزون 🗃️ ════════════════════════
-    setProgress(59);
-    if(stopped) return;
+  async function tourInventory(){
     highlight(null); closeAllOverlays();
     goPage('inventory'); scrollToTop(); await wait(800);
-    await showLabel('🗃️ المخزون الذكي<br><span style="font-size:13px;color:#7e7c8e">أصناف التزاماتك تُجمع هنا تلقائياً</span>', 2500);
+    await showLabel('🗃️ المخزون الذكي<br><span style="font-size:13px;color:#7e7c8e">أصناف الالتزامات تُجمع هنا تلقائياً</span>', 2500);
     const invItem = document.querySelector('.inv-item, .inventory-item, [class*="inv-row"], [class*="inv-card"]');
     if(invItem){
       highlight(invItem); await moveCursor(invItem); await wait(800);
       invItem.click(); await wait(700);
       await showLabel('🟡 حدد الكمية المتبقية<br><span style="font-size:13px;color:#7e7c8e">كامل 🟢 / النصف 🟡 / الربع 🟠 / نفذ 🔴</span>', 2500);
-      await wait(500); closeAllOverlays();
+      await wait(400); closeAllOverlays();
     }
-    // Extract / قائمة تسوق
     const extractBtn = document.querySelector('[onclick*="openExtract"],[onclick*="extractFilter"],[class*="extract-btn"]');
     if(extractBtn){
       highlight(extractBtn); await moveCursor(extractBtn);
-      await showLabel('🛒 استخراج قائمة التسوق<br><span style="font-size:13px;color:#7e7c8e">اختر الأصناف التي نفذت ← PDF جاهز للطباعة</span>', 2800);
-      await wait(500); extractBtn.click(); await wait(800);
-      await showLabel('📄 اختر النوع المطلوب ← تظهر قائمة جاهزة لتصديرها PDF', 2500);
-      await wait(500); closeAllOverlays();
+      await showLabel('🛒 استخراج قائمة التسوق<br><span style="font-size:13px;color:#7e7c8e">الأصناف التي نفذت ← PDF جاهز للطباعة</span>', 2800);
+      await wait(400); extractBtn.click(); await wait(700);
+      await showLabel('📄 اختر النوع واستخرج قائمة جاهزة', 2000);
+      await wait(300); closeAllOverlays();
     }
+    highlight(null); scrollToTop(); await wait(500);
+  }
 
-    // ══ 12. المهام ⏱️ ═════════════════════════
-    setProgress(67);
-    if(stopped) return;
-    highlight(null); closeAllOverlays();
+  async function tourTasks(){
     const tasksBtn = document.getElementById('nav-tasks');
-    await moveCursor(tasksBtn);
-    tasksBtn.click(); scrollToTop(); await wait(700);
+    highlight(null); closeAllOverlays();
+    await moveCursor(tasksBtn); tasksBtn.click(); scrollToTop(); await wait(700);
     await showLabel('📋 المهام<br><span style="font-size:13px;color:#7e7c8e">تتبع مهامك بمؤقت حي</span>', 2000);
-    const timerEl = document.querySelector('.task-elapsed,.task-timer,[class*="elapsed"],[class*="timer-val"]');
-    if(timerEl){
-      highlight(timerEl);
-      await showLabel('⏱️ المؤقت الحي<br><span style="font-size:13px;color:#7e7c8e">يعرض كم مضى على المهمة لحظة بلحظة</span>', 2500);
-    } else {
-      const taskCard = document.querySelector('.task-card,.task-item');
-      if(taskCard){ highlight(taskCard); await wait(2000); }
+    const taskCard = document.querySelector('.task-card, .task-item, [class*="task-row"]');
+    if(taskCard){
+      highlight(taskCard); await wait(1500);
+      const timerEl = taskCard.querySelector('[class*="elapsed"],[class*="timer"],.task-elapsed');
+      if(timerEl){
+        highlight(timerEl);
+        await showLabel('⏱️ المؤقت الحي<br><span style="font-size:13px;color:#7e7c8e">يعرض كم مضى على المهمة لحظة بلحظة</span>', 2500);
+      } else {
+        await showLabel('✅ حالات المهمة: معلقة — جارية — منتهية', 2200);
+      }
+      await wait(400);
     }
+    highlight(null); scrollToTop(); await wait(500);
+  }
 
-    // ══ 13. التقارير 📊 ═══════════════════════
-    setProgress(74);
-    if(stopped) return;
-    highlight(null); closeAllOverlays();
+  async function tourStats(){
     const statsBtn = document.getElementById('nav-stats');
-    await moveCursor(statsBtn);
-    statsBtn.click(); scrollToTop(); await wait(700);
-    await showLabel('📊 التقارير والإحصائيات<br><span style="font-size:13px;color:#7e7c8e">أسبوعية وشهرية وسنوية — تحليل كامل</span>', 2500);
-    highlight(document.getElementById('pg-stats'));
-    await wait(2000);
-
-    // ══ 14. المساعد الذكي 🤖 ══════════════════
-    setProgress(81);
-    if(stopped) return;
     highlight(null); closeAllOverlays();
-    document.getElementById('nav-home').click(); scrollToTop(); await wait(800);
-    await showLabel('🤖 المساعد المالي الذكي<br><span style="font-size:13px;color:#7e7c8e">يعرف بياناتك ويعطيك تقييم حقيقي</span>', 2200);
+    await moveCursor(statsBtn); statsBtn.click(); scrollToTop(); await wait(700);
+    await showLabel('📊 التقارير والإحصائيات<br><span style="font-size:13px;color:#7e7c8e">أسبوعية وشهرية وسنوية — تحليل كامل</span>', 2500);
+    const statsPg = document.getElementById('pg-stats');
+    if(statsPg){ highlight(statsPg); await wait(1000); }
+    window.scrollBy({top:300, behavior:'smooth'}); await wait(800);
+    await showLabel('📈 رسوم بيانية لمصروفاتك<br><span style="font-size:13px;color:#7e7c8e">يقارن الشهر الحالي بالسابق تلقائياً</span>', 2500);
+    await wait(600); window.scrollBy({top:300, behavior:'smooth'}); await wait(700);
+    highlight(null); scrollToTop(); await wait(500);
+  }
+
+  async function tourAI(){
+    document.getElementById('nav-home')?.click();
+    highlight(null); closeAllOverlays(); await wait(600);
     const aiInput = document.getElementById('aiInput');
     if(aiInput){
-      aiInput.scrollIntoView({behavior:'smooth',block:'center'}); await wait(600);
+      aiInput.scrollIntoView({behavior:'smooth', block:'center'}); await wait(700);
       highlight(aiInput); await moveCursor(aiInput);
-      await typeInto(aiInput,'أبي أشتري شاشة بـ 4500 ريال، أقدر؟');
+      await showLabel('🤖 المساعد المالي الذكي<br><span style="font-size:13px;color:#7e7c8e">يعرف بياناتك ويعطيك تقييم حقيقي</span>', 2200);
+      await wait(300);
+      await typeInto(aiInput, 'أبي أشتري شاشة بـ 4500 ريال، أقدر؟');
       await showLabel('💡 يحسب المتبقي ويبني لك خطة ادخار<br><span style="font-size:13px;color:#f5a623">بناءً على مصروفاتك الفعلية هالشهر</span>', 2800);
-      await wait(500); aiInput.value='';
-      await typeInto(aiInput,'وين أوفر هالشهر؟');
+      await wait(400); aiInput.value = '';
+      await typeInto(aiInput, 'وين أوفر هالشهر؟');
       await showLabel('🧠 يجاوب على أي سؤال مالي باللهجة السعودية', 2200);
-      await wait(400); aiInput.value='';
+      await wait(300); aiInput.value = '';
     }
+    highlight(null); scrollToTop(); await wait(500);
+  }
 
-    // ══ 15. المجموعات 👥 ══════════════════════
-    setProgress(89);
-    if(stopped) return;
+  async function tourGroups(){
     highlight(null); closeAllOverlays();
     await showLabel('👥 إدارة المجموعات<br><span style="font-size:13px;color:#7e7c8e">شخصي أو مع العائلة والأصدقاء</span>', 2000);
-    if(typeof openGroupsPage==='function') openGroupsPage();
+    if(typeof openGroupsPage === 'function') openGroupsPage();
     else goPage('groups');
     scrollToTop(); await wait(800);
-    const groupCard = document.querySelector('.group-card,.group-item,[class*="grp-card"]');
+    const groupCard = document.querySelector('.group-card, .group-item, [class*="grp-card"]');
     if(groupCard){
       highlight(groupCard);
       await showLabel('🏠 مجموعتك الشخصية تنشأ تلقائياً<br><span style="font-size:13px;color:#7e7c8e">أنشئ "العائلة" وأضف أفرادها</span>', 2500);
       await wait(400); groupCard.click(); await wait(800);
-      const memberCard = document.querySelector('.member-card,.member-item,[class*="member-row"]');
+      const memberCard = document.querySelector('.member-card, .member-item, [class*="member-row"]');
       if(memberCard){
         highlight(memberCard); await moveCursor(memberCard);
         await showLabel('👤 صلاحيات تفصيلية لكل عضو<br><span style="font-size:13px;color:#7e7c8e">رؤية / تعديل / حذف — مصروفات، التزامات، مهام</span>', 2800);
-        await wait(500);
+        await wait(400);
       }
       closeAllOverlays();
     }
-
-    // ══ 16. الختام ════════════════════════════
-    setProgress(100);
-    if(stopped) return;
-    highlight(null); closeAllOverlays(); cursor.style.display='none';
-    document.getElementById('nav-home').click(); scrollToTop(); await wait(500);
-    await showLabel('✨ O2 — تنفّس مالياً<br><span style="font-size:13px;color:#f5a623">masrofati.vercel.app</span><br><span style="font-size:12px;color:#7e7c8e">مجاني — يبدأ معك من أول يوم</span>', 4500);
-
-    cleanup();
-    playBtn.disabled = false;
-    playBtn.textContent = '🔁 إعادة الجولة';
-    stopped = false;
+    highlight(null); scrollToTop(); await wait(500);
   }
 
-  document.getElementById('cinemaPlayBtn').onclick = () => {
+  const tours = {
+    home: tourHome, expenses: tourExpenses, commitments: tourCommitments,
+    inventory: tourInventory, tasks: tourTasks, stats: tourStats,
+    ai: tourAI, groups: tourGroups
+  };
+
+  // ── زر ابدأ التصوير ───────────────────────
+  document.getElementById('cpStartBtn').onclick = async () => {
+    const selected = [...panel.querySelectorAll('.cp-sec.selected')].map(el=>el.dataset.sec);
+    if(!selected.length){ return; }
+    panel.style.display = 'none';
+    stopBtn.style.display = 'block';
     stopped = false;
-    runCinema();
+    cursor.style.display = 'block';
+    const total = selected.length;
+    for(let i = 0; i < selected.length; i++){
+      if(stopped) break;
+      setProgress(Math.round(((i+0.5)/total)*90));
+      await tours[selected[i]]();
+      if(stopped) break;
+      await wait(500);
+    }
+    if(!stopped){
+      setProgress(100);
+      cursor.style.display = 'none';
+      highlight(null);
+      document.getElementById('nav-home')?.click(); scrollToTop();
+      await showLabel('✨ O2 — تنفّس مالياً<br><span style="font-size:13px;color:#f5a623">masrofati.vercel.app</span><br><span style="font-size:12px;color:#7e7c8e">مجاني — يبدأ معك من أول يوم</span>', 4500);
+    }
+    cleanup();
+    stopBtn.style.display = 'none';
+    progressBar.style.width = '0';
+    panel.style.display = 'flex';
+    stopped = false;
   };
 
   }); // waitForAuth
