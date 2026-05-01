@@ -4714,12 +4714,18 @@ function exportExtractPDF(){
   <tbody>${rows}</tbody>
 </table>
 <div class="footer">O2 — masrofati.vercel.app</div>
-<script>window.onload=()=>{window.print();}<\/script>
 </body></html>`;
-  const w=window.open('','_blank');
-  if(!w){toast('اسمح بالنوافذ المنبثقة لتصدير PDF','bad');return;}
-  w.document.write(html);
-  w.document.close();
+  // iframe مخفي بدل window.open — لا يُفعّل popup blocker على أي متصفح
+  const iframe=document.createElement('iframe');
+  iframe.style.cssText='position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:none;visibility:hidden';
+  document.body.appendChild(iframe);
+  const doc=iframe.contentDocument||iframe.contentWindow.document;
+  doc.open(); doc.write(html); doc.close();
+  // انتظر تحميل الخط ثم افتح الطباعة
+  setTimeout(()=>{
+    try{ iframe.contentWindow.focus(); iframe.contentWindow.print(); }catch(e){}
+    setTimeout(()=>{ try{document.body.removeChild(iframe);}catch(e){} },2000);
+  },700);
 }
 
 // ══════════════════════════════════════════
