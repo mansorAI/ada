@@ -5729,6 +5729,14 @@ async function sendAiMessage(){
 // ══════════════════════════════════════════
 (function(){
   if(!new URLSearchParams(location.search).has('demo')) return;
+
+  // انتظر حتى يكتمل تسجيل الدخول واختيار المجموعة
+  function waitForAuth(cb){
+    if(currentUser && currentGroupId){ cb(); return; }
+    const t = setInterval(()=>{ if(currentUser && currentGroupId){ clearInterval(t); cb(); } }, 400);
+  }
+
+  waitForAuth(()=>{
   const btn = document.createElement('button');
   btn.id = 'demoBtn';
   btn.innerHTML = '🎬 تحميل بيانات التصوير';
@@ -5741,7 +5749,7 @@ async function sendAiMessage(){
   `;
   document.body.appendChild(btn);
   btn.onclick = async () => {
-    if(!currentGroupId){ toast('سجّل دخول واختر مجموعة أولاً','bad'); return; }
+    if(!currentGroupId){ toast('اختر مجموعة أولاً','bad'); return; }
     btn.textContent = '⏳ جاري التحميل...';
     btn.disabled = true;
     try {
@@ -5821,6 +5829,7 @@ async function sendAiMessage(){
       toast('خطأ: '+e.message,'bad');
     }
   };
+  }); // waitForAuth
 })();
 
 // ══════════════════════════════════════════
@@ -5828,6 +5837,13 @@ async function sendAiMessage(){
 // ══════════════════════════════════════════
 (function(){
   if(!new URLSearchParams(location.search).has('cinema')) return;
+
+  function waitForAuth(cb){
+    if(currentUser && currentGroupId){ cb(); return; }
+    const t = setInterval(()=>{ if(currentUser && currentGroupId){ clearInterval(t); cb(); } }, 400);
+  }
+
+  waitForAuth(()=>{
 
   // ── CSS ─────────────────────────────────
   const style = document.createElement('style');
@@ -6069,6 +6085,8 @@ async function sendAiMessage(){
     stopped = false;
     runCinema();
   };
+
+  }); // waitForAuth
 })();
 </script>
 </body>
