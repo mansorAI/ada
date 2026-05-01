@@ -3582,7 +3582,7 @@ async function analyzePhoto(file){
   // فحص حصة تحليل الصور
   const {data:profCheck}=await sb.from('profiles').select('image_analyses_used').eq('id',currentUser.id).single();
   if((profCheck?.image_analyses_used||0) >= 1){
-    toast('❌ استنفدت حصتك من تحليل الصور — تواصل مع الإدارة لفتح الميزة','bad',5000);
+    toast('❌ استنفدت حصتك من تحليل الصور — تواصل مع الإدارة واتساب: 0556515754','bad',6000);
     return;
   }
   const overlay=document.getElementById('photoAnalyzeOverlay');
