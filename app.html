@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -6063,19 +6063,41 @@ async function sendAiMessage(){
     return found;
   }
 
-  // ── جولات الأقسام ────────────────────────
+    // ── جولات الأقسام ────────────────────────
   async function tourHome(){
     goPage('home'); closeAllOverlays(); scrollToTop(); await wait(700);
-    await showLabel('🏠 الرئيسية<br><span style="font-size:13px;color:#7e7c8e">ملخص مالي شامل — ميزانيتك ومصروفاتك دفعة واحدة</span>', 2500);
+    await showLabel('🏠 الشاشة الرئيسية<br><span style="font-size:13px;color:#7e7c8e">ملخص مالي شامل في لمسة واحدة</span>', 2500);
     const hero = document.querySelector('#pg-home .hero-amount, #pg-home [class*="hero"]');
-    if(hero){ highlight(hero); await moveCursor(hero); await wait(1500); }
-    const savSection = document.querySelector('#pg-home [class*="sav"], #pg-home [class*="goal"]');
+    if(hero){
+      highlight(hero); await moveCursor(hero);
+      await showLabel('💰 ميزانيتك الشهرية<br><span style="font-size:13px;color:#7e7c8e">الدخل ناقص المصروفات — اعرف وين ذاهب كل ريال</span>', 2800);
+      await wait(400);
+    }
+    highlight(null);
+    const progressEl = document.querySelector('#pg-home [class*="progress"], #pg-home .budget-bar, #pg-home .prog-bar');
+    if(progressEl){
+      progressEl.scrollIntoView({behavior:'smooth', block:'center'}); await wait(500);
+      highlight(progressEl);
+      await showLabel('📊 شريط الإنفاق<br><span style="font-size:13px;color:#7e7c8e">دايم تعرف كم مصرفت من ميزانيتك الشهرية</span>', 2500);
+      await wait(400);
+    }
+    highlight(null);
+    const savSection = document.querySelector('#pg-home [class*="sav"], #pg-home [class*="goal"], #pg-home .savings-section');
     if(savSection){
-      highlight(null);
-      savSection.scrollIntoView({behavior:'smooth', block:'center'}); await wait(700);
+      savSection.scrollIntoView({behavior:'smooth', block:'center'}); await wait(600);
       highlight(savSection);
-      await showLabel('🎯 أهداف الادخار<br><span style="font-size:13px;color:#7e7c8e">حدد هدفك وتابع التقدم خطوة بخطوة</span>', 2500);
-      await wait(500);
+      await showLabel('🎯 أهداف الادخار<br><span style="font-size:13px;color:#7e7c8e">سيارة، رحلة، شاشة — حدد هدفك وO2 يتابع معك</span>', 2800);
+      await wait(400);
+      const goalCards = document.querySelectorAll('#pg-home [class*="goal-card"], #pg-home .goal-item, #pg-home [class*="sav-card"]');
+      if(goalCards.length > 1){
+        for(let i = 0; i < Math.min(goalCards.length, 3); i++){
+          if(stopped) return;
+          goalCards[i].scrollIntoView({behavior:'smooth', block:'center'});
+          highlight(goalCards[i]); await wait(600);
+        }
+        await showLabel(`✨ ${goalCards.length} هدف ادخار — كل واحد بشريط تقدم حي`, 2500);
+        await wait(400);
+      }
     }
     highlight(null); scrollToTop(); await wait(500);
   }
@@ -6084,70 +6106,78 @@ async function sendAiMessage(){
     const dailyBtn = document.getElementById('nav-daily');
     highlight(null); closeAllOverlays();
     await moveCursor(dailyBtn); dailyBtn.click(); scrollToTop(); await wait(800);
-    await showLabel('💸 مصروفاتك اليومية<br><span style="font-size:13px;color:#7e7c8e">ميزانيتك الشهرية ومتابعة كل ريال</span>', 2200);
+    await showLabel('💸 المصروفات اليومية<br><span style="font-size:13px;color:#7e7c8e">كل مصروف بالتاريخ والفئة — لا شيء يضيع</span>', 2500);
     const heroAmt = document.querySelector('.hero-amount');
-    if(heroAmt){ highlight(heroAmt); await wait(1500); }
-    highlight(null); closeAllOverlays();
-
-    // ── إضافة مصروفين ──────────────────────
-    const nameInp = document.getElementById('inpName');
-    const amtInp  = document.getElementById('inpAmt');
-    await showLabel('➕ إضافة مصروف — يدوي أو صوتي أو رسالة البنك', 1800);
-    openAdd(); await wait(600);
-    highlight(nameInp); await moveCursor(nameInp); await typeInto(nameInp, 'قهوة ستاربكس');
-    highlight(amtInp);  await moveCursor(amtInp);  await typeInto(amtInp, '28');
-    const addBtn1 = document.querySelector('#addOverlay .btn-primary');
-    highlight(addBtn1); await moveCursor(addBtn1); await wait(300); addBtn1.click(); await wait(900);
-    await showLabel('⛽ مصروف ثانٍ — بنزين', 900);
-    openAdd(); await wait(500);
-    await typeInto(nameInp, 'بنزين أرامكو'); await typeInto(amtInp, '200');
-    document.querySelector('#addOverlay .btn-primary').click(); await wait(1000);
-
-    // ── تمرير لأسفل لإظهار جميع المصروفات ──
-    highlight(null); closeAllOverlays(); scrollToTop(); await wait(400);
-    await showLabel('📋 جميع مصروفاتك مرتبة بالفئات', 2000);
-    await wait(300);
-    window.scrollBy({top:350, behavior:'smooth'}); await wait(700);
-    window.scrollBy({top:350, behavior:'smooth'}); await wait(700);
-    const expCards = document.querySelectorAll('.exp-card');
-    if(expCards.length > 2){
-      highlight(expCards[expCards.length-1]);
-      await showLabel(`✅ ${expCards.length} فئة — كل ريال في مكانه`, 1800);
+    if(heroAmt){
+      highlight(heroAmt); await moveCursor(heroAmt);
+      await showLabel('💵 المبلغ المتبقي من ميزانيتك<br><span style="font-size:13px;color:#7e7c8e">يتحدث تلقائياً مع كل مصروف تضيفه</span>', 2500);
       await wait(400);
     }
-
-    // ── الأرشيف ─────────────────────────────
+    highlight(null); closeAllOverlays();
+    await showLabel('➕ 3 طرق لتسجيل مصروفك: يدوي — صوتي — رسالة البنك', 2000);
+    await wait(300);
+    const nameInp = document.getElementById('inpName');
+    const amtInp  = document.getElementById('inpAmt');
+    openAdd(); await wait(700);
+    highlight(nameInp); await moveCursor(nameInp);
+    await showLabel('✏️ اسم المصروف<br><span style="font-size:13px;color:#7e7c8e">مطعم، بنزين، قهوة، دواء...</span>', 1800);
+    await typeInto(nameInp, 'قهوة ستاربكس');
+    highlight(amtInp); await moveCursor(amtInp);
+    await showLabel('💰 المبلغ بالريال', 1200);
+    await typeInto(amtInp, '28');
+    const addBtn1 = document.querySelector('#addOverlay .btn-primary');
+    if(addBtn1){
+      highlight(addBtn1); await moveCursor(addBtn1);
+      await showLabel('✅ حفظ — يُضاف فوراً للقائمة', 1200);
+      addBtn1.click(); await wait(900);
+    }
+    openAdd(); await wait(600);
+    await typeInto(nameInp, 'بنزين أرامكو');
+    await typeInto(amtInp, '200');
+    const addBtn2 = document.querySelector('#addOverlay .btn-primary');
+    if(addBtn2){ addBtn2.click(); await wait(900); }
+    highlight(null);
+    const voiceAddBtn = document.querySelector('[onclick*="openVoice"]');
+    if(voiceAddBtn){
+      highlight(voiceAddBtn); await moveCursor(voiceAddBtn);
+      await showLabel('🎙️ الإضافة الصوتية<br><span style="font-size:13px;color:#7e7c8e">قل "بنزين مائتين ريال" — يُسجَّل تلقائياً بدون كتابة</span>', 2800);
+      await wait(400);
+    }
+    highlight(null); closeAllOverlays(); scrollToTop(); await wait(400);
+    await showLabel('📋 مصروفاتك مرتبة بالفئات والتاريخ', 2000);
+    await wait(300);
+    window.scrollBy({top:300, behavior:'smooth'}); await wait(700);
+    window.scrollBy({top:300, behavior:'smooth'}); await wait(700);
+    const expCards = document.querySelectorAll('.exp-card');
+    if(expCards.length > 0){
+      highlight(expCards[expCards.length-1]);
+      await showLabel(`📦 ${expCards.length} فئة مصروفات<br><span style="font-size:13px;color:#7e7c8e">كل ريال في مكانه الصحيح تلقائياً</span>`, 2200);
+      await wait(400);
+    }
     highlight(null);
     const archiveCard = document.querySelector('.archive-card');
     if(archiveCard){
-      archiveCard.scrollIntoView({behavior:'smooth', block:'start'}); await wait(800);
+      archiveCard.scrollIntoView({behavior:'smooth', block:'start'}); await wait(700);
       highlight(archiveCard);
-      await showLabel('📅 الأرشيف الشهري<br><span style="font-size:13px;color:#7e7c8e">مصروفاتك مرتبة شهراً بشهر</span>', 2200);
+      await showLabel('📅 الأرشيف الشهري<br><span style="font-size:13px;color:#7e7c8e">كل شهر بتفاصيله — يناير، فبراير، مارس...</span>', 2500);
       await wait(400);
       const archHd = archiveCard.querySelector('.archive-card-hd');
       if(archHd){
-        await moveCursor(archHd); await wait(300);
-        archHd.click(); await wait(700);
-        await showLabel('📂 اضغط على الشهر لتشوف التفاصيل', 1800);
+        await moveCursor(archHd); archHd.click(); await wait(700);
+        await showLabel('📂 اضغط على الشهر — تشوف كل مصروفاته', 1800);
         await wait(400);
-
-        // ── دخول على فئة داخل الأرشيف ──────
         const catRow = archiveCard.querySelector('.archive-cat-row');
         if(catRow){
           catRow.scrollIntoView({behavior:'smooth', block:'center'}); await wait(500);
-          highlight(catRow); await moveCursor(catRow); await wait(400);
-          await showLabel('☕ اضغط على الفئة ← تشوف كل مشترياتها', 1800);
+          highlight(catRow); await moveCursor(catRow);
+          await showLabel('☕ اضغط على الفئة ← تشوف كل المشتريات داخلها', 2000);
           catRow.click(); await wait(900);
-          // الآن نحن في صفحة تفاصيل الفئة
           const logs = document.querySelectorAll('#catDetailLogs .log-item, #catDetailLogs [class*="log-row"]');
           if(logs.length > 0){
-            logs[0].scrollIntoView({behavior:'smooth', block:'center'}); await wait(500);
+            logs[0].scrollIntoView({behavior:'smooth', block:'center'}); await wait(400);
             highlight(logs[0]);
-            await showLabel(`🧾 ${logs.length} مشتريات داخل هذه الفئة<br><span style="font-size:13px;color:#7e7c8e">التاريخ والمبلغ لكل واحدة</span>`, 2500);
-            await wait(600);
-          } else {
-            await showLabel('🧾 تفاصيل كل مشترياتك داخل الفئة', 2000);
-            await wait(400);
+            await showLabel(`🧾 ${logs.length} عملية شراء — التاريخ والمبلغ لكل واحدة<br><span style="font-size:13px;color:#7e7c8e">تاريخك المالي محفوظ دايم</span>`, 2800);
+            await wait(500);
           }
           const backBtn = document.querySelector('#pg-catdetail .back-btn');
           if(backBtn){ await moveCursor(backBtn); backBtn.click(); await wait(600); }
@@ -6161,22 +6191,26 @@ async function sendAiMessage(){
     const fixedBtn = document.getElementById('nav-fixed');
     highlight(null); closeAllOverlays();
     await moveCursor(fixedBtn); fixedBtn.click(); scrollToTop(); await wait(800);
-    await showLabel('📌 الالتزامات الشهرية<br><span style="font-size:13px;color:#7e7c8e">إيجار، جوال، كهرباء، اشتراكات...</span>', 2200);
-
-    // ── أول كرت التزام عادي ──────────────────
-    const firstCard = document.querySelector('.fix-card');
-    if(firstCard){
-      highlight(firstCard); await wait(1200);
-      await showLabel('💰 كل كرت يعرض: الميزانية — المدفوع — المتبقي', 2000);
+    await showLabel('📌 الالتزامات الشهرية<br><span style="font-size:13px;color:#7e7c8e">إيجار، جوال، كهرباء، اشتراكات — كلها في مكان واحد</span>', 2500);
+    const allCards = document.querySelectorAll('.fix-card');
+    if(allCards.length > 0){
+      highlight(allCards[0]); await wait(800);
+      await showLabel('💳 كل كرت يعرض: الاسم — الميزانية — المدفوع — المتبقي', 2200);
       await wait(400);
+      if(allCards.length > 2){
+        allCards[1].scrollIntoView({behavior:'smooth', block:'center'});
+        highlight(allCards[1]); await wait(500);
+        allCards[2].scrollIntoView({behavior:'smooth', block:'center'});
+        highlight(allCards[2]); await wait(500);
+        await showLabel(`✅ ${allCards.length} التزامات مرتبة<br><span style="font-size:13px;color:#7e7c8e">ما يفوتك أي دفعة أو اشتراك</span>`, 2200);
+        await wait(400);
+      }
     }
-
-    // ── زر إضافة التزام ─────────────────────
     highlight(null); scrollToTop(); await wait(300);
     const addFixedBtn = document.querySelector('[onclick*="openAddFixed"]');
     if(addFixedBtn){
       highlight(addFixedBtn); await moveCursor(addFixedBtn);
-      await showLabel('➕ هكذا تضيف التزام جديد', 1500);
+      await showLabel('➕ إضافة التزام جديد<br><span style="font-size:13px;color:#7e7c8e">التزام عادي أو قائمة أصناف تفصيلية</span>', 2000);
       addFixedBtn.click(); await wait(700);
       const typeSelect = document.getElementById('fxInpType');
       const nameInpFx  = document.getElementById('fxInpName');
@@ -6185,94 +6219,89 @@ async function sendAiMessage(){
         highlight(typeSelect); await moveCursor(typeSelect); await wait(300);
         typeSelect.value = 'list';
         typeSelect.dispatchEvent(new Event('change', {bubbles:true}));
-        await showLabel('📋 اختر "قائمة" للأصناف التفصيلية<br><span style="font-size:13px;color:#7e7c8e">مستلزمات المنزل، السوبرماركت، الصيدلية...</span>', 2500);
+        await showLabel('📋 نوع "قائمة"<br><span style="font-size:13px;color:#7e7c8e">للسوبرماركت ومستلزمات المنزل — كل صنف بالتفصيل</span>', 2800);
         await wait(400);
       }
       if(nameInpFx){ highlight(nameInpFx); await moveCursor(nameInpFx); await typeInto(nameInpFx, 'مستلزمات المنزل'); }
       if(budgetInpFx){ highlight(budgetInpFx); await moveCursor(budgetInpFx); await typeInto(budgetInpFx, '850'); }
-      closeSheet('addFixedOverlay'); await wait(500);
+      await showLabel('💡 حدّد ميزانية الالتزام — O2 يتابع الإنفاق تلقائياً', 2000);
+      await wait(300);
+      closeSheet('addFixedOverlay'); await wait(600);
     }
-
-    // ── قائمة مستلزمات المنزل الموجودة ───────
     let qaimaCard = null;
     document.querySelectorAll('.fix-card').forEach(card=>{
       if(card.textContent.includes('مستلزمات')) qaimaCard = card;
     });
-    if(!qaimaCard && firstCard) qaimaCard = firstCard;
+    if(!qaimaCard && allCards.length > 0) qaimaCard = allCards[allCards.length - 1];
     if(!qaimaCard){ highlight(null); scrollToTop(); return; }
-
     qaimaCard.scrollIntoView({behavior:'smooth', block:'center'}); await wait(600);
     highlight(qaimaCard); await moveCursor(qaimaCard);
-    await showLabel('🗃️ التزام "مستلزمات المنزل" — نوع قائمة', 1800);
-    qaimaCard.click(); await wait(1200);
-
-    // ── داخل صفحة تفاصيل الالتزام ──────────
-
-    // زر يدوي
-    const manualBtn = document.querySelector('#pg-commit-detail .action-btn[onclick*="Manual"]');
+    await showLabel('🗃️ التزام "مستلزمات المنزل"<br><span style="font-size:13px;color:#7e7c8e">قائمة تفصيلية: أصناف + كميات + أسعار + فئات</span>', 2500);
+    qaimaCard.click(); await wait(2500);
+    highlight(null);
+    await showLabel('📋 صفحة تفاصيل الالتزام<br><span style="font-size:13px;color:#7e7c8e">3 طرق سريعة لإضافة الأصناف</span>', 2000);
+    await wait(400);
+    const manualBtn = document.querySelector('#pg-commit-detail .action-btn:not(.ab-voice):not(.ab-photo)');
     if(manualBtn){
       highlight(manualBtn); await moveCursor(manualBtn);
-      await showLabel('✏️ إضافة يدوية<br><span style="font-size:13px;color:#7e7c8e">أدخل اسم الصنف والكمية والسعر بنفسك</span>', 2200);
-      manualBtn.click(); await wait(800);
-      highlight(document.getElementById('addItemManualOverlay')||manualBtn); await wait(600);
-      closeSheet('addItemManualOverlay'); await wait(400);
+      await showLabel('✏️ إضافة يدوية<br><span style="font-size:13px;color:#7e7c8e">اكتب اسم الصنف — الفئة — الكمية — سعر الوحدة</span>', 2500);
+      manualBtn.click(); await wait(900);
+      const manOverlay = document.getElementById('addItemManualOverlay');
+      if(manOverlay && manOverlay.classList.contains('open')){
+        highlight(manOverlay.querySelector('.sheet') || manOverlay);
+        await showLabel('📝 فورم الإضافة اليدوية — كل الحقول بخطوة واحدة', 2000);
+        await wait(400);
+      }
+      closeSheet('addItemManualOverlay'); await wait(500);
     }
-
-    // زر صوتي
-    const voiceBtn = document.querySelector('#pg-commit-detail .action-btn[onclick*="Voice"]');
+    highlight(null);
+    const voiceBtn = document.querySelector('#pg-commit-detail .action-btn.ab-voice');
     if(voiceBtn){
       highlight(voiceBtn); await moveCursor(voiceBtn);
-      await showLabel('🎙️ إضافة صوتية<br><span style="font-size:13px;color:#7e7c8e">قل اسم الصنف والسعر — يُضاف تلقائياً بدون كتابة</span>', 2500);
-      await wait(500);
+      await showLabel('🎙️ الإضافة الصوتية<br><span style="font-size:13px;color:#7e7c8e">قل "حليب نادك 4 حبات بـ 28 ريال" — يُضاف تلقائياً ✨</span>', 3000);
+      await wait(600);
     }
-
-    // زر تصوير الفاتورة — النجمة
     highlight(null);
-    const photoBtn = document.querySelector('#pg-commit-detail .action-btn.ab-photo, #pg-commit-detail .action-btn[onclick*="Photo"]');
+    const photoBtn = document.querySelector('#pg-commit-detail .action-btn.ab-photo');
     if(photoBtn){
       photoBtn.scrollIntoView({behavior:'smooth', block:'center'}); await wait(400);
       highlight(photoBtn); await moveCursor(photoBtn);
-      await showLabel('📷 تصوير الفاتورة بالذكاء الاصطناعي<br><span style="font-size:13px;color:#7e7c8e">صوّر فاتورة السوبرماركت — تظهر جميع الأصناف والأسعار تلقائياً ✨</span>', 3500);
-      await wait(600);
+      await showLabel('📷 تصوير الفاتورة بالذكاء الاصطناعي<br><span style="font-size:13px;color:#f5a623">صوّر فاتورة السوبرماركت — جميع الأصناف والأسعار تظهر تلقائياً ✨</span>', 3500);
+      await wait(700);
     }
-
-    // ── جدول الأصناف — تمرير تدريجي ─────────
     highlight(null);
     const tbody = document.getElementById('commitItemsTbody');
-    const itemRows = tbody ? Array.from(tbody.querySelectorAll('tr')).filter(r=>!r.querySelector('.empty-table')&&r.cells.length>1) : [];
+    const itemRows = tbody ? Array.from(tbody.querySelectorAll('tr')).filter(r => !r.querySelector('.empty-table') && r.cells.length > 1) : [];
     if(itemRows.length > 0){
-      await showLabel(`📦 ${itemRows.length} صنف في القائمة<br><span style="font-size:13px;color:#7e7c8e">مواد غذائية • منظفات • ألبان وأجبان • دجاج ولحوم</span>`, 2500);
-      await wait(300);
-      const step = Math.max(1, Math.floor(itemRows.length / 7));
-      for(let i=0; i<itemRows.length; i+=step){
+      itemRows[0].scrollIntoView({behavior:'smooth', block:'center'}); await wait(400);
+      highlight(itemRows[0]);
+      await showLabel(`📦 ${itemRows.length} صنف في القائمة<br><span style="font-size:13px;color:#7e7c8e">عناية شخصية • منظفات • مواد غذائية • ألبان وأجبان • دجاج ولحوم</span>`, 3000);
+      await wait(400);
+      const step = Math.max(1, Math.floor(itemRows.length / 6));
+      for(let i = 0; i < itemRows.length; i += step){
         if(stopped) return;
         itemRows[i].scrollIntoView({behavior:'smooth', block:'nearest'});
-        highlight(itemRows[i]); await wait(360);
+        highlight(itemRows[i]); await wait(350);
       }
-      itemRows[itemRows.length-1].scrollIntoView({behavior:'smooth', block:'center'});
-      highlight(itemRows[itemRows.length-1]); await wait(700);
-      await showLabel('✅ كل أصناف قائمتك موثقة بالتفصيل', 1800);
+      itemRows[itemRows.length - 1].scrollIntoView({behavior:'smooth', block:'center'});
+      highlight(itemRows[itemRows.length - 1]); await wait(600);
+      await showLabel('✅ كل صنف موثق: الكمية — السعر — الفئة', 2000);
       await wait(400);
     }
-
-    // ── تقرير الفئات — المقارنة ──────────────
     highlight(null);
     const catTbl = document.getElementById('commitCatRptTbody');
     if(catTbl){
       const tbl = catTbl.closest('table') || catTbl;
       tbl.scrollIntoView({behavior:'smooth', block:'center'}); await wait(700);
       highlight(tbl);
-      await showLabel('📊 مقارنة الفئات<br><span style="font-size:13px;color:#7e7c8e">كم أنفقت على المنظفات؟ المواد الغذائية؟ الألبان والبروتين؟</span>', 3000);
-      await wait(600);
+      await showLabel('📊 مقارنة الفئات<br><span style="font-size:13px;color:#7e7c8e">كم أنفقت على المنظفات؟ الألبان؟ الدجاج؟ — بالنسبة %</span>', 3500);
+      await wait(700);
     }
-
-    // ── ختام: الأصناف تذهب للمخزن تلقائياً ──
     highlight(null);
     const heroEl = document.querySelector('#pg-commit-detail .commit-hero');
     if(heroEl){ heroEl.scrollIntoView({behavior:'smooth', block:'start'}); await wait(500); }
-    await showLabel('🏪 كل الأصناف المضافة هنا<br><span style="font-size:13px;color:#7e7c8e">تنتقل تلقائياً إلى المخزن لمتابعة الكميات والمخزون 🚀</span>', 3500);
-    await wait(800);
-
+    await showLabel('🚀 كل الأصناف المضافة هنا<br><span style="font-size:13px;color:#f5a623">تنتقل تلقائياً للمخزن — تتابع الكميات والنفاذ بدون أي إدخال إضافي</span>', 4000);
+    await wait(900);
     highlight(null);
     const backBtn = document.querySelector('#pg-commit-detail .back-btn');
     if(backBtn){ await moveCursor(backBtn); backBtn.click(); await wait(700); }
@@ -6282,109 +6311,84 @@ async function sendAiMessage(){
   async function tourInventory(){
     highlight(null); closeAllOverlays();
     goPage('inventory'); scrollToTop(); await wait(900);
-    await showLabel('🗃️ المخزون الذكي<br><span style="font-size:13px;color:#7e7c8e">أصناف قوائمك تُجمع هنا تلقائياً</span>', 2500);
-
-    // ── دالة: تحديد صنف عبر openInvStockPicker مباشرة ──
-    async function markByName(name, val){
-      // ابحث عن الصف في DOM للتمييز البصري
-      let row = null;
-      document.querySelectorAll('.inv-item-row').forEach(r=>{
-        if(r.querySelector('.inv-item-name')?.textContent.trim()===name) row=r;
-      });
-      if(row){ row.scrollIntoView({behavior:'smooth',block:'nearest'}); await wait(250); highlight(row); await wait(300); }
-      // افتح منتقي المخزون مباشرة بالاسم
-      if(typeof openInvStockPicker==='function') openInvStockPicker(name);
-      await wait(650);
-      const btn = document.querySelector(`#stockOverlay [onclick*="setStock('${val}')"]`);
-      if(btn){ highlight(btn); await moveCursor(btn); await wait(300); btn.click(); await wait(1100); }
-      else { closeSheet('stockOverlay'); await wait(400); }
-    }
-
-    // الأصناف التي نريد تحديدها (من بيانات الديمو)
-    const outItems = ['مسحوق غسيل أريال','منظف أرضيات دومستوس','شامبو هيد آند شولدرز','معجون أسنان كولجيت','ورق حمام','كلور'];
+    await showLabel('🗃️ المخزون الذكي<br><span style="font-size:13px;color:#7e7c8e">أصناف قوائمك تُجمع هنا تلقائياً — بدون أي إدخال</span>', 2800);
     const invItems = document.querySelectorAll('.inv-item-row');
-
     if(invItems.length > 0){
       highlight(invItems[0]);
-      await showLabel('📦 كل الأصناف من قوائمك هنا<br><span style="font-size:13px;color:#7e7c8e">اضغط أي صنف لتحديث كميته</span>', 2200);
-      await wait(300);
-
-      // ── أظهر الخيارات الأربعة على أول صنف ──
+      await showLabel(`📦 ${invItems.length} صنف في المخزون<br><span style="font-size:13px;color:#7e7c8e">كلها جاءت تلقائياً من قائمة التزاماتك</span>`, 2500);
+      await wait(400);
       const firstStockBtn = invItems[0].querySelector('.inv-stock-btn');
-      if(firstStockBtn){ firstStockBtn.click(); await wait(700); }
-      await showLabel('🟢 كامل — 🟡 النصف — 🟠 الربع — 🔴 نفذ', 2000);
-      const halfBtnDemo = document.querySelector('#stockOverlay [onclick*="setStock(\'half\')"]');
-      if(halfBtnDemo){ highlight(halfBtnDemo); await moveCursor(halfBtnDemo); await wait(400); halfBtnDemo.click(); await wait(900); }
-      else { closeSheet('stockOverlay'); await wait(400); }
-
-      // ── حدد 6 أصناف كـ"نفذ" ──────────────
-      await showLabel('🔴 بعض الأصناف خلصت — نحددها "نفذ"', 1600);
+      if(firstStockBtn){
+        await moveCursor(firstStockBtn); firstStockBtn.click(); await wait(700);
+        await showLabel('🎯 4 حالات للمخزون<br><span style="font-size:13px;color:#f5a623">🟢 كامل &nbsp;🟡 النصف &nbsp;🟠 الربع &nbsp;🔴 نفذ</span>', 2800);
+        await wait(400);
+        const halfBtn = document.querySelector('#stockOverlay [onclick*="setStock(\'half\')"]');
+        if(halfBtn){ highlight(halfBtn); await moveCursor(halfBtn); await wait(400); halfBtn.click(); await wait(900); }
+        else { closeSheet('stockOverlay'); await wait(400); }
+      }
+      await showLabel('🔴 نحدد الأصناف التي خلصت كـ "نفذ"', 1800);
       await wait(200);
+      async function markByName(name, val){
+        let row = null;
+        document.querySelectorAll('.inv-item-row').forEach(r=>{
+          if(r.querySelector('.inv-item-name')?.textContent.trim() === name) row = r;
+        });
+        if(row){ row.scrollIntoView({behavior:'smooth', block:'nearest'}); await wait(200); highlight(row); await wait(250); }
+        if(typeof openInvStockPicker === 'function') openInvStockPicker(name);
+        await wait(650);
+        const btn = document.querySelector(`#stockOverlay [onclick*="setStock('${val}')"]`);
+        if(btn){ highlight(btn); await moveCursor(btn); await wait(300); btn.click(); await wait(900); }
+        else { closeSheet('stockOverlay'); await wait(400); }
+      }
+      const outItems = ['مسحوق غسيل أريال','منظف أرضيات دومستوس','شامبو هيد آند شولدرز','معجون أسنان كولجيت','ورق حمام','كلور'];
       for(const name of outItems){
         if(stopped) return;
         await markByName(name, 'out');
       }
-
-      // ── تمرير لإظهار الأصناف المحدّثة ──────
       highlight(null);
-      await showLabel('✅ الأصناف التي نفذت تظهر بـ 🔴<br><span style="font-size:13px;color:#7e7c8e">جاهزة للاستخراج كقائمة تسوق</span>', 2200);
+      await showLabel('🔴 الأصناف التي نفذت علامتها حمراء<br><span style="font-size:13px;color:#7e7c8e">جاهزة للاستخراج كقائمة تسوق</span>', 2200);
       scrollToTop(); await wait(400);
-      window.scrollBy({top:350, behavior:'smooth'}); await wait(600);
-      window.scrollBy({top:350, behavior:'smooth'}); await wait(600);
+      window.scrollBy({top:400, behavior:'smooth'}); await wait(700);
     }
-
-    // ── استخراج قائمة التسوق ────────────────
-    highlight(null); scrollToTop(); await wait(500);
+    highlight(null); scrollToTop(); await wait(400);
     const extractBtn = document.querySelector('[onclick*="openExtractFilter"],[onclick*="extractFilter"]');
     if(extractBtn){
       extractBtn.scrollIntoView({behavior:'smooth', block:'center'}); await wait(400);
       highlight(extractBtn); await moveCursor(extractBtn);
-      await showLabel('🛒 استخراج قائمة التسوق', 1500);
-      await wait(200); extractBtn.click(); await wait(800);
-
-      // ── اختر "نفذ" في الفلتر ─────────────
-      await showLabel('🔴 اختر "نفذ" ← يستخرج كل الأصناف التي خلصت', 2200);
+      await showLabel('🛒 استخراج قائمة التسوق<br><span style="font-size:13px;color:#7e7c8e">اختار الفلتر — نفذ، النصف، الربع</span>', 2500);
+      await wait(300); extractBtn.click(); await wait(800);
+      await showLabel('🔴 فلتر "نفذ" ← يستخرج كل الأصناف التي انتهت', 2000);
       const outCb = document.querySelector('#extractFilterOverlay input[value="out"]');
       const efOut = document.getElementById('ef-out');
       if(outCb && efOut){
         highlight(efOut); await moveCursor(efOut); await wait(400);
-        if(!outCb.checked){
-          outCb.checked = true;
-          outCb.dispatchEvent(new Event('change', {bubbles:true}));
-        }
+        if(!outCb.checked){ outCb.checked=true; outCb.dispatchEvent(new Event('change',{bubbles:true})); }
         await wait(500);
       }
       const applyBtn = document.querySelector('#extractFilterOverlay .btn-primary');
       if(applyBtn){ highlight(applyBtn); await moveCursor(applyBtn); await wait(400); applyBtn.click(); await wait(1000); }
     }
-
-    // ── صفحة قائمة التسوق 🛒 ─────────────────
     scrollToTop(); await wait(500);
-    await showLabel('🛒 قائمة التسوق<br><span style="font-size:13px;color:#7e7c8e">الأصناف التي نفذت جاهزة للشراء</span>', 2500);
+    await showLabel('🛒 قائمة التسوق جاهزة!<br><span style="font-size:13px;color:#7e7c8e">الأصناف التي نفذت من المخزون</span>', 2500);
     const extractList = document.getElementById('extractList');
     if(extractList){
       const rows = extractList.querySelectorAll('.extract-row');
       if(rows.length > 0){
-        // تمرير تدريجي عبر الأصناف
         for(let i = 0; i < Math.min(rows.length, 5); i++){
+          if(stopped) return;
           rows[i].scrollIntoView({behavior:'smooth', block:'nearest'});
           highlight(rows[i]); await wait(350);
         }
-        await showLabel(`🔴 ${rows.length} صنف نفذ — كلها في القائمة`, 2000);
-        await wait(400);
-      } else {
-        await showLabel('القائمة ستظهر هنا بعد تحديد الأصناف', 1800);
+        await showLabel(`🔴 ${rows.length} صنف في قائمة التسوق<br><span style="font-size:13px;color:#7e7c8e">ما تنسى أي شيء في السوبرماركت</span>`, 2200);
         await wait(400);
       }
     }
-
-    // ── إضافة صنف يدوي للشراء ───────────────
     highlight(null);
     const addToBuyBtn = document.querySelector('#pg-extract .btn-primary,[onclick*="openAddExtractItem"]');
     if(addToBuyBtn){
       addToBuyBtn.scrollIntoView({behavior:'smooth', block:'center'}); await wait(400);
       highlight(addToBuyBtn); await moveCursor(addToBuyBtn);
-      await showLabel('➕ تقدر تضيف صنف يدوي للقائمة', 1800);
+      await showLabel('➕ أضف صنف يدوي للقائمة<br><span style="font-size:13px;color:#7e7c8e">شيء ناسيه غير موجود في المخزون</span>', 2200);
       await wait(300); addToBuyBtn.click(); await wait(700);
       const extNameInp = document.getElementById('extractItemName');
       if(extNameInp){
@@ -6393,18 +6397,16 @@ async function sendAiMessage(){
         const confirmBtn = document.querySelector('#addExtractOverlay .btn-primary');
         if(confirmBtn){ highlight(confirmBtn); await moveCursor(confirmBtn); await wait(300); confirmBtn.click(); await wait(800); }
       }
-      await showLabel('✅ الصنف أُضيف للقائمة', 1500);
+      await showLabel('✅ أُضيف للقائمة — جاهز للتسوق', 1800);
       await wait(400);
     }
-
-    // ── تصدير PDF ─────────────────────────────
     highlight(null); scrollToTop(); await wait(300);
     const pdfBtn = document.querySelector('[onclick*="exportExtractPDF"]');
     if(pdfBtn){
       highlight(pdfBtn); await moveCursor(pdfBtn);
-      await showLabel('📄 PDF — اضغط وتطلع ورقة قائمة التسوق', 2000);
+      await showLabel('📄 تصدير PDF<br><span style="font-size:13px;color:#7e7c8e">اضغط وتطلع ورقة قائمة التسوق كاملة — شاركها أو اطبعها</span>', 2800);
       await wait(400); pdfBtn.click(); await wait(700);
-      await showLabel('🛍️ هذه الأغراض اللي تحتاجها هذا الشهر<br><span style="font-size:13px;color:#f5a623">شاركها أو اطبعها مباشرة</span>', 3500);
+      await showLabel('🛍️ هذه الأغراض اللي تحتاجها هذا الشهر<br><span style="font-size:13px;color:#f5a623">لا popup — لا تعقيد — تصدير مباشر</span>', 3500);
       await wait(1000);
     }
     highlight(null); await wait(500);
@@ -6414,17 +6416,27 @@ async function sendAiMessage(){
     const tasksBtn = document.getElementById('nav-tasks');
     highlight(null); closeAllOverlays();
     await moveCursor(tasksBtn); tasksBtn.click(); scrollToTop(); await wait(700);
-    await showLabel('📋 المهام<br><span style="font-size:13px;color:#7e7c8e">تتبع مهامك بمؤقت حي</span>', 2000);
-    const taskCard = document.querySelector('.task-card, .task-item, [class*="task-row"]');
-    if(taskCard){
-      highlight(taskCard); await wait(1500);
-      const timerEl = taskCard.querySelector('[class*="elapsed"],[class*="timer"],.task-elapsed');
+    await showLabel('📋 المهام والمتابعة<br><span style="font-size:13px;color:#7e7c8e">نظّم مهامك المالية بمؤقت حي ومستويات أولوية</span>', 2500);
+    const allTasks = document.querySelectorAll('.task-card, .task-item, [class*="task-row"]');
+    if(allTasks.length > 0){
+      allTasks[0].scrollIntoView({behavior:'smooth', block:'center'}); await wait(400);
+      highlight(allTasks[0]); await moveCursor(allTasks[0]);
+      await showLabel('🔴 مهمة عاجلة<br><span style="font-size:13px;color:#7e7c8e">دفع فاتورة، تجديد وثيقة، موعد مهم</span>', 2500);
+      await wait(400);
+      const timerEl = allTasks[0].querySelector('[class*="elapsed"],[class*="timer"],.task-elapsed');
       if(timerEl){
         highlight(timerEl);
-        await showLabel('⏱️ المؤقت الحي<br><span style="font-size:13px;color:#7e7c8e">يعرض كم مضى على المهمة لحظة بلحظة</span>', 2500);
-      } else {
-        await showLabel('✅ حالات المهمة: معلقة — جارية — منتهية', 2200);
+        await showLabel('⏱️ مؤقت حي<br><span style="font-size:13px;color:#f5a623">يعرض كم مضى على المهمة لحظة بلحظة</span>', 2800);
+        await wait(500);
       }
+    }
+    if(allTasks.length > 1){
+      for(let i = 1; i < Math.min(allTasks.length, 4); i++){
+        if(stopped) return;
+        allTasks[i].scrollIntoView({behavior:'smooth', block:'nearest'});
+        highlight(allTasks[i]); await wait(500);
+      }
+      await showLabel(`📌 ${allTasks.length} مهام — معلقة، جارية، منتهية<br><span style="font-size:13px;color:#7e7c8e">كل مهمة لها حالة وأولوية وتاريخ</span>`, 2500);
       await wait(400);
     }
     highlight(null); scrollToTop(); await wait(500);
@@ -6434,50 +6446,75 @@ async function sendAiMessage(){
     const statsBtn = document.getElementById('nav-stats');
     highlight(null); closeAllOverlays();
     await moveCursor(statsBtn); statsBtn.click(); scrollToTop(); await wait(700);
-    await showLabel('📊 التقارير والإحصائيات<br><span style="font-size:13px;color:#7e7c8e">أسبوعية وشهرية وسنوية — تحليل كامل</span>', 2500);
+    await showLabel('📊 التقارير والإحصائيات<br><span style="font-size:13px;color:#7e7c8e">اعرف وين ذاهب فلوسك — رسوم بيانية واضحة</span>', 2500);
     const statsPg = document.getElementById('pg-stats');
-    if(statsPg){ highlight(statsPg); await wait(1000); }
-    window.scrollBy({top:300, behavior:'smooth'}); await wait(800);
-    await showLabel('📈 رسوم بيانية لمصروفاتك<br><span style="font-size:13px;color:#7e7c8e">يقارن الشهر الحالي بالسابق تلقائياً</span>', 2500);
-    await wait(600); window.scrollBy({top:300, behavior:'smooth'}); await wait(700);
+    if(statsPg){
+      const charts = statsPg.querySelectorAll('[class*="chart"], [class*="stat-card"], canvas, [class*="bar-wrap"]');
+      if(charts.length > 0){
+        charts[0].scrollIntoView({behavior:'smooth', block:'center'}); await wait(500);
+        highlight(charts[0]);
+        await showLabel('📈 رسم بياني لمصروفاتك<br><span style="font-size:13px;color:#7e7c8e">كل شهر مقارنةً بالشهر اللي قبله</span>', 2500);
+        await wait(500);
+      }
+    }
+    window.scrollBy({top:350, behavior:'smooth'}); await wait(800);
+    await showLabel('💸 توزيع المصروفات بالفئات<br><span style="font-size:13px;color:#7e7c8e">قهوة، بنزين، مطاعم، تسوق — كل فئة بنسبتها</span>', 2500);
+    await wait(500);
+    window.scrollBy({top:350, behavior:'smooth'}); await wait(800);
+    await showLabel('📉 أكثر الشهور إنفاقاً وأقلها<br><span style="font-size:13px;color:#7e7c8e">مقارنة سنوية تكشف عاداتك الشرائية</span>', 2500);
+    await wait(500);
     highlight(null); scrollToTop(); await wait(500);
   }
 
   async function tourAI(){
     document.getElementById('nav-home')?.click();
-    highlight(null); closeAllOverlays(); await wait(600);
+    highlight(null); closeAllOverlays(); scrollToTop(); await wait(700);
     const aiInput = document.getElementById('aiInput');
     if(aiInput){
       aiInput.scrollIntoView({behavior:'smooth', block:'center'}); await wait(700);
       highlight(aiInput); await moveCursor(aiInput);
-      await showLabel('🤖 المساعد المالي الذكي<br><span style="font-size:13px;color:#7e7c8e">يعرف بياناتك ويعطيك تقييم حقيقي</span>', 2200);
-      await wait(300);
+      await showLabel('🤖 المساعد المالي الذكي<br><span style="font-size:13px;color:#7e7c8e">يعرف بياناتك الحقيقية ويعطيك نصيحة مخصصة</span>', 2500);
+      await wait(400);
       await typeInto(aiInput, 'أبي أشتري شاشة بـ 4500 ريال، أقدر؟');
-      await showLabel('💡 يحسب المتبقي ويبني لك خطة ادخار<br><span style="font-size:13px;color:#f5a623">بناءً على مصروفاتك الفعلية هالشهر</span>', 2800);
-      await wait(400); aiInput.value = '';
+      await showLabel('💡 يحسب المتبقي من ميزانيتك<br><span style="font-size:13px;color:#f5a623">ويبني لك خطة ادخار بناءً على مصروفاتك الفعلية</span>', 3000);
+      await wait(500); aiInput.value = '';
       await typeInto(aiInput, 'وين أوفر هالشهر؟');
-      await showLabel('🧠 يجاوب على أي سؤال مالي باللهجة السعودية', 2200);
-      await wait(300); aiInput.value = '';
+      await showLabel('🧠 يحلل إنفاقك ويقترح أين تقلص<br><span style="font-size:13px;color:#7e7c8e">باللهجة السعودية — فاهم تفاصيل حياتك</span>', 2800);
+      await wait(400); aiInput.value = '';
+      highlight(null);
+      const remEl = document.getElementById('aiRemaining');
+      if(remEl){
+        highlight(remEl);
+        await showLabel('📬 15 رسالة يومياً مجانية<br><span style="font-size:13px;color:#7e7c8e">كافية لأي استشارة مالية تحتاجها</span>', 2500);
+        await wait(400);
+      }
     }
     highlight(null); scrollToTop(); await wait(500);
   }
 
   async function tourGroups(){
     highlight(null); closeAllOverlays();
-    await showLabel('👥 إدارة المجموعات<br><span style="font-size:13px;color:#7e7c8e">شخصي أو مع العائلة والأصدقاء</span>', 2000);
+    await showLabel('👥 إدارة المجموعات<br><span style="font-size:13px;color:#7e7c8e">شارك إدارة المال مع العائلة أو الشركاء</span>', 2200);
     if(typeof openGroupsPage === 'function') openGroupsPage();
     else goPage('groups');
     scrollToTop(); await wait(800);
-    const groupCard = document.querySelector('.group-card, .group-item, [class*="grp-card"]');
-    if(groupCard){
-      highlight(groupCard);
-      await showLabel('🏠 مجموعتك الشخصية تنشأ تلقائياً<br><span style="font-size:13px;color:#7e7c8e">أنشئ "العائلة" وأضف أفرادها</span>', 2500);
-      await wait(400); groupCard.click(); await wait(800);
+    const allGroups = document.querySelectorAll('.group-card, .group-item, [class*="grp-card"]');
+    if(allGroups.length > 0){
+      highlight(allGroups[0]);
+      await showLabel('🏠 كل مجموعة ← عالم مالي منفصل<br><span style="font-size:13px;color:#7e7c8e">الشخصية، العائلة، الشركاء — كل واحدة ببياناتها المستقلة</span>', 2800);
+      await wait(400); allGroups[0].click(); await wait(900);
       const memberCard = document.querySelector('.member-card, .member-item, [class*="member-row"]');
       if(memberCard){
         highlight(memberCard); await moveCursor(memberCard);
-        await showLabel('👤 صلاحيات تفصيلية لكل عضو<br><span style="font-size:13px;color:#7e7c8e">رؤية / تعديل / حذف — مصروفات، التزامات، مهام</span>', 2800);
-        await wait(400);
+        await showLabel('👤 صلاحيات تفصيلية لكل عضو<br><span style="font-size:13px;color:#7e7c8e">رؤية — تعديل — حذف | مصروفات، التزامات، مهام</span>', 3000);
+        await wait(500);
+        const permsBtn = memberCard.querySelector('[onclick*="openMemberPerms"],[onclick*="Perms"]');
+        if(permsBtn){
+          await moveCursor(permsBtn); permsBtn.click(); await wait(700);
+          await showLabel('🔐 تحكم كامل بصلاحيات كل عضو<br><span style="font-size:13px;color:#f5a623">لا أحد يشوف أو يعدل إلا بإذنك</span>', 2800);
+          await wait(400);
+          closeAllOverlays(); await wait(400);
+        }
       }
       closeAllOverlays();
     }
